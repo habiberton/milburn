@@ -12,9 +12,11 @@ dependencies = [
     "langchain-ollama>=1.1.0",
     "langgraph>=1.2.4",
     "numpy>=2.4.6",
+    "pandas>=3.0.3",
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.1",
     "python-dotenv>=1.2.2",
+    "tiingo>=0.16.1",
 ]
 
 [project.scripts]

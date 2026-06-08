@@ -1,4 +1,4 @@
-# AI-Agent Project
+# Milburn
 
 Goal: build an AI agent from scratch that can read OHLCV market data, run technical analysis actions on stock charts, and explain its reasoning through a locally hosted or self-hosted open-weight LLM.
 
@@ -62,15 +62,14 @@ The graph should begin with a mostly deterministic workflow. Add more agent auto
 Phase 1 should use a free market-data API as the primary OHLCV source, not manually supplied CSV files.
 
 Recommended Phase 1 source:
-- Alpaca Market Data API for US stocks and ETFs
+- Tiingo End-of-Day prices API for stock and ETF candles
 
-Why Alpaca:
-- official API and SDKs
-- free Basic plan
-- historical stock data available since 2016
-- historical API limit of 200 requests/minute on Basic
-- enough throughput for repeated chart-analysis experiments
-- no real-time requirement for this project, so the latest-15-minute Basic-plan limitation is acceptable
+Why Tiingo:
+- official API with token authentication
+- free tier is a better fit for repeated local development
+- EOD prices provide raw and adjusted candle fields
+- date-range requests and daily/weekly/monthly-style resampling map cleanly to Milburn's first chart-analysis workflows
+- no real-time requirement for Phase 1, so daily historical candles are enough
 
 Fallback and comparison sources:
 - Yahoo Finance via `yfinance`: excellent quick-start source, broad coverage, no API key, but unofficial and personal/research-use only with no stable published rate limit.
@@ -81,16 +80,16 @@ Fallback and comparison sources:
 
 Phase 1 should cache all pulled OHLCV data locally, preferably as Parquet, so repeated agent runs do not burn API quota and can be replayed exactly.
 
-Phase 1 should not use MCP for market data. Instead, build provider classes behind a simple `OHLCVProvider` interface:
-- `AlpacaProvider` for primary API fetches
-- `CachedProvider` for replay and quota control
+Phase 1 should not use MCP for market data. Instead, build provider classes behind a simple `CandleProvider` interface:
+- `TiingoProvider` for primary API fetches
+- `CacheProvider` for replay and quota control
 - `CSVFixtureProvider` for tests and offline fixtures
 
 This keeps the first implementation simple while preserving a clean future path: a later MCP server can wrap the same provider interface without rewriting the LangGraph TA agent.
 
 Nice-to-have later enhancement:
 - `IndexDataProvider` for direct index symbols such as S&P 500, Nasdaq Composite, Nasdaq-100, Dow Jones Industrial Average, Russell 2000, and VIX.
-- This is out of scope for Phase 1. For now, use US stocks and ETF proxies available through Alpaca, such as `SPY`, `QQQ`, `DIA`, and `IWM`.
+- This is out of scope for Phase 1. For now, use stock and ETF proxies available through Tiingo, such as `SPY`, `QQQ`, `DIA`, and `IWM`.
 
 Validation checks:
 - required columns
@@ -136,6 +135,7 @@ VPS/self-hosted path:
 Design rule:
 - the rest of the agent should not care whether the model is local Ollama or a remote vLLM server.
 - use a small adapter/config layer with `provider`, `base_url`, `model`, `temperature`, and `timeout`.
+- keep local model profiles in the project, preferably `src/milburn/llm/profiles.yaml`, so `milburn doctor --models` can display profile settings and local Ollama availability in one table.
 
 ### 5. Specialization Strategy
 
@@ -170,7 +170,7 @@ Facts should remain stable because tools compute them deterministically. The nar
 Build a CLI proof of concept:
 
 ```text
-ai-ta analyze --csv data/spy_daily.csv --prompt "Analyze trend, RSI, MACD, and key support/resistance."
+milburn analyze --csv data/spy_daily.csv --prompt "Analyze trend, RSI, MACD, and key support/resistance."
 ```
 
 Expected output:
@@ -185,7 +185,7 @@ Expected output:
 ## Suggested Repository Structure
 
 ```text
-ai-agent-project/
+milburn/
   README.md
   docs/
     framework-research.md
@@ -194,11 +194,14 @@ ai-agent-project/
     eval-plan.md
   pyproject.toml
   src/
-    ai_ta_agent/
+    milburn/
       __init__.py
       config.py
       graph.py
-      llm.py
+      llm/
+        config.py
+        profiles.yaml
+        factory.py
       state.py
       cli.py
       data/
@@ -260,9 +263,9 @@ The agent should not:
 ## Next Build Steps
 
 1. Scaffold the Python project with LangGraph, pandas, and a CLI.
-2. Add an `OHLCVProvider` interface instead of using MCP for Phase 1 market data.
-3. Add `AlpacaProvider` for US stock/ETF OHLCV fetches.
-4. Add `CachedProvider` with local Parquet caching.
+2. Add a `CandleProvider` interface instead of using MCP for Phase 1 market data.
+3. Add `TiingoProvider` for stock/ETF candle fetches.
+4. Add `CacheProvider` with local Parquet caching.
 5. Add `CSVFixtureProvider` as a fallback and test fixture path.
 6. Add OHLCV validation.
 7. Implement the first deterministic TA tools: SMA, EMA, RSI, MACD, ATR.
@@ -327,13 +330,13 @@ Wait until the project has:
 
 At that point, repeated needs will become obvious: model switching, replay, tool registry, permission boundaries, skill loading, context management, and standardized run records.
 
-### Transition Roadmap: TA Agent to Harness
+### Transition Roadmap: Milburn to Harness
 
-#### Phase 1: Complete the Specialized TA Agent
+#### Phase 1: Complete the Specialized Milburn
 
 Deliver:
 - one LangGraph analysis workflow
-- Alpaca-backed OHLCV input with local cache
+- Tiingo-backed OHLCV input with local cache
 - CSV/sample fixture fallback for tests
 - deterministic indicators and chart tools
 - local Ollama model adapter

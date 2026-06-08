@@ -5,8 +5,19 @@ build/
 dist/
 wheels/
 *.egg-info
-.DS_STORE
+.DS_Store
 
 # Virtual environments
 .venv
+
+# Local secrets and environment overrides
+.env
+.env.*
+!.env.example
+
+# Local runtime artifacts
+data/cache/
+data/fixtures/
+runs/
+*.log
 /docs
