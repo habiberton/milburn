@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     def get_tiingo_api_key(self) -> Optional[str]:
         if self.tiingo_api_secret is not None:
             return self.tiingo_api_secret.get_secret_value()
-        return None
+        raise ValueError("Tiingo API key is not configured.")
 
     # Data
     data_dir: Path = Path("data")
