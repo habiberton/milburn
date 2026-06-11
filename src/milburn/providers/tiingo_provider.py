@@ -1,6 +1,6 @@
 from milburn.config import Settings
-from milburn.data.models import CandleMetadata, CandleRequest
-from milburn.data.providers import CandleResponse
+from milburn.model import CandleMetadata, CandleRequest
+from milburn.provider import CandleResponse
 
 from tiingo import TiingoClient
 

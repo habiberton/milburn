@@ -1,7 +1,6 @@
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Literal
 
-from langchain_protocol import Literal
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -21,7 +20,7 @@ class Settings(BaseSettings):
     agent_role: str = "An AI assistant that helps users with various tasks."
 
     # API configurations
-    tiingo_api_secret: SecretStr | None
+    tiingo_api_secret: SecretStr | None = None
 
     def get_tiingo_api_key(self) -> Optional[str]:
         if self.tiingo_api_secret is not None:

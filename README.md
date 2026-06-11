@@ -78,7 +78,7 @@ Fallback and comparison sources:
 - MarketData.app: official API, free plan with 100 daily credits and 1 year of historical data, useful for limited comparison tests.
 - CSV files: keep only for fixtures, regression tests, offline development, and reproducible eval cases.
 
-Phase 1 should cache all pulled OHLCV data locally, preferably as Parquet, so repeated agent runs do not burn API quota and can be replayed exactly.
+Phase 1 should cache all pulled candle data locally so repeated agent runs do not burn Tiingo bandwidth and can be replayed exactly. Use Parquet for normalized candle payloads and DuckDB for cache indexes, LLM eval cache rows, eval metadata, scorer results, and trace indexes.
 
 Phase 1 should not use MCP for market data. Instead, build provider classes behind a simple `CandleProvider` interface:
 - `TiingoProvider` for primary API fetches
@@ -265,7 +265,7 @@ The agent should not:
 1. Scaffold the Python project with LangGraph, pandas, and a CLI.
 2. Add a `CandleProvider` interface instead of using MCP for Phase 1 market data.
 3. Add `TiingoProvider` for stock/ETF candle fetches.
-4. Add `CacheProvider` with local Parquet caching.
+4. Add `CacheProvider` with Parquet candle payloads plus a DuckDB cache/eval index.
 5. Add `CSVFixtureProvider` as a fallback and test fixture path.
 6. Add OHLCV validation.
 7. Implement the first deterministic TA tools: SMA, EMA, RSI, MACD, ATR.
