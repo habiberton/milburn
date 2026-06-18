@@ -1,4 +1,4 @@
-
+from uuid import uuid7
 
 from milburn.model import Frequency
 from datetime import date
@@ -25,3 +25,6 @@ def parse_date(value: str | date) -> date:
     if isinstance(value, date):
         return value
     return date.fromisoformat(value)
+
+def make_run_id() -> str:
+    return f"{uuid7()}"

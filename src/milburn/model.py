@@ -37,3 +37,22 @@ class CandleMetadata(BaseModel):
 class CandleResponse:
     frame: pd.DataFrame
     metadata: CandleMetadata
+
+class EvidenceRef(BaseModel):
+    tool: str
+    field: str
+    value: str | float | bool
+
+class SignalClaim(BaseModel):
+    category: Literal["trend", "momentum", "volatility", "volume", "levels"]
+    claim: str
+    evidence: list[EvidenceRef]
+    confidence: Literal["low", "medium", "high"]
+
+class AnalysisReport(BaseModel):
+    summary: str
+    data: dict[str, Any]
+    signals: list[SignalClaim]
+    conflicts: list[str]
+    warnings: list[str]
+    next_steps: list[str]

@@ -4,6 +4,7 @@ from dateutil.relativedelta import relativedelta
 from typing import Optional
 
 from milburn.config import Settings
+from milburn.console import present_candles
 from milburn.model import CandleRequest
 from milburn.providers.tiingo_provider import TiingoProvider
 from milburn.helper import convert_date, is_date_range_valid, is_frequency_valid, normalize_frequency, normalize_symbol, parse_date
@@ -58,7 +59,7 @@ def fetch(
         end=convert_date(end),
     )
     response = provider.fetch_candles(request)
-    typer.echo(f"Retrieved {response.metadata.rows} candles for {symbol}")
+    present_candles(response)
 
 
 
@@ -83,3 +84,4 @@ def predict(
     Analyze the performance of a given asset over a specified date range.
     """
     typer.echo(f"Analyzing {symbol} from {start} to {end} with prompt: {prompt} and LLM: {llm}")
+    
