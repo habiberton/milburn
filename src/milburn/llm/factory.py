@@ -11,6 +11,7 @@ from typing import Any
 import yaml
 
 from milburn.config import Settings
+from milburn.model import Effort
 from milburn.llm.base import ReportGenerator
 from milburn.llm.config import ModelProfile
 from milburn.llm.fake_report_generator import FakeReportGenerator
@@ -43,12 +44,12 @@ def get_model_profile(name: str, settings: Settings) -> ModelProfile:
     return ModelProfile(**config)
 
 
-def build_report_generator(profile_name: str, settings: Settings) -> ReportGenerator:
+def build_report_generator(effort: Effort, settings: Settings) -> ReportGenerator:
     """Map a profile name to a concrete generator instance."""
-    profile = get_model_profile(profile_name, settings)
+    profile = get_model_profile(effort.value, settings)
 
-    if profile.provider == "fake":
+    if profile.provider == "none":
         return FakeReportGenerator()
     if profile.provider == "ollama":
         return OllamaReportGenerator(profile)
-    raise ValueError(f"Unsupported provider {profile.provider!r} for profile {profile_name!r}.")
+    raise ValueError(f"Unsupported provider {profile.provider!r} for profile {effort.value!r}.")

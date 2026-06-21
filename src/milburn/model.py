@@ -14,6 +14,18 @@ class Frequency(StrEnum):
     MONTHLY = "monthly"
     YEARLY = "yearly"
 
+class GraphNode(StrEnum):
+    PARSE_REQUEST = "parse_request"
+    LOAD_OHLCV = "load_ohlcv"
+    GENERATE_REPORT = "generate_report"
+    SAVE_TRACE="save_trace"
+    
+class Effort(StrEnum):
+    none="none"
+    low="low"
+    medium="medium"
+    high="high"
+
 class CandleRequest(BaseModel):
     symbol: str
     frequency: str
@@ -32,6 +44,18 @@ class CandleMetadata(BaseModel):
     source: Literal["cache", "api"]
     request_count: int = 0
     raw_metadata: dict[str, Any] = {}
+
+class CandleSummary(BaseModel):
+    symbol: str
+    frequency: str
+    start: date
+    end: date
+    first_close: float = None
+    last_close: float = None
+    min_close: float = None
+    max_close: float = None
+    volume_present: bool = False
+    missing: dict[str, int] = {}
 
 @dataclass(frozen=True)
 class CandleResponse:
@@ -56,3 +80,4 @@ class AnalysisReport(BaseModel):
     conflicts: list[str]
     warnings: list[str]
     next_steps: list[str]
+

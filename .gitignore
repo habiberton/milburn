@@ -21,3 +21,5 @@ data/fixtures/
 runs/
 *.log
 /docs
+tests/scratch
+.vscode/

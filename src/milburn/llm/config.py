@@ -3,7 +3,7 @@ from typing import Literal
 
 class ModelProfile(BaseModel):
     name: str
-    provider: Literal["fake", "ollama", "openai"]
+    provider: Literal["none", "ollama", "openai"]
     model: str
     base_url: str | None = None
     temperature: float = 0.1

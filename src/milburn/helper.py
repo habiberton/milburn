@@ -10,8 +10,10 @@ def normalize_symbol(symbol: str) -> str:
 def convert_date(date_str: date) -> str:
     return date_str.strftime("%Y-%m-%d")
 
-def is_date_range_valid(start: date, end: date) -> bool:
-    return True if start <= end else False
+def is_date_range_valid(start: str | date, end: str | date) -> bool:
+    s = date.fromisoformat(start) if isinstance(start, str) else start
+    e = date.fromisoformat(end) if isinstance(end, str) else end
+    return s <= e
 
 def normalize_frequency(frequency: str) -> str:
     return frequency.lower().strip()

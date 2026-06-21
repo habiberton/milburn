@@ -1,18 +1,18 @@
-fake:
-  provider: fake
+none:
+  provider: none
   model: fake-report-generator
 
-smoke:
+low:
   provider: ollama
   model: milburn-smoke
   base_url: http://localhost:11434
 
-default:
+medium:
   provider: ollama
   model: milburn-default
   base_url: http://localhost:11434
 
-quality:
+high:
   provider: ollama
   model: milburn-quality
   base_url: http://localhost:11434

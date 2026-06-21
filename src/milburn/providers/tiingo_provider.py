@@ -1,3 +1,4 @@
+import pandas as pd
 from milburn.config import Settings
 from milburn.model import CandleMetadata, CandleRequest, CandleResponse
 
@@ -52,7 +53,7 @@ class TiingoProvider:
             return request.columns
         return TIINGO_CANDLE_COLUMNS
 
-    def _normalize_frame(self, frame, request: CandleRequest):
+    def _normalize_frame(self, frame: pd.DataFrame, request: CandleRequest):
         frame = frame.copy()
         frame.index.name = "timestamp"
         frame = frame.reset_index()
