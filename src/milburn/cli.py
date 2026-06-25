@@ -105,7 +105,7 @@ def predict(
         data_cache_key=None,
         candle_summary={},
         validation_issues=[],
-        requested_actions=[],
+        indicator_categories=[],
         selected_tools=[],
         tool_outputs={},
         chart_path=None,

@@ -9,6 +9,7 @@ from milburn.agent.state import AgentState
 from milburn.helper import is_date_range_valid, is_frequency_valid, make_run_id, normalize_frequency, normalize_symbol
 from milburn.model import CandleRequest, CandleSummary, AnalysisReport, GraphNode
 from milburn.data.context import summarize_candles
+from milburn.tools.registry import tool_selection, tool_runner
 
 """
 Nodes to define: 
@@ -33,13 +34,13 @@ def build_graph(
                 run_id = make_run_id()
                 symbol = normalize_symbol(state["symbol"])
                 frequency = normalize_frequency(state["frequency"])
-                actions = identify_intent(state["prompt"])
+                categories = identify_intent(state["prompt"])
 
                 return {
                         "run_id": run_id,
                         "symbol": symbol,
                         "frequency": frequency,
-                        "requested_actions": actions,
+                        "indicator_categories": categories,
                 }
 
         def load_ohlcv(state: AgentState) -> dict:
@@ -69,17 +70,32 @@ def build_graph(
                         "report": report.model_dump(mode="json")
                 }
         
+        def select_tools(state: AgentState) -> dict:
+                categories = state["indictator_categories"]
+                selected_tools = tool_selection(categories)
+                return {
+                        "selected_tools": selected_tools
+                }
+        
+        def run_tools(state: AgentState) -> dict:
+                
+
+        
         builder: StateGraph = StateGraph(AgentState)
 
         ## Adding core nodes
         builder.add_node(GraphNode.PARSE_REQUEST, parse_request)
         builder.add_node(GraphNode.LOAD_OHLCV, load_ohlcv)
+        builder.add_node(GraphNode.SELECT_TOOLS, select_tools)
+        builder.add_node(GraphNode.RUN_TOOLS, run_tools)
         builder.add_node(GraphNode.GENERATE_REPORT, generate_report)
 
         ## Adding relationship edges
         builder.add_edge(START, GraphNode.PARSE_REQUEST)
         builder.add_edge(GraphNode.PARSE_REQUEST, GraphNode.LOAD_OHLCV)
-        builder.add_edge(GraphNode.LOAD_OHLCV, GraphNode.GENERATE_REPORT)
+        builder.add_edge(GraphNode.LOAD_OHLCV, GraphNode.SELECT_TOOLS)
+        builder.add_edge(GraphNode.SELECT_TOOLS, GraphNode.RUN_TOOLS)
+        builder.add_edge(GraphNode.RUN_TOOLS, GraphNode.GENERATE_REPORT)
         builder.add_edge(GraphNode.GENERATE_REPORT, END)
 
         return builder.compile()

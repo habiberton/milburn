@@ -12,7 +12,7 @@ class AgentState(TypedDict):
     data_cache_key: str | None
     candle_summary: dict[str, Any] = {}
     validation_issues: list[dict[str, Any]] = []
-    requested_actions: list[str] = []
+    indicator_categories: list[str] = []
     selected_tools: list[str] = []
     tool_outputs: dict[str, Any] = {}
     chart_path: str | None

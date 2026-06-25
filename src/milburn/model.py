@@ -17,6 +17,8 @@ class Frequency(StrEnum):
 class GraphNode(StrEnum):
     PARSE_REQUEST = "parse_request"
     LOAD_OHLCV = "load_ohlcv"
+    SELECT_TOOLS = "select_tools"
+    RUN_TOOLS = "run_tools"
     GENERATE_REPORT = "generate_report"
     SAVE_TRACE="save_trace"
     
