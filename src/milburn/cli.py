@@ -3,7 +3,7 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 
 from milburn.config import Settings
-from milburn.console import present_candles, present_report
+from milburn.console import present_candles, present_report, run_with_status
 from milburn.model import CandleRequest, Effort
 from milburn.llm.factory import build_report_generator
 from milburn.agent.graph import build_graph
@@ -117,7 +117,7 @@ def predict(
         warnings=[],
         traces=[],
     )
-    result = graph.invoke(state)
+    result = run_with_status(graph, state)
     present_report(result)
 
 

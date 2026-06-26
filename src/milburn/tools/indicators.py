@@ -33,8 +33,6 @@ def calculate_rsi(frame: DataFrame, period=14) -> ToolResult:
     frame = compute_rsi(frame, period)
     events = compute_rsi_events(frame)
     latest["rsi"] = round(float(frame["rsi"].iloc[-1]), 3)
-    print_json(msg="latest", input=latest)
-    print_json(msg="events", input=events)
 
     return ToolResult(
         name=name,
@@ -78,16 +76,16 @@ def compute_rsi_events(frame: DataFrame) -> list[ToolEvent]:
 # events: macd, signal, histogram
 def calculate_macd(frame, fast=12, slow=26, signal=9) -> ToolResult:
     latest: dict[str, Any] = {}
-    events: list[ToolEvent] = []
+    warnings: list[str] = []
     frame = compute_macd(frame, fast, slow, signal)
-    latest["macd"] = round(float(frame["macd"].iloc[-1]), 3)
-    latest["signal"] = round(float(frame["signal"].iloc[-1]), 3)
-    latest["histogram"] = round(float(frame["histogram"].iloc[-1]), 3)
 
-    events = compute_macd_events(frame)
-    print_json(msg="latest", input=latest)
-    print_json(msg="events", input=events)
-
+    last = frame["macd"].iloc[-1]
+    if pd.isna(last):
+        warnings.append(f"macd needs ~{slow + signal} bars; only {len(frame)} available — no reading")
+    else:
+        latest["macd"] = round(float(frame["macd"].iloc[-1]), 3)
+        latest["signal"] = round(float(frame["signal"].iloc[-1]), 3)
+        latest["histogram"] = round(float(frame["histogram"].iloc[-1]), 3)
     return ToolResult(
         name="macd",
         params={
@@ -97,7 +95,8 @@ def calculate_macd(frame, fast=12, slow=26, signal=9) -> ToolResult:
         },
         lookback=len(frame),
         latest=latest,
-        events=events
+        events=compute_macd_events(frame),
+        warnings=warnings
     )
 
 def compute_macd(frame: DataFrame, fast: int, slow: int, signal: int) -> DataFrame:

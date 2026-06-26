@@ -77,9 +77,9 @@ def tool_runner(toolset: list[str], frame: DataFrame, registry: ToolRegistry) ->
     cols = frame.columns.tolist()
     results: dict[str, ToolResult] = {}
     for tool in toolset:
-        print_json(msg="Found the tool", input=tool)
         spec = registry.get(tool)
-        print_json(msg="Found the spec", input=spec)
+        if not spec:
+            continue
         if not all(col in cols for col in spec.required_columns):
             continue
         results[spec.name] = spec.function(frame, **spec.default_params)

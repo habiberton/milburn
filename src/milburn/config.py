@@ -35,7 +35,6 @@ class Settings(BaseSettings):
 
     # LLM
     ollama_base_url: str = "http://localhost:11434"
-    default_model_profile: str = "default"
 
     # Logging configuration
     log_level: str = "INFO"
@@ -46,6 +45,3 @@ class Settings(BaseSettings):
     enable_otel: bool = False
     otel_service_name: str = "milburn"
     otel_exporter_otlp_endpoint: str | None = None
-
-    # Other configurations
-    max_response_length: int = 2048

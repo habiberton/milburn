@@ -48,12 +48,13 @@ def identify_intent(prompt: str) -> list[str]:
     matched = set()
     for t in tokens: 
         if t in _KEYWORD_TO_CATEGORY:
+            print(f"token: {t} -> keyword->cat {_KEYWORD_TO_CATEGORY[t]}")
             matched.add(_KEYWORD_TO_CATEGORY[t])
     _CATEGORIES = list(TA_CATEGORIES_TO_KEYWORDS.keys())
     output = []
     for c in _CATEGORIES:
         if c in matched:
-            print(f"Matched the following: {c}")
+            print(f"FOund: {c}")
             output.append(c)
 
     return output
