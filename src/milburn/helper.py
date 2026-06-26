@@ -1,7 +1,9 @@
+import json
 from uuid import uuid7
 
 from milburn.model import Frequency
 from datetime import date
+from typing import Any
 
 
 def normalize_symbol(symbol: str) -> str:
@@ -30,3 +32,17 @@ def parse_date(value: str | date) -> date:
 
 def make_run_id() -> str:
     return f"{uuid7()}"
+
+def print_json(msg: str, input: Any):
+    def fallback(o: Any) -> Any:
+        if callable(o):
+            return getattr(o, "__qualname__", None) or getattr(o, "__name__", None) or repr(o)
+        if hasattr(o, "model_dump"):           
+            return o.model_dump()
+        if hasattr(o, "__dataclass_fields__"):  
+            import dataclasses
+            return dataclasses.asdict(o)
+        if isinstance(o, (set, frozenset)):
+            return sorted(o, key=str)
+        return str(o)
+    print(f"{msg}: {json.dumps(input, indent=2, default=fallback, ensure_ascii=False, skipkeys=True)}")

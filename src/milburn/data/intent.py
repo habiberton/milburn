@@ -37,7 +37,7 @@ TA_CATEGORIES_TO_KEYWORDS: dict[str, list[str]] = {
     "divergence": ["divergence", "diverge", "diverging", "divergent"],
 }
 
-def identify_intent(prompt: str) -> str:
+def identify_intent(prompt: str) -> list[str]:
     _KEYWORD_TO_CATEGORY: dict[str, str] = {}
     
     tokens = re.findall(r"[a-z0-9]+", prompt.lower())
@@ -53,6 +53,7 @@ def identify_intent(prompt: str) -> str:
     output = []
     for c in _CATEGORIES:
         if c in matched:
+            print(f"Matched the following: {c}")
             output.append(c)
 
     return output

@@ -1,7 +1,8 @@
 from collections.abc import Callable
 from typing import Any
 from milburn.tools.results import ToolResult
-from milburn.tools.indicators import calculate_rsi
+from milburn.tools.indicators import calculate_rsi, calculate_macd
+from milburn.helper import print_json
 
 from pydantic import BaseModel
 from pandas import DataFrame
@@ -41,7 +42,7 @@ class ToolRegistry:
         self._tools[spec.name] = spec
     
     def get(self, name: str) -> ToolSpec:
-        return self._tools[name]
+        return self._tools.get(name)
     
     def all(self) -> list[ToolSpec]:
         return list(self._tools.values())
@@ -55,6 +56,14 @@ def build_registry() -> ToolRegistry:
         default_params={"period": 14},
         required_columns=["close"],
     ))
+    registry.register(ToolSpec(
+        name="macd",
+        description="Moving Average Convergence Divergence - trend/momentum indicator; "
+                  "fast EMA(12) minus slow EMA(26), with a signal EMA(9) and histogram.",
+        function=calculate_macd,
+        default_params={"fast": 12, "slow": 26, "signal":9},
+        required_columns=["close"],
+    ))
     return registry
 
 def tool_selection(indicator_categories: list[str], validation_issues: list[dict[str, Any]]) -> list[str]:
@@ -64,18 +73,17 @@ def tool_selection(indicator_categories: list[str], validation_issues: list[dict
             toolset[tool] = None
     return list(toolset)
 
-# def tool_runner(toolset: list[str], frame: DataFrame) -> dict[str, ToolResult]:
-#     registry = build_registry()
-#     tools
-#     for tool in toolset:
-#         tools.update(registry.get(tool, []))
-    
-#     cols = frame.columns.tolist()
-#     result: list[ToolResult] = []
-#     for t in tools:
-#         if not t.required_columns.subset(cols):
-#             continue
-        
+def tool_runner(toolset: list[str], frame: DataFrame, registry: ToolRegistry) -> dict[str, ToolResult]:    
+    cols = frame.columns.tolist()
+    results: dict[str, ToolResult] = {}
+    for tool in toolset:
+        print_json(msg="Found the tool", input=tool)
+        spec = registry.get(tool)
+        print_json(msg="Found the spec", input=spec)
+        if not all(col in cols for col in spec.required_columns):
+            continue
+        results[spec.name] = spec.function(frame, **spec.default_params)
+    return results
         
 
     

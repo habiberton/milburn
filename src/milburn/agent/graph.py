@@ -7,9 +7,9 @@ from milburn.llm.base import ReportGenerator, ReportInput
 from milburn.provider import CandleProvider
 from milburn.agent.state import AgentState
 from milburn.helper import is_date_range_valid, is_frequency_valid, make_run_id, normalize_frequency, normalize_symbol
-from milburn.model import CandleRequest, CandleSummary, AnalysisReport, GraphNode
+from milburn.model import CandleRequest, CandleSummary, AnalysisReport, GraphNode, CandleResponse
 from milburn.data.context import summarize_candles
-from milburn.tools.registry import tool_selection, tool_runner
+from milburn.tools.registry import tool_selection, tool_runner, ToolRegistry, ToolResult
 
 """
 Nodes to define: 
@@ -22,6 +22,7 @@ def build_graph(
         provider: CandleProvider,
         report_generator: ReportGenerator,
         settings: Settings,
+        registry: ToolRegistry,
 ) -> CompiledStateGraph:
         def parse_request(state: AgentState) -> dict:
                 if not is_date_range_valid(state["start"], state["end"]):
@@ -50,7 +51,7 @@ def build_graph(
                         start=date.fromisoformat(state["start"]),
                         end=date.fromisoformat(state["end"]),
                 )
-                response = provider.fetch_candles(request)
+                response: CandleResponse = provider.fetch_candles(request)
                 c_summary: CandleSummary = summarize_candles(response)
 
                 return {
@@ -71,14 +72,29 @@ def build_graph(
                 }
         
         def select_tools(state: AgentState) -> dict:
-                categories = state["indictator_categories"]
-                selected_tools = tool_selection(categories)
+                categories = state["indicator_categories"]
+                validation_issues=state["validation_issues"]
+                selected_tools: list[str] = tool_selection(categories, validation_issues)
                 return {
                         "selected_tools": selected_tools
                 }
         
         def run_tools(state: AgentState) -> dict:
-                
+                request = CandleRequest(
+                        symbol=state["symbol"],
+                        frequency=state["frequency"],
+                        start=date.fromisoformat(state["start"]),
+                        end=date.fromisoformat(state["end"]),
+                )
+                response: CandleResponse = provider.fetch_candles(request)
+
+                tools: list[str] = state["selected_tools"]
+                results: dict[str, ToolResult] = tool_runner(tools, response.frame, registry)
+
+                return {
+                        "tool_outputs": {name: tr.model_dump(mode="json") for name, tr in results.items()}
+                }
+
 
         
         builder: StateGraph = StateGraph(AgentState)

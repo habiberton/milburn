@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Any
 
 class ToolEvent(BaseModel):
@@ -6,6 +6,11 @@ class ToolEvent(BaseModel):
     type: str
     value: float
     details: dict[str, Any] = {}
+
+    @field_validator("value")
+    @classmethod
+    def round_value(cls, val: float) -> float:
+        return round(val, 3)
 
 class ToolResult(BaseModel):
     name: str

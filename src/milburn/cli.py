@@ -9,6 +9,7 @@ from milburn.llm.factory import build_report_generator
 from milburn.agent.graph import build_graph
 from milburn.agent.state import AgentState
 from milburn.providers.tiingo_provider import TiingoProvider
+from milburn.tools.registry import ToolRegistry, build_registry
 from milburn.helper import convert_date, is_date_range_valid, is_frequency_valid, normalize_frequency, normalize_symbol, parse_date
 
 app = typer.Typer(help="Milburn - Your technical-analysis agentic assistant")
@@ -91,8 +92,9 @@ def predict(
     settings: Settings = Settings()
     report = build_report_generator(effort, settings)
     provider: TiingoProvider = TiingoProvider(settings)
+    registry: ToolRegistry = build_registry()
     
-    graph = build_graph(provider, report, settings)
+    graph = build_graph(provider, report, settings, registry)
 
     state: AgentState = AgentState(
         run_id="",
