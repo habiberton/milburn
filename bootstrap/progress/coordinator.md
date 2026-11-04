@@ -632,6 +632,13 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   clear, 9 feedback briefs, 27 focused tests, and 312 smoke tests with 3
   protected skips and 3 subtests. Issue #7 closed through `Closes #7`; after
   this completion record commits, the root may apply `milburn:done`.
+- Local MB-007 completion record `48714ad` committed and closed issue #7 now
+  carries `milburn:done`.
+- Final corrected MB-017 candidate
+  `cb0604a5fb615e017da14aaa67667eec1671a54d` contains nine verified attributed
+  commits. Coordinator verification passed 26 focused tests, smoke (311 passed,
+  3 protected skips, 3 subtests), and diff checks. Both second fresh reviews
+  are in progress.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
