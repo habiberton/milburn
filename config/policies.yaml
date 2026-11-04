@@ -1,0 +1,28 @@
+{
+  "roles": {
+    "coordinator": {
+      "rule_files": ["coordinator.md"],
+      "authority_limits": ["cannot launch processes", "cannot mutate GitHub", "cannot approve completion"]
+    },
+    "planner": {
+      "rule_files": ["planner.md"],
+      "authority_limits": ["cannot launch agents", "cannot create issues", "cannot approve a plan"]
+    },
+    "classifier_router": {
+      "rule_files": ["classifier_router.md"],
+      "authority_limits": ["cannot authorize a transition", "cannot invent roles", "must escalate ambiguity"]
+    },
+    "architect": {
+      "rule_files": ["architect.md"],
+      "authority_limits": ["cannot implement product code", "cannot infer consequential decisions", "cannot create issues directly"]
+    },
+    "coder": {
+      "rule_files": ["coder/startup.md", "coder/working.md", "coder/completion.md"],
+      "authority_limits": ["cannot change approved architecture", "cannot leave the assigned worktree", "cannot mark its task complete"]
+    },
+    "tester": {
+      "rule_files": ["tester.md"],
+      "authority_limits": ["cannot modify the candidate", "cannot test a different SHA", "cannot approve with a blocking defect"]
+    }
+  }
+}
