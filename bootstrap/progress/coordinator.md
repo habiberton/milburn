@@ -470,6 +470,12 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   with 3 protected skips, 7 feedback briefs, and `git diff --check`. The single
   MB-020 coordinator PR is the next action; no later implementation dispatch
   is permitted before MB-020 and then MB-022 complete remotely.
+- The root pushed `bootstrap/coordinator/MB-020/a01-integration` at `f9b32f7`
+  and opened evidence-bearing PR #30:
+  `https://github.com/habiberton/milburn/pull/30`. It includes `Closes #24`,
+  Specification + Standards mode and rationale, worker/coordinator SHAs,
+  acceptance and test evidence, review findings, risks, and the task feedback
+  summary.
 
 ## Verification
 
