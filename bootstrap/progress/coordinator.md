@@ -203,6 +203,10 @@ Wave 1 — Foundation; preparing sequential task `MB-004`
   `Milburn Builder [MB-004/a01]`.
 - Builder `/root/mb004_builder_a01` was launched with bounded workflow paths,
   acceptance criteria, required tests, and local-commit-only PR rules.
+- Mandatory continuation preflight was added to `AGENTS.md`,
+  `bootstrap/ROOT_PROMPT.md`, and `bootstrap/README.md` in coordinator commit
+  `88ad88778bf1e823fa2d56acf5522654a748e568`. It will be included in the single
+  `MB-004` coordinator PR; the active worker's owned paths are unchanged.
 
 ## Verification
 
