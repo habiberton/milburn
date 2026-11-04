@@ -562,6 +562,10 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   preferred two-worker limit, MB-017 and MB-007 are selected first because
   MB-017 unlocks MB-018 and MB-007 advances the original Wave 2 boundaries;
   MB-008 and MB-009 remain ready but undispatched.
+- Issues #21 and #7 are assigned to `habiberton` and moved to
+  `milburn:in-progress` for builder attempts MB-017/a01 and MB-007/a01. Their
+  exact disjoint owned paths, worktrees, test contracts, and two-pass review
+  modes are recorded. No third implementation worker is dispatched.
 
 ## Current verification
 
