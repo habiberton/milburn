@@ -556,6 +556,12 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   3 protected skips and 3 subtests. Issue #27 was closed by `Closes #27`; after
   this durable completion record commits, the root may apply `milburn:done` and
   reconcile dependency-ready Wave 2 issues.
+- Local MB-022 completion record `47dc63c` committed with semantic preflight
+  clear. Closed issue #27 now carries `milburn:done`; open issues #7, #8, #9,
+  and #21 carry `milburn:ready`. Their owned paths are disjoint. Under the
+  preferred two-worker limit, MB-017 and MB-007 are selected first because
+  MB-017 unlocks MB-018 and MB-007 advances the original Wave 2 boundaries;
+  MB-008 and MB-009 remain ready but undispatched.
 
 ## Current verification
 
@@ -576,6 +582,5 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the MB-022 remote completion record, label issue #27 done, reconcile
-dependency-ready Wave 2 tasks and GitHub labels, then prepare up to two
-non-overlapping workers under the concurrency gate.
+Commit the Wave 2 readiness reconciliation, prepare isolated MB-017/a01 and
+MB-007/a01 worktrees, and dispatch only those two non-overlapping workers.
