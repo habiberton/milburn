@@ -767,6 +767,14 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   was created from exact base `5a243407f5c099ce088d188590b7b36052860941`
   on `bootstrap/builder/MB-009/a01-worktree-manager` and configured with the
   approved `Milburn Builder [MB-009/a01]` identity before dispatch.
+- Fresh MB-008 Specification and Standards reviews confirmed F001-F005, then
+  blocked candidate `664f66d` on five further fail-closed gaps: create/comment
+  semantic postconditions, mixed exact/conflicting markers, a public schema
+  verification bypass, a generation-fence race during pre-update reads, and
+  duplicate `required` schema fields. Issue #8 is marked
+  `milburn:changes-requested`; the same worker is correcting all findings and
+  recording F006-F010 with adversarial regressions. Both fresh review axes must
+  restart on the next candidate.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
