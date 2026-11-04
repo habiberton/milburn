@@ -649,6 +649,11 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   tests, 338 smoke tests with 3 protected skips and 3 subtests, 10 feedback
   briefs, semantic amendment preflight, and diff checks. It is ready for its
   single task PR.
+- The root pushed `bootstrap/coordinator/MB-017/a01-integration` at `d999c42`
+  and opened evidence-bearing PR #33:
+  `https://github.com/habiberton/milburn/pull/33`. It includes `Closes #21`,
+  worker/integration SHAs, acceptance/tests, both review histories, risks, and
+  MB-017-F001/F002/F003 summaries.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
