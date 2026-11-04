@@ -2,7 +2,7 @@
 
 ## Current wave
 
-Wave 1 — Foundation; publish gate blocked before `MB-001` completion
+Wave 1 — Foundation; repairing `MB-001` through its coordinator PR
 
 ## Repository state
 
@@ -93,6 +93,9 @@ Wave 1 — Foundation; publish gate blocked before `MB-001` completion
 - To enforce the new gate, GitHub issue #1 was reopened and changed from
   `milburn:done` to `milburn:qa`; issue #2 was changed from
   `milburn:in-progress` to `milburn:blocked` without deleting its worktree.
+- The one-ticket coordinator PR strategy was committed as
+  `9be13421143e146a721e692a3c2e2680c0c59335`. `MB-001` owns integration branch
+  `bootstrap/coordinator/MB-001/a01-integration`; it will have exactly one PR.
 
 ## Verification
 
@@ -107,17 +110,12 @@ Wave 1 — Foundation; publish gate blocked before `MB-001` completion
 
 ## Blockers
 
-- Direct pushes to protected `main` are rejected because repository rules
-  require a pull request. The user must authorize a root-owned branch push and
-  pull request/merge, or change the branch rule so the root can push `main`.
-- `MB-001` cannot return to `done`, and `MB-002` cannot resume, until fetched
-  `origin/main` contains the `MB-001` completion history.
+None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Obtain user direction for the protected-branch gate. If authorized, push local
-`main` to a root-owned remote branch, open and merge a pull request, fetch
-`origin/main`, and verify it contains both `90ad110db3b0b7cc5e491c3946f0cf37af294b5d`
-and `f40d114ce46cab9b7b35e67a5c3b35c8e08e05f6`. Record the remote tip, then
-restore issue #1 to `milburn:done`/closed and issue #2 to
-`milburn:in-progress`, resume `/root/mb002_builder_a01`, and continue Wave 1.
+Push the recorded `MB-001` integration branch, open its evidence-bearing PR
+with `Closes #1`, record the PR, update that same branch, and merge with a merge
+commit. Fetch and verify `origin/main`, fast-forward the primary checkout,
+restore issue #1 to `milburn:done`, then unblock and resume the preserved
+`MB-002/a01` attempt.

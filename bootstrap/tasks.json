@@ -101,6 +101,12 @@
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-001-a01",
       "base_sha": "a8220daf6cdee16414210b4653f8f1fffdfc6216",
       "candidate_sha": "79bf6e4153d0fbc99a90dd62fbb651d122114b4d",
+      "integration_branch": "bootstrap/coordinator/MB-001/a01-integration",
+      "pull_request": {
+        "number": null,
+        "url": null,
+        "merge_commit_sha": null
+      },
       "progress_path": "bootstrap/progress/tasks/MB-001.md",
       "owned_paths": [
         "pyproject.toml",
