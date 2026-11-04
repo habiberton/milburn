@@ -485,7 +485,7 @@
       "id": "MB-018",
       "wave": 2,
       "title": "Record session compaction and build durable handoff manifests",
-      "status": "assigned",
+      "status": "candidate",
       "github": {
         "issue_number": 22,
         "issue_url": "https://github.com/habiberton/milburn/issues/22",
@@ -501,7 +501,7 @@
       "branch": "bootstrap/builder/MB-018/a01-session-handoffs",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-018-a01",
       "base_sha": "c88f4659607068f06a074cd5c7c1e0a7b9b8bcc5",
-      "candidate_sha": null,
+      "candidate_sha": "e9a73b2240f8cb7baa91b8096e9d5f85139d9042",
       "progress_path": "bootstrap/progress/tasks/MB-018.md",
       "owned_paths": [
         "src/milburn/domain/sessions.py",

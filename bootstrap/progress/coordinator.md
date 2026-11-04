@@ -671,6 +671,13 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   `milburn:in-progress` for MB-018/a01 and MB-008/a01. Their exact disjoint
   paths, worktrees, required tests, and two-pass review modes are recorded. No
   third implementation worker is dispatched.
+- MB-018/a01 returned candidate
+  `e9a73b2240f8cb7baa91b8096e9d5f85139d9042` with two verified attributed
+  commits from exact base `c88f465`. The diff stays within recorded session,
+  handoff, projection, validation, fixture, test, and task-progress paths.
+  Coordinator verification passed 19 focused tests, smoke (357 passed, 3
+  protected skips, 3 subtests), and diff checks. Both reviews are in progress
+  while MB-008 continues.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
