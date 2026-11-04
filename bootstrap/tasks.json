@@ -540,7 +540,7 @@
       "branch": "bootstrap/builder/MB-022/a01-plan-amendment-gate",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-022-a01",
       "base_sha": "0b6613d8199c70d6d43d8e3acfb7cdf79a39243a",
-      "candidate_sha": "6c365f17874b22f7d39dde03b9473e475b106e8b",
+      "candidate_sha": "491f59eda2953b74ed936dfb5d51c7ca59f50c11",
       "progress_path": "bootstrap/progress/tasks/MB-022.md",
       "owned_paths": [
         "AGENTS.md",

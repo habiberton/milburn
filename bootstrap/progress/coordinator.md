@@ -527,6 +527,11 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   freeze is the separate MB-022 task dependency. The same worker is correcting
   that durable distinction, adding a real-record preflight regression and a
   second feedback proposal. Both fresh reviews will restart.
+- Final corrected candidate `491f59eda2953b74ed936dfb5d51c7ca59f50c11`
+  has ten verified attributed commits. Coordinator verification passed the real
+  amendment preflight (2 records valid and clear), required suite (42 passed, 3
+  subtests), smoke (285 passed, 3 protected skips, 3 subtests), and diff checks.
+  Both second fresh reviews are in progress.
 
 ## Verification
 
