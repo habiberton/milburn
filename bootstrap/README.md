@@ -25,6 +25,8 @@ implementation choices remain within the approved design.
   commands, progress paths, and last-observed remote metadata.
 - `progress/coordinator.md`: root-owned integration and recovery record.
 - `progress/tasks/<task-id>.md`: one worker-owned record per active task.
+- `feedback/<task-id>.md`: one coordinator-owned concise defect brief per task;
+  `feedback/README.md` defines its validated format and completion gates.
 - `decisions.md`: bootstrap implementation decisions that do not change the
   approved product or architecture.
 
@@ -181,14 +183,18 @@ commits and evidence only; they never push, open or update PRs, or merge.
 The root integrates verified worker commits without squashing, runs independent
 review and all required tests, then pushes the task branch. Its evidence-bearing
 PR records issue links, commit SHAs, attribution, acceptance evidence, test
-results, review findings, risks, and `Closes #<issue-number>`. The root never
-pushes directly to `main` and merges the PR only with a merge commit—never a
-squash or rebase merge.
+results, review findings, risks, a `## Feedback summary` section with the
+task-brief link, and `Closes #<issue-number>`. For a blocking or meaningful
+defect found during review, test, integration, recovery, or production work,
+follow `feedback/README.md`; workers propose entries in task progress and only
+the root finalizes briefs. The root never pushes directly to `main` and merges
+the PR only with a merge commit—never a squash or rebase merge.
 
 After merging, the root fetches `origin/main`, verifies it contains the GitHub
 PR merge commit, fast-forwards the primary checkout, and updates task records.
-Only then may it apply `milburn:done`, close an issue not already closed by the
-PR, and begin the next task.
+Only then, and after `scripts/smoke-test.sh` verifies the task feedback brief,
+may it apply `milburn:done`, close an issue not already closed by the PR, and
+begin the next task.
 
 ## Continuation gate
 

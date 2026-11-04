@@ -163,6 +163,8 @@ A worker must:
 - Implement one small vertical slice at a time.
 - Test behavior through public interfaces.
 - Update its progress file after meaningful checkpoints and before handoff.
+- Record each blocking or meaningful defect as a proposal in its own progress
+  file using `bootstrap/feedback/README.md`; the coordinator finalizes briefs.
 - Stage intended changes and create coherent commits with
   `scripts/agent-commit.sh "<summary>"`. The helper adds the task prefix and
   required role, worker, task, and attempt trailers.
@@ -210,31 +212,35 @@ When a worker returns a candidate:
 3. Read the task progress record.
 4. Compare the diff with owned paths.
 5. Reject or explicitly review unapproved path changes.
-6. Check every acceptance criterion against evidence.
-7. Run the task tests independently.
-8. Review compatibility with approved shared interfaces.
-9. Create or resume the ticket's coordinator integration branch and integrate
+6. Read `bootstrap/feedback/README.md` when review, test, integration,
+   recovery, or production work finds a blocking or meaningful defect. Finalize
+   the task brief from recorded evidence and verify its completion gates.
+7. Check every acceptance criterion against evidence.
+8. Run the task tests independently.
+9. Review compatibility with approved shared interfaces.
+10. Create or resume the ticket's coordinator integration branch and integrate
    one candidate at a time with a non-squash merge so worker attribution remains
    intact.
-10. Run the independent review and every required test, including
+11. Run the independent review and every required test, including
     `scripts/smoke-test.sh`, against the integrated task branch.
-11. Record candidate SHAs, integration commits, review findings, test evidence,
+12. Record candidate SHAs, integration commits, review findings, test evidence,
     and known risks in the task registry and coordinator progress.
-12. Push the coordinator task branch and open or update its single pull request.
+13. Push the coordinator task branch and open or update its single pull request.
     The PR body must include issue links, candidate and integration commit SHAs,
     worker attribution, acceptance-criterion evidence, test commands and
-    results, independent-review findings, known risks, and
-    `Closes #<issue-number>`.
-13. Merge the PR with a merge commit. Never squash or rebase-merge, and never
+    results, independent-review findings, known risks, a `## Feedback summary`
+    section with the task-brief link, and `Closes #<issue-number>`.
+14. Merge the PR with a merge commit. Never squash or rebase-merge, and never
     push directly to `main`.
-14. Fetch `origin/main` and verify that it contains the GitHub PR merge commit.
+15. Fetch `origin/main` and verify that it contains the GitHub PR merge commit.
     A successful merge command without this read-back is not completion
     evidence.
-15. Fast-forward the primary checkout to the verified `origin/main`, then update
+16. Fast-forward the primary checkout to the verified `origin/main`, then update
     task records with the PR, remote merge commit, tests, and review result.
-16. Only after remote verification may the root apply `milburn:done` and close
-    an issue that was not already closed by `Closes #<issue-number>`.
-17. Begin the next task only after the completed task's remote and local records
+17. Only after remote verification and feedback validation may the root apply
+    `milburn:done` and close an issue that was not already closed by
+    `Closes #<issue-number>`.
+18. Begin the next task only after the completed task's remote and local records
     agree.
 
 Do not delete a worktree until its candidate is integrated, rejected, or
