@@ -466,6 +466,48 @@ def test_generation_is_rechecked_after_prepare_read_immediately_before_update(
     }
 
 
+@pytest.mark.parametrize("operation", ["labels", "close"])
+def test_definite_prepare_failure_can_retry_from_reconciled_without_duplicate(
+    operation: str,
+) -> None:
+    adapter, server, journal, _ = gateway()
+    number = server.seed_issue()
+    server.client.script(
+        GET_ISSUE, ScriptedOutcome.SUCCESS, ScriptedOutcome.FAILURE
+    )
+    if operation == "labels":
+        command = SetLabelsCommand(
+            effect_id="effect-prepare-labels",
+            idempotency_marker="prepare-labels-marker",
+            fence=FENCE,
+            repository_id=REPOSITORY,
+            issue_number=number,
+            labels=("milburn:done",),
+        )
+        invoke = lambda: adapter.set_labels(command)
+    else:
+        command = CloseIssueCommand(
+            effect_id="effect-prepare-close",
+            idempotency_marker="prepare-close-marker",
+            fence=FENCE,
+            repository_id=REPOSITORY,
+            issue_number=number,
+        )
+        invoke = lambda: adapter.close_issue(command)
+
+    with pytest.raises(ReconciliationUnavailableError, match="cannot prepare"):
+        invoke()
+
+    assert server.mutation_counts.get(UPDATE_ISSUE, 0) == 0
+    assert journal.get(command.effect_id).status is EffectStatus.RECONCILED
+
+    result = invoke()
+
+    assert result.number == number
+    assert server.mutation_counts[UPDATE_ISSUE] == 1
+    assert journal.get(command.effect_id).status is EffectStatus.OBSERVED
+
+
 def test_stale_generation_is_rejected_before_journal_or_remote_read() -> None:
     adapter, server, journal, generation_fence = gateway()
     generation_fence.activate(FENCE.task_id, FENCE.attempt_id, 2)

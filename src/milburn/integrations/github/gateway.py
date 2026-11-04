@@ -418,7 +418,8 @@ class GitHubMcpGateway:
                 f"observed GitHub effect {command.effect_id!r} is missing remotely"
             )
 
-        self._journal.transition(command.effect_id, EffectStatus.RECONCILED)
+        if record.status is not EffectStatus.RECONCILED:
+            self._journal.transition(command.effect_id, EffectStatus.RECONCILED)
         call_started = False
 
         def start_call() -> None:
