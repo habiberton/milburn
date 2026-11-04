@@ -8,11 +8,12 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
 
 - Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
-- Active workers: `builder-MB-006-a01` (`/root/mb006_builder_a01`) correcting
-  Spec-review findings and `builder-MB-020-a01` (`/root/mb020_builder_a01`)
-  implementing the feedback process
-- Pending candidates: corrected MB-005 candidate
-  `a8d4de3f3652b18fd927ca4624b1165cea1cdc6b`
+- Active workers: `builder-MB-005-a01` (`/root/mb005_builder_a01`) correcting
+  fake/real lifecycle parity and `builder-MB-006-a01`
+  (`/root/mb006_builder_a01`) correcting Spec-review findings
+- Pending candidates: MB-020 candidate
+  `cde56a19d7a9009c840c0bcde964d35369c0f790`, held until MB-005 and MB-006
+  reach safe completion
 
 ## Completed
 
@@ -350,6 +351,10 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   worker will implement the process and validator and propose evidence-only
   MB-001 through MB-004 backfill entries in its own progress; the coordinator
   will write those historical briefs on the integration branch.
+- MB-020 returned candidate `cde56a19d7a9009c840c0bcde964d35369c0f790`
+  with one attributed commit, eight focused feedback tests, and 185 smoke
+  tests. It authored no coordinator-owned historical briefs; its progress
+  contains exact evidence-only proposals for MB-001 through MB-004.
 - Pending plan amendment `AMEND-001` mirrors MB-022/#27, gates MB-007, MB-008,
   MB-009, MB-017, and MB-018, and classifies already active MB-005, MB-006, and
   MB-020 as unaffected. GitHub dependency notices were added to issues #7, #8,
@@ -360,6 +365,11 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   `4c6f773a1612fc431c26919b0c28e8272fb7f78e`; its remote PR and merge revision
   remain pending, so new implementation dispatch stays frozen. The unaffected
   MB-006 worker is correcting all Spec-review findings in its existing attempt.
+- Corrected MB-005 candidate `a8d4de3f` passed Spec review, but Standards review
+  found the fake runtime could issue interrupt/terminate against non-running or
+  process-mismatched endpoints even though the real runtime refuses. The same
+  unaffected worker is adding parity guards and regression tests; no integration
+  branch or PR exists.
 - MB-020 will use its own coordinator branch and PR. Its implementation will
   backfill only evidence already recorded for MB-001 through MB-004 and will
   not be mixed into the already merged MB-004 history.
