@@ -610,6 +610,11 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   commits. Coordinator verification passed 27 focused tests, smoke (312 passed,
   3 protected skips, 3 subtests), and diff checks. Both fresh reviews are in
   progress.
+- Fresh MB-007 Specification and Standards reviews both passed with no findings.
+  The root non-squash merged all five worker commits on the coordinator branch
+  as two-parent integration `71acc3fcfa5c594dc4605b05793deb94ba25181b`
+  and finalized MB-007-F001/F002 from retained evidence. Integrated verification
+  and the one-ticket PR remain.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
