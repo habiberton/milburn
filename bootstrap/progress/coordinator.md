@@ -6,12 +6,11 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
 
 ## Repository state
 
-- Integration branch: `main`
+- Integration branch: `bootstrap/coordinator/MB-005/a01-integration`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
-- Active workers: `builder-MB-006-a01` (`/root/mb006_builder_a01`) correcting
-  Spec-review findings
-- Pending candidates: accepted MB-005 candidate
-  `b9bab642d97075302e9c79949eab68c2f5502296` and MB-020 candidate
+- Active workers: none
+- Pending candidates: corrected MB-006 candidate
+  `8e1fa8aaf21e7b08e613b668780ca30656bc5c42` and MB-020 candidate
   `cde56a19d7a9009c840c0bcde964d35369c0f790`
 
 ## Completed
@@ -375,6 +374,16 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   and 203 smoke tests (one protected live-Codex skip). Fresh Spec and Standards
   re-reviews both passed with no actionable findings. It will use coordinator
   branch `bootstrap/coordinator/MB-005/a01-integration` and one PR.
+- MB-005 was non-squash merged on its coordinator branch as two-parent commit
+  `c21a1aaf748625b70b0235cc3af552c3cca89b68`. Integrated verification passed
+  26 unit tests, the real tmux contract, 203 smoke tests (one protected skip),
+  22 valid task records, and `git diff --check` against `origin/main`.
+- Corrected MB-006 candidate
+  `8e1fa8aaf21e7b08e613b668780ca30656bc5c42` addresses semantic Codex JSONL
+  extraction, typed role/result/payload enforcement, exact skill/resource
+  binding retention, and expanded opt-in live lifecycle coverage. It reports
+  four attributed commits, 28 focused tests, and 205 smoke tests (one protected
+  live skip); coordinator verification and fresh reviews remain.
 - MB-020 will use its own coordinator branch and PR. Its implementation will
   backfill only evidence already recorded for MB-001 through MB-004 and will
   not be mixed into the already merged MB-004 history.
@@ -396,6 +405,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Integrate accepted MB-005 with a non-squash merge, verify its coordinator
-branch, and open its evidence-bearing PR carrying AMEND-001. Continue unaffected
-MB-006 correction; keep all new implementation dispatch frozen.
+Push the verified MB-005 coordinator branch and open its evidence-bearing PR
+carrying AMEND-001. Verify and freshly review corrected MB-006; keep all new
+implementation dispatch frozen.
