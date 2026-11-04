@@ -578,6 +578,13 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   the approved package markers. Coordinator verification passed 17 focused
   tests, smoke (302 passed, 3 protected skips, 3 subtests), and diff checks.
   Specification and Standards reviews are in progress while MB-007 continues.
+- MB-007/a01 returned candidate
+  `6e620981d6192111469881ace003bb0733c821ed` with three verified attributed
+  commits from exact base `425dd6e`. The diff is confined to recorded skill,
+  role-rule, configuration, validation, fixture, test, and task-progress paths.
+  Coordinator verification passed 24 focused tests, smoke (309 passed, 3
+  protected skips, 3 subtests), and diff checks. Independent review waits only
+  for the active MB-017 review slots to free.
 
 ## Current verification
 

@@ -598,7 +598,7 @@
       "id": "MB-007",
       "wave": 2,
       "title": "Implement the skill catalog, role rules, skill packages, and digest validation",
-      "status": "assigned",
+      "status": "candidate",
       "github": {
         "issue_number": 7,
         "issue_url": "https://github.com/habiberton/milburn/issues/7",
@@ -614,7 +614,7 @@
       "branch": "bootstrap/builder/MB-007/a01-skill-catalog",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-007-a01",
       "base_sha": "425dd6e3ee42c5b7a7ee7177f4a2f86455bc2ae6",
-      "candidate_sha": null,
+      "candidate_sha": "6e620981d6192111469881ace003bb0733c821ed",
       "progress_path": "bootstrap/progress/tasks/MB-007.md",
       "owned_paths": [
         ".agents/skills/",
