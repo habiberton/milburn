@@ -196,6 +196,16 @@ def _apply_lifecycle(
     if event.kind is SessionLifecycleKind.REPLACEMENT_REQUESTED:
         if state.latest_checkpoint is None:
             raise SessionProjectionError("replacement needs a validated checkpoint")
+        checkpoint = state.latest_checkpoint
+        if (
+            checkpoint.task_id != state.task_id
+            or checkpoint.role is not state.role
+            or checkpoint.attempt_id != state.attempt_id
+            or checkpoint.generation != state.current_generation.generation
+        ):
+            raise SessionProjectionError(
+                "replacement needs a checkpoint for the current session generation"
+            )
         if event.generation != state.current_generation.generation:
             raise SessionProjectionError("replacement targets a stale generation")
         if state.current_generation.status is not SessionGenerationStatus.ACTIVE:

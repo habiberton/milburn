@@ -277,3 +277,29 @@ def test_unavailable_observation_kinds_coexist_and_redeliver_deterministically()
     assert replayed == expected
     assert expected is not None
     assert len(expected.observations) == 2
+
+
+def test_replacement_rejects_checkpoint_from_replaced_generation() -> None:
+    replaced = lifecycle()
+    stale_request = event(
+        6, SessionLifecycleKind.REPLACEMENT_REQUESTED, generation=1
+    )
+    with pytest.raises(SessionProjectionError, match="current session generation"):
+        project_session_events((*replaced, stale_request))
+
+
+def test_replacement_accepts_checkpoint_for_current_generation() -> None:
+    replaced = lifecycle()
+    current_handoff = event(
+        6,
+        SessionLifecycleKind.HANDOFF_VALIDATED,
+        generation=1,
+        manifest=checkpoint(1),
+    )
+    current_request = event(
+        7, SessionLifecycleKind.REPLACEMENT_REQUESTED, generation=1
+    )
+    state = project_session_events((*replaced, current_handoff, current_request))
+    assert state is not None
+    assert state.replacement_requested
+    assert state.latest_checkpoint == checkpoint(1)
