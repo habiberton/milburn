@@ -18,7 +18,7 @@ Milburn does not replace Codex. Codex owns each agent's model-and-tool loop. Mil
 
 ## 2. Deliberately narrow first release
 
-Version 1 supports only Codex. It does not choose among Codex, Claude Code, OpenCode, or model providers. It also omits monetary budgets. This keeps the first engineering problem focused on reliable coordination between a primary controller and worker agents.
+Version 1 supports only Codex. It does not choose among Codex, Claude Code, OpenCode, or model providers. It omits pricing and monetary policy, but records observability-only token usage when Codex reports it. This keeps the first engineering problem focused on reliable coordination between a primary controller and worker agents.
 
 The release still proves the important agent-distro behavior:
 
@@ -57,10 +57,12 @@ Milburn v1 must:
 17. Provide an operator CLI. A dashboard is optional for the first milestone.
 18. Ship versioned Codex skills for every agent role and record the exact skill digests used by every attempt.
 19. Provide deterministic unit, contract, integration, recovery, skill, and live-evaluation suites with explicit CI gates.
+20. Persist Codex-reported token usage as replayable telemetry with per-attempt, task, role, and workflow summaries.
+21. Preserve logical agent identity across fenced Codex session generations by using validated durable handoff manifests rather than private transcripts.
 
 ## 5. Non-goals
 
-Version 1 will not support another harness, select models, enforce budgets, run a distributed fleet, require a permanent server, automatically merge or deploy, copy private transcripts between roles, trust Coder test claims as final QA, infer success from process exit, or give agents unrestricted GitHub MCP mutation tools. tmux and worktrees are not security sandboxes.
+Version 1 will not support another harness, select models, attach prices to usage, enforce budgets or cost ceilings, reserve spend, route work based on spend, run a distributed fleet, require a permanent server, automatically merge or deploy, copy private transcripts between roles or replacement sessions, trust Coder test claims as final QA, infer success from process exit, or give agents unrestricted GitHub MCP mutation tools. Token counts and context observations reported by Codex are observability telemetry only and do not require storing prompts or private transcripts. A single compaction is not, by itself, a reason to replace a session. tmux and worktrees are not security sandboxes.
 
 ## 6. Agent roster
 
@@ -85,6 +87,11 @@ The operator talks to one persistent Coordinator chat. Each Coordinator turn end
 
 If the user interface is closed, events remain durable. When the Coordinator session resumes, it presents unread results and open decisions before accepting unrelated new work.
 
+The logical Coordinator identity survives both fresh model turns and replacement
+Codex sessions. Durable decisions, unread notifications, acknowledgements, and
+controller state remain authoritative; no replacement depends on replaying the
+private transcript.
+
 Worker questions travel through the controller:
 
 ```text
@@ -96,6 +103,21 @@ Worker DecisionRequest
 → controller writes the worker inbox message
 → worker acknowledges and resumes
 ```
+
+### 6.2 Role-specific session lifecycle
+
+- A Coder normally retains one Codex session for one task attempt. One observed
+  compaction alone does not trigger replacement; any replacement starts only
+  from a validated durable checkpoint.
+- Planner and Architect sessions end at their approved plan or architecture
+  artifact boundaries.
+- Classifier/Router uses short, fresh calls over bounded workflow facts.
+- Tester always starts fresh from the exact candidate SHA, acceptance criteria,
+  specifications, and clearly labeled Coder claims.
+
+A logical role and attempt can span multiple replaceable session generations
+without changing task ownership. Generation fencing prevents late messages or
+lifecycle commands from reaching a replacement generation.
 
 ## 7. End-to-end workflow
 
@@ -265,6 +287,12 @@ Failure becomes a protocol error, not a completed implementation.
 5. If uncertain, wait, ask the operator, or branch a new worktree from the last safe commit.
 6. Require a replacement Coder to run the full startup sequence.
 
+Replacement also requires a current, versioned handoff manifest that matches
+the task and Git state, includes exact test and message-sequence evidence, and
+exposes every uncertain external effect. A stale, mismatched, unacknowledged,
+or uncertainty-hiding manifest is rejected. The manifest never contains a
+private transcript or fabricates unavailable state.
+
 ## 10. tmux requirements
 
 Every role receives one window. Milburn records session, window, pane, attempt, role, process identity, and worktree. Stable IDs identify endpoints; titles are labels. Sending keys is not proof of success, and lifecycle commands require observed postconditions.
@@ -284,6 +312,9 @@ CoordinatorNotificationQueued DecisionPresented    UserDecisionReceived
 DecisionAnswerValidated     SteeringQueued          SteeringDelivered
 SteeringAcknowledged        DecisionResolved        AgentLaunchRequested
 AgentStarted
+AgentUsageObserved          AgentUsageFinalized     AgentUsageUnavailable
+SessionObservationRecorded SessionCompactionObserved SessionGenerationStarted
+HandoffManifestValidated   SessionReplacementRequested SessionReplacementCompleted
 PlanReceived                ArchitecturePackageReceived
 GitHubIssueCreated          GitHubIssueReady
 GitHubEffectRequested       GitHubEffectObserved    GitHubEffectReconciled
@@ -294,6 +325,44 @@ RecoveryStarted             RecoveryCompleted       FeatureCompleted
 ```
 
 Events are append-only and versioned. Current state is rebuilt by replay.
+
+### 12.1 Token usage observability
+
+Milburn records token usage only through the Codex adapter's semantic result
+boundary. It never derives counts from terminal colors, prose, prompts, or
+private transcripts. Each observation is associated with a task ID, role,
+attempt ID, Codex session or endpoint, and model when those values are
+available.
+
+Observations distinguish partial usage, final totals, and explicitly
+unavailable usage. Input, output, cached-input, and reasoning token counts are
+optional and are stored only when Codex reports them. Milburn never fabricates
+missing counts.
+
+Usage observations are append-only and replay into per-attempt, per-task,
+per-role, and workflow totals. Observation identities and source semantics make
+duplicate delivery idempotent; cumulative partial observations are not added
+twice, and a final total reconciles the attempt without double-counting its
+earlier partial observations. Replay after restart produces the same summaries.
+
+This telemetry does not add pricing, budgets, cost ceilings, reservations, or
+spend-based routing.
+
+### 12.2 Session generations and durable handoff
+
+Milburn records a logical attempt separately from its Codex session
+generations. Semantic adapter observations may report session identity,
+compaction, and context usage; unsupported observations are explicitly
+unavailable. Versioned events retain task, role, attempt, generation, endpoint
+or session ID, source version, observation time, and partial-versus-final
+status. Duplicate observations and replay do not duplicate session transitions
+or usage.
+
+A versioned handoff manifest records role, task and attempt IDs, issue and
+acceptance-criteria references, worktree, branch, base and head SHAs, progress,
+completed and remaining work, exact tests, open decisions, inbox/outbox
+sequences, uncertain effects, and brief/rules digests. Replacement policy
+validates that durable evidence before changing generations.
 
 ## 13. Requirements
 
@@ -383,6 +452,9 @@ Version 1 is accepted when:
 19. Unit and scripted integration suites run without Codex, tmux, GitHub, or network access.
 20. Fault injection proves that crashes do not duplicate issues, launches, decisions, or steering delivery.
 21. A protected live evaluation demonstrates Architect ambiguity handling, Coder recovery behavior, Tester independence, and Coordinator decision fidelity.
+22. Codex-reported usage replays deterministically into per-attempt, task, role, and workflow totals, with partial and final observations reconciled idempotently and unavailable usage represented explicitly.
+23. A logical agent survives fenced replacement sessions through a validated transcript-free handoff manifest; stale manifests, late-generation messages, and unresolved uncertain effects are rejected.
+24. Role-specific policy keeps a Coder session for its task attempt by default, ends Planner and Architect at approved artifacts, uses fresh Router calls, and starts every Tester fresh at the exact candidate SHA.
 
 ## 16. Delivery milestones
 
@@ -394,4 +466,4 @@ Version 1 is accepted when:
 
 ## 17. Deferred work
 
-Later releases may add multiple harnesses, model selection, budgets, remote runtimes, parallel Coders, pull-request automation, a richer dashboard, and stronger sandboxing. These are intentional future extensions.
+Later releases may add multiple harnesses, model selection, usage pricing, budgets, cost ceilings, reservations, spend-based routing, remote runtimes, parallel Coders, pull-request automation, a richer dashboard, and stronger sandboxing. These are intentional future extensions.

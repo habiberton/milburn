@@ -2,11 +2,11 @@
 
 ## Current wave
 
-Wave 1 — Foundation; `MB-003` integrated on its coordinator branch
+Wave 1 — Foundation; preparing sequential task `MB-004`
 
 ## Repository state
 
-- Integration branch: `main`
+- Integration branch: `bootstrap/coordinator/MB-004/a01-integration`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
 - Active workers: none
 - Pending candidates: none
@@ -186,6 +186,87 @@ Wave 1 — Foundation; `MB-003` integrated on its coordinator branch
   `9530d4bd09542a4e341dccdd98a37db5fa43b388` and opened evidence-bearing PR
   #20: `https://github.com/habiberton/milburn/pull/20`. GitHub resolves
   `Closes #3` correctly and reports the PR clean and mergeable.
+- The same branch was updated to PR tip
+  `ff16f3ecc5e9310dd85f6c8882d5d5c455abd204`; PR #20 merged using a two-parent
+  merge commit `74bf04d75f73750d878c83bd0af26467d3c14454`.
+- The root fetched and verified `origin/main` contains corrected candidate
+  `d2498e97feb273bec083e1e287094a0eb20b0791`, fast-forwarded the primary
+  checkout to the exact remote merge SHA, and reran 31 persistence/106 total
+  smoke tests successfully.
+- Closed issue #3 now carries `milburn:done`. Issue #4 was reconciled against
+  `MB-004`, remains open and unassigned, and moved from `milburn:blocked` to
+  `milburn:ready`.
+- Issue #4 is now assigned to `habiberton` and labeled `milburn:in-progress`
+  for builder attempt `MB-004/a01`.
+- The `MB-004` worker branch and worktree were created from exact base
+  `86c11c23f603bc2a8f5b5463d5f8c1807f0644ad` and configured with identity
+  `Milburn Builder [MB-004/a01]`.
+- Builder `/root/mb004_builder_a01` was launched with bounded workflow paths,
+  acceptance criteria, required tests, and local-commit-only PR rules.
+- Mandatory continuation preflight was added to `AGENTS.md`,
+  `bootstrap/ROOT_PROMPT.md`, and `bootstrap/README.md` in coordinator commit
+  `88ad88778bf1e823fa2d56acf5522654a748e568`. It will be included in the single
+  `MB-004` coordinator PR; the active worker's owned paths are unchanged.
+- User-authorized issue #21 was mirrored as `MB-017`, a Wave 2 task blocked on
+  `MB-002`, `MB-003`, and `MB-006`. Its exact owned paths, acceptance criteria,
+  and required tests are recorded in `bootstrap/tasks.json`; it must not run
+  concurrently with unfinished `MB-006` work.
+- `MB-017` is now a dependency of `MB-010`, `MB-011`, and `MB-013`. `PRD.md`
+  and `ARCH.md` narrowly admit observability-only Codex-reported token usage
+  while retaining the v1 exclusions for pricing, budgets, cost ceilings,
+  reservations, and spend-based routing.
+- The usage contract requires partial-versus-final observations, explicit
+  unavailable usage, deterministic idempotent replay into per-attempt, task,
+  role, and workflow totals, no fabricated counts, and no transcript storage.
+  Issue #21 remains open with `milburn:blocked` until `MB-006` completes.
+- Builder `/root/mb004_builder_a01` returned candidate
+  `03d253e23a161dad156fc76ab461e45c8e466e50` (implementation commit
+  `52997e58abaff37ac2f64833db751ffd2512b4aa`) with reported evidence of 63
+  orchestration tests and 169 total smoke tests. The handoff message contained
+  a one-character SHA transcription error; the exact branch tip above was
+  resolved from the assigned worktree. Coordinator attribution, approved-path
+  scope, 63 orchestration tests, and 169 total candidate smoke tests passed;
+  independent review then rejected the candidate before integration.
+- Spec review found that `Controller.handle()` accepts an arbitrary event type,
+  allowing an otherwise authorized command to append an observational or
+  completion event before evidence. Standards review also found that its
+  `TypeVar` does not survive through the non-generic command receipt. The same
+  worker is correcting the authority mapping, regression coverage, and result
+  typing locally; no MB-004 coordinator branch or PR exists yet.
+- Corrected MB-004 candidate
+  `d69b8627d780d03d0c421e19dbd1bfa743074b00` contains five verified attributed
+  commits from the assigned base. Coordinator verification passed 71
+  orchestration tests and 177 total candidate smoke tests. Fresh Spec review
+  passed all five criteria; final Standards review passed after the worker
+  corrected its durable authority-fix SHA to
+  `cf80598106ed7f00904e8b19169d761d23b8ccef`.
+- User-authorized issues #22 and #23 were mirrored as `MB-018` and `MB-019`
+  with their exact blocked GitHub mappings, owned paths, acceptance criteria,
+  tests, and progress paths. Both remain open with `milburn:blocked`.
+- `MB-018` follows `MB-006` and `MB-017` in Wave 2 and cannot overlap
+  unfinished work on either. It now gates `MB-010`, `MB-011`, and `MB-013`.
+  `MB-019` precedes and gates `MB-015` in Wave 4; `MB-016` remains transitively
+  gated through `MB-015`.
+- `PRD.md` and `ARCH.md` now distinguish logical attempts from replaceable,
+  generation-fenced Codex sessions and specify validated transcript-free
+  handoff manifests, role-specific continuation boundaries, mandatory
+  uncertain-effect reconciliation, and the rule that one compaction alone is
+  not a replacement trigger. Usage remains observability-only without pricing
+  or budget enforcement.
+- Accepted MB-004 candidate
+  `d69b8627d780d03d0c421e19dbd1bfa743074b00` was non-squash merged on the
+  coordinator branch as two-parent integration commit
+  `bd0e306c7b4d47ce817da7744d9bab1bc895011b`. The progress-record conflict was
+  resolved by retaining worker evidence and coordinator assignment facts.
+- Integrated-branch verification passed: 71 orchestration tests, 177 total
+  smoke tests, 19 valid task records, and `git diff --check` against
+  `origin/main`.
+- The root pushed coordinator branch
+  `bootstrap/coordinator/MB-004/a01-integration` at
+  `defba5782747c7b7e4f81700e9bdec090d368510` and opened the single
+  evidence-bearing PR #26: `https://github.com/habiberton/milburn/pull/26`.
+  GitHub resolves `Closes #4` to the intended issue and reports the PR clean
+  and mergeable.
 
 ## Verification
 
@@ -204,6 +285,5 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the PR record, update that same branch, retest, and merge PR #20 only
-with a merge commit. Verify `origin/main`, fast-forward the primary checkout,
-and reconcile issue/task state before `MB-004`.
+Push the PR-record update, merge PR #26 only with a merge commit, verify
+`origin/main`, and fast-forward the primary checkout before advancing Wave 2.

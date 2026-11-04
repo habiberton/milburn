@@ -71,6 +71,13 @@ After Wave 1 is integrated, dispatch independent boundary implementations:
 
 - `MB-005` — tmux runtime and fake runtime.
 - `MB-006` — Codex adapter, briefs, and result parsing.
+- `MB-017` — observability-only Codex token usage events and replayable usage
+  summaries. It depends on `MB-006` and must not run concurrently with
+  unfinished `MB-006` work because it extends the adapter contract.
+- `MB-018` — semantic session-generation observations and validated durable
+  handoff manifests. It depends on `MB-006` and `MB-017` and must not run
+  concurrently with unfinished work on either task because it extends both
+  contracts.
 - `MB-007` — skill catalog, role rules, validation, and digests.
 - `MB-008` — GitHub gateway, MCP effect journal, and local fakes.
 - `MB-009` — Git worktree manager and fake workspace manager.
@@ -88,18 +95,23 @@ Integrate the boundaries into product workflows:
 - `MB-013` — long-running Coder, issue assignment, progress, and candidate
   validation.
 
-The root may parallelize `MB-010` and `MB-011` after their dependencies are
-done. `MB-012` follows the Architect contracts, and `MB-013` follows issue
-registry integration.
+The root may parallelize `MB-010` and `MB-011` after their dependencies,
+including `MB-017` and `MB-018`, are done. `MB-012` follows the Architect
+contracts, and `MB-013` follows issue registry integration plus usage and
+session-lifecycle telemetry.
 
 ### Wave 4 — QA and recovery
 
 After a complete Coder candidate path exists:
 
 - `MB-014` — independent Tester and QA state transitions.
+- `MB-019` — role-specific session continuation, rotation, and replacement
+  policy. It follows `MB-010`, `MB-013`, `MB-017`, and `MB-018`.
 - `MB-015` — supervision, reconciliation, crash recovery, and fault handling.
 
-These may run in parallel only if their owned paths remain separate.
+`MB-015` depends on `MB-019`, so supervision and recovery use the same fenced
+replacement policy. `MB-016` remains transitively gated through `MB-015`.
+Other Wave 4 work may run in parallel only if its owned paths remain separate.
 
 ### Wave 5 — Integrated proof
 
@@ -167,6 +179,27 @@ After merging, the root fetches `origin/main`, verifies it contains the GitHub
 PR merge commit, fast-forwards the primary checkout, and updates task records.
 Only then may it apply `milburn:done`, close an issue not already closed by the
 PR, and begin the next task.
+
+## Continuation gate
+
+Before any final response or handoff, reconcile `tasks.json`, GitHub issues,
+active workers and worktrees, pending candidates and PRs, and every
+dependency-ready task. Milestones are continuation points, not stopping points:
+task completion, PR merge, issue closure, a newly ready task, any task count, a
+completed wave, a returned candidate, or a committed policy/progress checkpoint
+does not permit the root to stop.
+
+Continue in the same turn whenever any task is `ready`, `assigned`,
+`in_progress`, `candidate`, `integrated`, or `qa` and no genuine blocker
+prevents progress. A completed wave flows into the next wave when its
+dependencies are satisfied, subject to that wave's concurrency rules.
+
+Stopping is permitted only for an explicit user stop/pause, a required user
+decision or authorization, a blocker that prevents all safe progress, no
+authorized unfinished work, or forced environment termination. Persist exact
+recovery state before forced termination when possible. A final response is
+prohibited while executable unblocked work exists; record a concrete blocker
+for every unfinished path before stopping.
 
 ## Retirement gate
 
