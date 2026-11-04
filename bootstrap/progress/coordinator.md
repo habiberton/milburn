@@ -855,6 +855,12 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   passed 29 focused tests, all 55 runtime tests, smoke with 403 passed/3
   protected skips/3 subtests, attribution, owned paths, and diff checks. Issue
   #9 returned to `milburn:in-progress`; both fresh review axes must restart.
+- Fresh MB-009 Standards passed candidate `2e7cdda`, but Specification found
+  F004: retired evidence could authorize a preserved issue branch that had been
+  force-moved to an unrelated existing commit because reuse checked caller
+  base=head without correlating that head to the retired lease ancestry. Issue
+  #9 returned to `milburn:changes-requested`; the same worker is adding real and
+  fake non-ancestor rejection regressions. Both fresh axes restart afterward.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
