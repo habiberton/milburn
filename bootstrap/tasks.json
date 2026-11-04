@@ -665,14 +665,14 @@
       "id": "MB-008",
       "wave": 2,
       "title": "Implement the GitHub gateway, MCP effect journal, and local fakes",
-      "status": "assigned",
+      "status": "candidate",
       "github": {
         "issue_number": 8,
         "issue_url": "https://github.com/habiberton/milburn/issues/8",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:changes-requested",
+        "last_observed_status_label": "milburn:in-progress",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-004", "MB-020", "MB-022"],
@@ -681,7 +681,7 @@
       "branch": "bootstrap/builder/MB-008/a01-github-mcp",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-008-a01",
       "base_sha": "c88f4659607068f06a074cd5c7c1e0a7b9b8bcc5",
-      "candidate_sha": "664f66dbab75ebe2ee56c6672f8f1b8e304b7ddf",
+      "candidate_sha": "47365f0cb512b4fff90ac2b41b95e960783b9ad5",
       "progress_path": "bootstrap/progress/tasks/MB-008.md",
       "owned_paths": [
         "src/milburn/integrations/mcp/",

@@ -775,6 +775,15 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   `milburn:changes-requested`; the same worker is correcting all findings and
   recording F006-F010 with adversarial regressions. Both fresh review axes must
   restart on the next candidate.
+- Second corrected MB-008 candidate
+  `47365f0cb512b4fff90ac2b41b95e960783b9ad5` contains five verified builder
+  commits. Fix `9c90851` adds exact create/comment semantic reconciliation,
+  full-body marker conflict detection, mandatory discovery, immediately-before-
+  mutation generation assertions, and duplicate-required rejection, with
+  F006-F010 and adversarial regressions. Root verification passed 37 unit tests,
+  1 local contract, smoke with 376 passed/3 protected skips/3 subtests,
+  attribution, owned paths, and diff checks. Issue #8 returned to
+  `milburn:in-progress`; both fresh review axes are restarting.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
