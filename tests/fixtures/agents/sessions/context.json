@@ -1,0 +1,8 @@
+{
+  "kind": "context_usage",
+  "availability": "available",
+  "source_version": "codex-session-v3",
+  "finality": "final",
+  "context_used_tokens": 8000,
+  "context_window_tokens": 16000
+}
