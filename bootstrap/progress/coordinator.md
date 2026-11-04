@@ -8,9 +8,11 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
 
 - Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
-- Active workers: `builder-MB-006-a01` (`/root/mb006_builder_a01`) resuming
+- Active workers: `builder-MB-005-a01` (`/root/mb005_builder_a01`) correcting
+  independent tmux-contract failure; MB-020 assignment is being prepared
 - Pending candidates: MB-005 candidate
-  `6e00d03be1eb2c86aeee6d057a4a8d68c1c7d085`
+  `6e00d03be1eb2c86aeee6d057a4a8d68c1c7d085` rejected before review, and
+  MB-006 candidate `7d6636b2548f7354936b6631ab811b0eaa5ed1bc`
 
 ## Completed
 
@@ -318,6 +320,17 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   commits; root-cause/regression evidence; deterministic duplicate-safe replay;
   blocking completion policy; linked issues for separate scope; and exclusion
   of transcripts, chain-of-thought, secrets, and unbounded logs.
+- MB-006 returned clean candidate
+  `7d6636b2548f7354936b6631ab811b0eaa5ed1bc` with two attributed commits, 19
+  focused tests, and 196 smoke tests (one protected live-Codex contract
+  skipped). Coordinator verification and review remain.
+- Coordinator verification rejected initial MB-005 candidate `6e00d03b` before
+  independent review: its 16 unit tests passed, but the real tmux contract
+  observed a process-identity stabilization race during `create_window()`.
+  The same worker is correcting it locally with regression evidence.
+- Issue #24 is assigned and `milburn:in-progress`; MB-020/a01 is prepared on
+  its own branch/worktree path from planning checkpoint
+  `153f1105d279c2bd03f10b532c624f62fbe41941`.
 - MB-020 will use its own coordinator branch and PR. Its implementation will
   backfill only evidence already recorded for MB-001 through MB-004 and will
   not be mixed into the already merged MB-004 history.
@@ -339,6 +352,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the reconciled MB-017 through MB-021 planning checkpoint, resume MB-006,
-and independently review/integrate MB-005 normally. Mark issue #24 ready after
-the checkpoint; do not launch MB-007, MB-008, or MB-009 before MB-020 is done.
+Commit the MB-020 assignment checkpoint, create/configure its worktree, and
+dispatch the bounded feedback worker. Continue MB-005 correction and MB-006
+verification/review; do not launch MB-007 through MB-009 before MB-020 is done.
