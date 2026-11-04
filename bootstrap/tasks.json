@@ -348,6 +348,53 @@
       ]
     },
     {
+      "id": "MB-017",
+      "wave": 2,
+      "title": "Persist per-agent token usage and replayable usage summaries",
+      "status": "blocked",
+      "github": {
+        "issue_number": 21,
+        "issue_url": "https://github.com/habiberton/milburn/issues/21",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
+      "dependencies": ["MB-002", "MB-003", "MB-006"],
+      "parallel_group": null,
+      "owner": null,
+      "branch": null,
+      "worktree": null,
+      "base_sha": null,
+      "candidate_sha": null,
+      "progress_path": "bootstrap/progress/tasks/MB-017.md",
+      "owned_paths": [
+        "src/milburn/domain/usage.py",
+        "src/milburn/agents/usage.py",
+        "src/milburn/persistence/usage_projections.py",
+        "tests/unit/domain/test_usage.py",
+        "tests/unit/agents/test_usage.py",
+        "tests/unit/persistence/test_usage_projections.py",
+        "tests/fixtures/agents/usage/"
+      ],
+      "acceptance_criteria": [
+        "Milburn records usage against task ID, role, attempt ID, Codex session or endpoint, and model when those values are available.",
+        "Usage distinguishes input, output, cached-input, and reasoning tokens when Codex reports them.",
+        "Records distinguish partial observations from final totals and prevent cumulative counters from being counted twice.",
+        "Missing or unsupported usage is represented explicitly as unavailable; Milburn never invents token counts.",
+        "Usage is collected through the Codex adapter semantic boundary, not by scraping terminal colors or human-oriented prose.",
+        "Append-only usage events can be replayed into per-attempt, per-task, per-role, and workflow totals.",
+        "Restart and duplicate-delivery tests prove usage totals remain deterministic and idempotent.",
+        "This is observability only. It does not add prices, budgets, spending limits, reservations, or routing policy.",
+        "Later operator views can consume the usage projection without reading private agent transcripts."
+      ],
+      "required_tests": [
+        "python3 -m pytest tests/unit/domain/test_usage.py tests/unit/agents/test_usage.py tests/unit/persistence/test_usage_projections.py -q",
+        "scripts/smoke-test.sh"
+      ]
+    },
+    {
       "id": "MB-007",
       "wave": 2,
       "title": "Implement the skill catalog, role rules, skill packages, and digest validation",
@@ -491,7 +538,7 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-005", "MB-006", "MB-007"],
+      "dependencies": ["MB-005", "MB-006", "MB-007", "MB-017"],
       "parallel_group": "wave-3-coordination",
       "owner": null,
       "branch": null,
@@ -532,7 +579,7 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-006", "MB-007"],
+      "dependencies": ["MB-006", "MB-007", "MB-017"],
       "parallel_group": "wave-3-coordination",
       "owner": null,
       "branch": null,
@@ -619,7 +666,7 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-005", "MB-006", "MB-007", "MB-009", "MB-012"],
+      "dependencies": ["MB-005", "MB-006", "MB-007", "MB-009", "MB-012", "MB-017"],
       "parallel_group": null,
       "owner": null,
       "branch": null,

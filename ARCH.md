@@ -48,9 +48,13 @@ Milburn v1 is a local control plane for six specialized Codex roles. A persisten
 
 Version 1 has one harness adapter: `CodexAdapter`. Routing chooses a role, not a harness or provider. The adapter boundary remains for future expansion, but no other adapter belongs in v1.
 
-### 2.2 No budget subsystem
+### 2.2 No pricing or budget subsystem
 
-The controller does not accept price limits, estimate costs, reserve funds, or reconcile usage. Command and event schemas contain no placeholder budget fields. Budgeting can later be added as a separate policy service.
+The controller does not attach prices to usage, accept budgets or cost ceilings,
+reserve funds, or route work based on spend. Codex-reported token usage is
+observability telemetry, not monetary policy. It is persisted only when the
+adapter reports it and does not introduce placeholder pricing or budget fields.
+Pricing and budgeting can later be added as a separate policy service.
 
 ### 2.3 Every agent runs in tmux
 
@@ -268,6 +272,21 @@ class CodexAdapter(Protocol):
 ```
 
 The adapter owns Codex command syntax, session arguments, permissions, result collection, and semantic status. The controller does not parse terminal colors or treat a prompt as completion.
+
+### 6.1 Token usage semantic boundary
+
+The adapter converts usage exposed by supported Codex session or result APIs
+into structured observations. It does not scrape terminal presentation or
+human-oriented prose. An observation identifies the task, role, attempt, Codex
+session or endpoint, and model when available; classifies itself as `partial`,
+`final`, or `unavailable`; and carries only the input, output, cached-input, and
+reasoning token fields actually reported by Codex.
+
+Every observation has a stable identity plus source-version and cumulative
+semantics so duplicate delivery and restart replay are idempotent. Missing or
+unsupported usage produces an explicit `unavailable` observation. The adapter
+never invents counts and the usage path never stores prompts or private
+transcripts.
 
 ## 7. tmux runtime
 
@@ -498,6 +517,15 @@ AgentAttempt
   attempt_id, generation, role, feature_id, issue_number, endpoint,
   worktree, branch, base_sha, rules_digest, skill_bindings, status
 
+TokenUsageObservation
+  observation_id, source_version, task_id, role, attempt_id, endpoint,
+  model, kind, input_tokens, output_tokens, cached_input_tokens,
+  reasoning_tokens, cumulative, observed_at
+
+TokenUsageSummary
+  attempt_totals, task_totals, role_totals, workflow_totals,
+  availability, finality
+
 SkillBinding
   skill_name, version, root_digest, resource_digests,
   workspace_path, validated_at
@@ -524,6 +552,7 @@ github:<repository-id>
 effect:github:<effect-id>
 coordinator:<milburn-home-id>
 decision:<decision-id>
+usage:<attempt-id>
 ```
 
 Typical issue sequence:
@@ -537,6 +566,18 @@ GitHubIssueReady → RoleRouteProposed → RoleRouteApproved
 ```
 
 Commands request effects; events record observed facts. `AgentStarted` is appended only after start evidence is observed.
+
+Usage sequence:
+
+```text
+AgentUsageObserved* → AgentUsageFinalized | AgentUsageUnavailable
+```
+
+Usage events are append-only. Projection replay de-duplicates stable
+observation identities, reconciles cumulative partial observations with final
+totals, and derives per-attempt, task, role, and workflow summaries without
+reading agent transcripts. Replaying the same event set after restart produces
+the same totals.
 
 GitHub mutation sequence:
 
@@ -636,6 +677,7 @@ milburn/
 │       │   ├── commands.py
 │       │   ├── events.py
 │       │   ├── models.py
+│       │   ├── usage.py
 │       │   ├── states.py
 │       │   ├── policies.py
 │       │   └── errors.py
@@ -651,6 +693,7 @@ milburn/
 │       │   ├── codex_adapter.py
 │       │   ├── briefs.py
 │       │   ├── result_parser.py
+│       │   ├── usage.py
 │       │   ├── skill_catalog.py
 │       │   └── role_rules/
 │       │       ├── coordinator.md
@@ -678,6 +721,7 @@ milburn/
 │       ├── persistence/
 │       │   ├── sqlite_store.py
 │       │   ├── projections.py
+│       │   ├── usage_projections.py
 │       │   └── migrations/
 │       ├── validation/
 │       │   ├── coder_protocol.py
@@ -720,7 +764,9 @@ milburn/
     └── evals/
 ```
 
-No budget module, provider registry, or non-Codex adapter belongs in v1.
+No pricing, budget, cost-ceiling, reservation, spend-routing, provider-registry,
+or non-Codex-adapter module belongs in v1. Usage modules are limited to
+observability-only Codex-reported token telemetry.
 
 ## 17. Required tests
 
@@ -748,13 +794,13 @@ Unit tests cover one policy or state transition at a time:
 
 | Package | Required coverage |
 |---|---|
-| `domain` | Event versions, serialization, command validation, legal and illegal states |
+| `domain` | Event versions, serialization, command validation, legal and illegal states, usage observation invariants |
 | `orchestration` | Scheduling, dependencies, decision correlation, notification cursors, reconciliation choices |
-| `agents` | Brief assembly, result parsing, role/skill binding, digest recording |
+| `agents` | Brief assembly, result parsing, role/skill binding, digest recording, Codex-reported usage conversion |
 | `runtime` | Endpoint parsing, generation protection, safe paths, inbox sequencing |
 | `integrations.mcp` | Tool discovery, argument mapping, timeout/error classification, effect states |
 | `integrations.github` | Issue contracts, idempotency markers, read-after-write, uncertain-effect reconciliation |
-| `persistence` | Expected sequence, replay determinism, migrations, concurrent append rejection |
+| `persistence` | Expected sequence, replay determinism, migrations, concurrent append rejection, idempotent usage summaries |
 | `validation` | Progress parsing, commit markers, candidate SHA, QA evidence, skill structure |
 
 Core controller, state-machine, event-store, effect-journal, and validation branches target at least 90% branch coverage. Coverage is a diagnostic; required behavioral invariants remain the release gate.
@@ -831,16 +877,17 @@ Every commit runs unit tests, static analysis, formatting checks, skill structur
 3. Build workflow state machine and transition guard.
 4. Build tmux runtime and verified postconditions.
 5. Build Codex adapter and live contract tests.
-6. Build role-rule rendering, `SkillCatalog`, skill validation, role bindings, and digest recording.
-7. Create and fixture-test the six required skill packages.
-8. Build the persistent Coordinator session, notification queue, and decision round trip.
-9. Build the controller-owned MCP client, GitHub gateway, effect journal, registry, and reconciliation.
-10. Build Planner and Router coordinators.
-11. Build Architect and issue validation.
-12. Build worktree manager and Coder coordinator.
-13. Build protocol guard and progress watcher.
-14. Build Tester and QA policy.
-15. Add recovery drills, fault injection, CI gates, live evaluations, and operator views.
+6. Persist adapter-reported usage observations and replayable summaries.
+7. Build role-rule rendering, `SkillCatalog`, skill validation, role bindings, and digest recording.
+8. Create and fixture-test the six required skill packages.
+9. Build the persistent Coordinator session, notification queue, and decision round trip.
+10. Build the controller-owned MCP client, GitHub gateway, effect journal, registry, and reconciliation.
+11. Build Planner and Router coordinators.
+12. Build Architect and issue validation.
+13. Build worktree manager and Coder coordinator.
+14. Build protocol guard and progress watcher.
+15. Build Tester and QA policy.
+16. Add recovery drills, fault injection, CI gates, live evaluations, and operator views.
 
 ## 19. Definition of architectural completion
 

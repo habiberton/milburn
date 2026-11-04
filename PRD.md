@@ -18,7 +18,7 @@ Milburn does not replace Codex. Codex owns each agent's model-and-tool loop. Mil
 
 ## 2. Deliberately narrow first release
 
-Version 1 supports only Codex. It does not choose among Codex, Claude Code, OpenCode, or model providers. It also omits monetary budgets. This keeps the first engineering problem focused on reliable coordination between a primary controller and worker agents.
+Version 1 supports only Codex. It does not choose among Codex, Claude Code, OpenCode, or model providers. It omits pricing and monetary policy, but records observability-only token usage when Codex reports it. This keeps the first engineering problem focused on reliable coordination between a primary controller and worker agents.
 
 The release still proves the important agent-distro behavior:
 
@@ -57,10 +57,11 @@ Milburn v1 must:
 17. Provide an operator CLI. A dashboard is optional for the first milestone.
 18. Ship versioned Codex skills for every agent role and record the exact skill digests used by every attempt.
 19. Provide deterministic unit, contract, integration, recovery, skill, and live-evaluation suites with explicit CI gates.
+20. Persist Codex-reported token usage as replayable telemetry with per-attempt, task, role, and workflow summaries.
 
 ## 5. Non-goals
 
-Version 1 will not support another harness, select models, enforce budgets, run a distributed fleet, require a permanent server, automatically merge or deploy, copy private transcripts between roles, trust Coder test claims as final QA, infer success from process exit, or give agents unrestricted GitHub MCP mutation tools. tmux and worktrees are not security sandboxes.
+Version 1 will not support another harness, select models, attach prices to usage, enforce budgets or cost ceilings, reserve spend, route work based on spend, run a distributed fleet, require a permanent server, automatically merge or deploy, copy private transcripts between roles, trust Coder test claims as final QA, infer success from process exit, or give agents unrestricted GitHub MCP mutation tools. Token counts reported by Codex are observability telemetry only and do not require storing prompts or private transcripts. tmux and worktrees are not security sandboxes.
 
 ## 6. Agent roster
 
@@ -284,6 +285,7 @@ CoordinatorNotificationQueued DecisionPresented    UserDecisionReceived
 DecisionAnswerValidated     SteeringQueued          SteeringDelivered
 SteeringAcknowledged        DecisionResolved        AgentLaunchRequested
 AgentStarted
+AgentUsageObserved          AgentUsageFinalized     AgentUsageUnavailable
 PlanReceived                ArchitecturePackageReceived
 GitHubIssueCreated          GitHubIssueReady
 GitHubEffectRequested       GitHubEffectObserved    GitHubEffectReconciled
@@ -294,6 +296,28 @@ RecoveryStarted             RecoveryCompleted       FeatureCompleted
 ```
 
 Events are append-only and versioned. Current state is rebuilt by replay.
+
+### 12.1 Token usage observability
+
+Milburn records token usage only through the Codex adapter's semantic result
+boundary. It never derives counts from terminal colors, prose, prompts, or
+private transcripts. Each observation is associated with a task ID, role,
+attempt ID, Codex session or endpoint, and model when those values are
+available.
+
+Observations distinguish partial usage, final totals, and explicitly
+unavailable usage. Input, output, cached-input, and reasoning token counts are
+optional and are stored only when Codex reports them. Milburn never fabricates
+missing counts.
+
+Usage observations are append-only and replay into per-attempt, per-task,
+per-role, and workflow totals. Observation identities and source semantics make
+duplicate delivery idempotent; cumulative partial observations are not added
+twice, and a final total reconciles the attempt without double-counting its
+earlier partial observations. Replay after restart produces the same summaries.
+
+This telemetry does not add pricing, budgets, cost ceilings, reservations, or
+spend-based routing.
 
 ## 13. Requirements
 
@@ -383,6 +407,7 @@ Version 1 is accepted when:
 19. Unit and scripted integration suites run without Codex, tmux, GitHub, or network access.
 20. Fault injection proves that crashes do not duplicate issues, launches, decisions, or steering delivery.
 21. A protected live evaluation demonstrates Architect ambiguity handling, Coder recovery behavior, Tester independence, and Coordinator decision fidelity.
+22. Codex-reported usage replays deterministically into per-attempt, task, role, and workflow totals, with partial and final observations reconciled idempotently and unavailable usage represented explicitly.
 
 ## 16. Delivery milestones
 
@@ -394,4 +419,4 @@ Version 1 is accepted when:
 
 ## 17. Deferred work
 
-Later releases may add multiple harnesses, model selection, budgets, remote runtimes, parallel Coders, pull-request automation, a richer dashboard, and stronger sandboxing. These are intentional future extensions.
+Later releases may add multiple harnesses, model selection, usage pricing, budgets, cost ceilings, reservations, spend-based routing, remote runtimes, parallel Coders, pull-request automation, a richer dashboard, and stronger sandboxing. These are intentional future extensions.

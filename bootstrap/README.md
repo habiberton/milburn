@@ -71,6 +71,9 @@ After Wave 1 is integrated, dispatch independent boundary implementations:
 
 - `MB-005` — tmux runtime and fake runtime.
 - `MB-006` — Codex adapter, briefs, and result parsing.
+- `MB-017` — observability-only Codex token usage events and replayable usage
+  summaries. It depends on `MB-006` and must not run concurrently with
+  unfinished `MB-006` work because it extends the adapter contract.
 - `MB-007` — skill catalog, role rules, validation, and digests.
 - `MB-008` — GitHub gateway, MCP effect journal, and local fakes.
 - `MB-009` — Git worktree manager and fake workspace manager.
@@ -88,9 +91,9 @@ Integrate the boundaries into product workflows:
 - `MB-013` — long-running Coder, issue assignment, progress, and candidate
   validation.
 
-The root may parallelize `MB-010` and `MB-011` after their dependencies are
-done. `MB-012` follows the Architect contracts, and `MB-013` follows issue
-registry integration.
+The root may parallelize `MB-010` and `MB-011` after their dependencies,
+including `MB-017`, are done. `MB-012` follows the Architect contracts, and
+`MB-013` follows issue registry integration plus usage telemetry.
 
 ### Wave 4 — QA and recovery
 

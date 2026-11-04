@@ -207,6 +207,23 @@ Wave 1 — Foundation; preparing sequential task `MB-004`
   `bootstrap/ROOT_PROMPT.md`, and `bootstrap/README.md` in coordinator commit
   `88ad88778bf1e823fa2d56acf5522654a748e568`. It will be included in the single
   `MB-004` coordinator PR; the active worker's owned paths are unchanged.
+- User-authorized issue #21 was mirrored as `MB-017`, a Wave 2 task blocked on
+  `MB-002`, `MB-003`, and `MB-006`. Its exact owned paths, acceptance criteria,
+  and required tests are recorded in `bootstrap/tasks.json`; it must not run
+  concurrently with unfinished `MB-006` work.
+- `MB-017` is now a dependency of `MB-010`, `MB-011`, and `MB-013`. `PRD.md`
+  and `ARCH.md` narrowly admit observability-only Codex-reported token usage
+  while retaining the v1 exclusions for pricing, budgets, cost ceilings,
+  reservations, and spend-based routing.
+- The usage contract requires partial-versus-final observations, explicit
+  unavailable usage, deterministic idempotent replay into per-attempt, task,
+  role, and workflow totals, no fabricated counts, and no transcript storage.
+  Issue #21 remains open with `milburn:blocked` until `MB-006` completes.
+- Builder `/root/mb004_builder_a01` returned candidate
+  `03d253eb8b89c004f1150eb6ee2424c17509c44b` (implementation commit
+  `52997e58abaff37ac2f64833db751ffd2512b4aa`) with reported evidence of 63
+  orchestration tests and 169 total smoke tests; coordinator verification and
+  independent review are next.
 
 ## Verification
 
@@ -225,5 +242,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Monitor `/root/mb004_builder_a01`; on candidate return, verify attribution,
-scope, tests, and both review axes before creating its coordinator branch/PR.
+Verify MB-004 candidate `03d253eb8b89c004f1150eb6ee2424c17509c44b`
+for attribution, scope, tests, and both review axes before creating its
+coordinator branch and evidence-bearing PR.
