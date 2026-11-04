@@ -546,6 +546,16 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   `https://github.com/habiberton/milburn/pull/31`. It contains `Closes #27`,
   worker/integration SHAs, acceptance and test evidence, both review histories,
   risks, and MB-022-F001/F002 summaries.
+- PR #31 merged through GitHub's two-parent merge method as
+  `b2104b764215f9cd16591dd51a7086c9fec63d04`. Remote read-back verified
+  `origin/main` contains PR tip `f9140d7`, candidate `491f59e`, integration
+  `09e0544`, and recovery correction `33c899e`; primary `main` fast-forwarded
+  to the exact remote SHA.
+- Post-fast-forward MB-022 verification passed: real amendment preflight clear,
+  8 feedback briefs, 42 focused tests plus 3 subtests, and 285 smoke tests with
+  3 protected skips and 3 subtests. Issue #27 was closed by `Closes #27`; after
+  this durable completion record commits, the root may apply `milburn:done` and
+  reconcile dependency-ready Wave 2 issues.
 
 ## Current verification
 
@@ -566,8 +576,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Record the final integrated MB-022 reviews and verification, push
-`bootstrap/coordinator/MB-022/a01-integration`, and open its one-ticket
-evidence-bearing PR with `Closes #27`. Merge only by merge commit, verify and
-fast-forward `origin/main`, update task records, and only then reconcile the
-next dependency-ready Wave 2 tasks for dispatch.
+Commit the MB-022 remote completion record, label issue #27 done, reconcile
+dependency-ready Wave 2 tasks and GitHub labels, then prepare up to two
+non-overlapping workers under the concurrency gate.
