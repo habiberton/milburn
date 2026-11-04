@@ -111,6 +111,9 @@ Wave 1 — Foundation; `MB-001` remotely complete and resuming `MB-002`
   smoke test.
 - Closed issue #1 now carries `milburn:done`; open issue #2 retains its existing
   `habiberton` assignment and is restored to `milburn:in-progress`.
+- The clean preserved `MB-002/a01` worker branch was fast-forwarded to verified
+  baseline `b2df26c73f0cd9c39cd19ec07b5b5d2c24fa872e`, which includes the merged
+  `MB-001` history and the durable coordinator PR strategy.
 
 ## Verification
 
@@ -129,6 +132,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the reconciled issue states, fast-forward the clean preserved `MB-002`
-worker branch to the new integration baseline, record that exact base, and
-resume `/root/mb002_builder_a01` under the new PR rules.
+Commit the new `MB-002` base, resume `/root/mb002_builder_a01` with exact base
+`b2df26c73f0cd9c39cd19ec07b5b5d2c24fa872e`, and continue the sequential
+domain-contract implementation under the coordinator PR strategy.

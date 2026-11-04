@@ -147,7 +147,7 @@
       "owner": "builder-MB-002-a01",
       "branch": "bootstrap/builder/MB-002/a01-domain-contracts",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-002-a01",
-      "base_sha": "b50ae6f6caffe4629e095d9dafb52b2651aba34c",
+      "base_sha": "b2df26c73f0cd9c39cd19ec07b5b5d2c24fa872e",
       "candidate_sha": null,
       "progress_path": "bootstrap/progress/tasks/MB-002.md",
       "owned_paths": [
