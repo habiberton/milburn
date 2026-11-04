@@ -84,7 +84,7 @@
       "id": "MB-001",
       "wave": 1,
       "title": "Create the package, CLI, configuration, and test foundation",
-      "status": "assigned",
+      "status": "in_progress",
       "github": {
         "issue_number": 1,
         "issue_url": "https://github.com/habiberton/milburn/issues/1",
