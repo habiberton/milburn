@@ -600,6 +600,11 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   source mandatory authority rules externally. The same worker is adding
   ancestor containment/symlink rejection, regressions, and feedback proposals;
   both fresh review axes are required afterward.
+- Corrected MB-017 candidate
+  `35e0bda2dc1844579c682862c270f94bbef9ad21` contains six verified attributed
+  commits from the exact base. Coordinator verification passed 23 focused
+  tests, smoke (308 passed, 3 protected skips, 3 subtests), and diff checks.
+  Both fresh review axes are in progress.
 
 ## Current verification
 
