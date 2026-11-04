@@ -654,6 +654,15 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   `https://github.com/habiberton/milburn/pull/33`. It includes `Closes #21`,
   worker/integration SHAs, acceptance/tests, both review histories, risks, and
   MB-017-F001/F002/F003 summaries.
+- PR #33 merged through GitHub's two-parent merge method as
+  `c90413b6d95a54e3d8f3a3913514b70938eecf9f`. Remote read-back verified
+  `origin/main` contains PR tip `6d01b23`, candidate `cb0604a`, and integration
+  `4025275`; primary `main` fast-forwarded to the exact remote SHA.
+- Post-fast-forward MB-017 verification passed: semantic amendment preflight
+  clear, 10 feedback briefs, 26 focused tests, and 338 smoke tests with 3
+  protected skips and 3 subtests. Issue #21 closed through `Closes #21`; after
+  this completion record commits, the root may apply `milburn:done` and mark
+  MB-018 ready.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and

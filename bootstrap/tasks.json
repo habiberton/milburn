@@ -428,14 +428,14 @@
       "id": "MB-017",
       "wave": 2,
       "title": "Persist per-agent token usage and replayable usage summaries",
-      "status": "integrated",
+      "status": "done",
       "github": {
         "issue_number": 21,
         "issue_url": "https://github.com/habiberton/milburn/issues/21",
         "status_source": "github",
         "assignment_source": "github",
-        "last_observed_state": "open",
-        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_state": "closed",
+        "last_observed_status_label": "milburn:qa",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-002", "MB-003", "MB-006", "MB-022"],
@@ -450,7 +450,7 @@
       "pull_request": {
         "number": 33,
         "url": "https://github.com/habiberton/milburn/pull/33",
-        "merge_commit_sha": null
+        "merge_commit_sha": "c90413b6d95a54e3d8f3a3913514b70938eecf9f"
       },
       "progress_path": "bootstrap/progress/tasks/MB-017.md",
       "owned_paths": [
