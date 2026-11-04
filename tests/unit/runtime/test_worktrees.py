@@ -462,3 +462,64 @@ def test_fake_rejects_force_moved_preserved_branch_like_real_manager(
     recovered.seed_preserved_branch(first, head_sha=unrelated, ancestors=())
     with pytest.raises(WorktreeOwnershipError, match="retired worktree head"):
         recovered.register_retired(evidence, PriorProcessState.STOPPED)
+
+
+def test_fake_rejects_independent_base_and_retired_head_merged_into_current_head(
+    repository: tuple[Path, Path, str],
+) -> None:
+    first = WorktreeLease.from_request(request(repository))
+    unrelated_retired_head = "b" * 40
+    merged_head = "c" * 40
+    forged = RetiredWorktreeEvidence(first, unrelated_retired_head)
+    fake = FakeWorktreeManager()
+    fake.seed_preserved_branch(
+        first,
+        head_sha=merged_head,
+        ancestors=(first.base_sha, unrelated_retired_head),
+    )
+
+    with pytest.raises(WorktreeOwnershipError, match="recorded base"):
+        fake.register_retired(forged, PriorProcessState.STOPPED)
+    with pytest.raises(WorktreeConflictError, match="recover"):
+        fake.prepare(request(repository, attempt="a02", base=merged_head))
+
+
+@pytest.mark.parametrize(
+    "relations",
+    [
+        (("a" * 40, "b" * 40), ("b" * 40, "c" * 40)),
+        (
+            ("a" * 40, "b" * 40),
+            ("a" * 40, "d" * 40),
+            ("b" * 40, "c" * 40),
+            ("d" * 40, "c" * 40),
+        ),
+    ],
+    ids=("linear", "merge"),
+)
+def test_fake_accepts_directed_linear_and_merge_ancestry(
+    repository: tuple[Path, Path, str],
+    relations: tuple[tuple[str, str], ...],
+) -> None:
+    repo, root, _ = repository
+    base = "a" * 40
+    retired_head = "b" * 40
+    current_head = "c" * 40
+    first = WorktreeLease.from_request(
+        WorktreeRequest(repo, root, "MB-009", 9, "a01", base)
+    )
+    evidence = RetiredWorktreeEvidence(first, retired_head)
+    fake = FakeWorktreeManager()
+    fake.seed_preserved_branch(
+        first,
+        head_sha=current_head,
+        ancestors=(),
+        relations=relations,
+    )
+
+    fake.register_retired(evidence, PriorProcessState.STOPPED)
+    second = fake.prepare(
+        WorktreeRequest(repo, root, "MB-009", 9, "a02", current_head)
+    )
+
+    assert fake.inspect(second).head_sha == current_head

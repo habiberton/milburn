@@ -22,7 +22,7 @@ from milburn.runtime.worktrees import (
 class _FakeWorkspace:
     branch: str
     head_sha: str
-    ancestors: frozenset[str]
+    ancestry: frozenset[tuple[str, str]]
 
 
 class FakeWorktreeManager:
@@ -46,7 +46,9 @@ class FakeWorktreeManager:
         branch = self._branches.get(key)
         if branch is None:
             workspace = _FakeWorkspace(
-                lease.branch, lease.base_sha, frozenset({lease.base_sha})
+                lease.branch,
+                lease.base_sha,
+                frozenset({(lease.base_sha, lease.base_sha)}),
             )
         else:
             evidence = self._retired_branches.get((lease.repository, lease.branch))
@@ -58,7 +60,7 @@ class FakeWorktreeManager:
                 raise WorktreeConflictError(
                     "next attempt base must equal the preserved issue branch head"
                 )
-            if evidence.head_sha not in branch.ancestors:
+            if not self._is_ancestor(branch, evidence.head_sha, branch.head_sha):
                 raise WorktreeOwnershipError(
                     "preserved branch no longer descends from retired worktree head"
                 )
@@ -93,12 +95,14 @@ class FakeWorktreeManager:
         branch = self._branches.get((lease.repository, lease.branch))
         if branch is None:
             raise WorktreeOwnershipError("preserved issue branch is unavailable")
-        if evidence.head_sha not in branch.ancestors:
+        if not self._is_ancestor(branch, lease.base_sha, evidence.head_sha):
+            raise WorktreeOwnershipError(
+                "retired worktree head no longer descends from recorded base"
+            )
+        if not self._is_ancestor(branch, evidence.head_sha, branch.head_sha):
             raise WorktreeOwnershipError(
                 "preserved branch no longer descends from retired worktree head"
             )
-        if lease.base_sha not in branch.ancestors:
-            raise WorktreeOwnershipError("recorded base is not an exact repository commit")
         self._retired[lease.worktree] = evidence
         self._retired_branches[(lease.repository, lease.branch)] = evidence
         self.actions.append(("register_retired", lease.attempt_id))
@@ -156,6 +160,7 @@ class FakeWorktreeManager:
         *,
         head_sha: str | None = None,
         ancestors: tuple[str, ...] | None = None,
+        relations: tuple[tuple[str, str], ...] = (),
     ) -> None:
         """Seed external Git state without granting controller ownership."""
 
@@ -163,7 +168,11 @@ class FakeWorktreeManager:
         workspace = _FakeWorkspace(
             lease.branch,
             head,
-            frozenset({head, *(ancestors if ancestors is not None else (lease.base_sha,))}),
+            self._ancestry(
+                head,
+                ancestors if ancestors is not None else (lease.base_sha,),
+                relations,
+            ),
         )
         self._workspaces[lease.worktree] = workspace
         self._branches[(lease.repository, lease.branch)] = workspace
@@ -174,6 +183,7 @@ class FakeWorktreeManager:
         *,
         head_sha: str | None = None,
         ancestors: tuple[str, ...] | None = None,
+        relations: tuple[tuple[str, str], ...] = (),
     ) -> None:
         """Seed a branch whose prior controller-created path is absent."""
 
@@ -181,7 +191,11 @@ class FakeWorktreeManager:
         self._branches[(lease.repository, lease.branch)] = _FakeWorkspace(
             lease.branch,
             head,
-            frozenset({head, *(ancestors if ancestors is not None else (lease.base_sha,))}),
+            self._ancestry(
+                head,
+                ancestors if ancestors is not None else (lease.base_sha,),
+                relations,
+            ),
         )
 
     def _inspect_raw(self, lease: WorktreeLease) -> WorktreeInspection:
@@ -213,8 +227,44 @@ class FakeWorktreeManager:
         if inspection.head_sha is None:
             raise WorktreeOwnershipError("worktree has no observable head commit")
         workspace = self._workspaces.get(lease.worktree)
-        if workspace is None or lease.base_sha not in workspace.ancestors:
+        if (
+            workspace is None
+            or not self._is_ancestor(workspace, lease.base_sha, inspection.head_sha)
+        ):
             raise WorktreeOwnershipError("recorded base is not an exact repository commit")
+
+    @staticmethod
+    def _ancestry(
+        head_sha: str,
+        ancestors: tuple[str, ...],
+        relations: tuple[tuple[str, str], ...],
+    ) -> frozenset[tuple[str, str]]:
+        commits = {head_sha, *ancestors}
+        for ancestor, descendant in relations:
+            commits.add(ancestor)
+            commits.add(descendant)
+        closure = {(commit, commit) for commit in commits}
+        closure.update((ancestor, head_sha) for ancestor in ancestors)
+        closure.update(relations)
+        changed = True
+        while changed:
+            changed = False
+            additions = {
+                (left, right)
+                for left, middle in closure
+                for candidate, right in closure
+                if middle == candidate and (left, right) not in closure
+            }
+            if additions:
+                closure.update(additions)
+                changed = True
+        return frozenset(closure)
+
+    @staticmethod
+    def _is_ancestor(
+        workspace: _FakeWorkspace, ancestor_sha: str, descendant_sha: str
+    ) -> bool:
+        return (ancestor_sha, descendant_sha) in workspace.ancestry
 
     def _require_owned(self, lease: WorktreeLease) -> None:
         if self._active.get(lease.worktree) != lease:
