@@ -2,14 +2,14 @@
 
 ## Current wave
 
-Wave 1 — Foundation; preparing sequential task `MB-002`
+Wave 1 — Foundation; publish gate blocked before `MB-001` completion
 
 ## Repository state
 
 - Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
-- Active workers: `builder-MB-002-a01` (`/root/mb002_builder_a01`)
-- Pending candidates: none
+- Active workers: none; `/root/mb002_builder_a01` interrupted with its worktree preserved
+- Pending candidates: `MB-001` is integrated locally but not present on `origin/main`
 
 ## Completed
 
@@ -78,6 +78,21 @@ Wave 1 — Foundation; preparing sequential task `MB-002`
 - Builder `/root/mb002_builder_a01` was launched with the bounded domain task,
   exact owned paths, acceptance criteria, required tests, and candidate commit
   protocol. No other implementation worker is active.
+- Root-only push rules were added to `AGENTS.md` and `bootstrap/README.md` in
+  commit `608ece7e9dc77f2fd93099e3084f762c088c26b2`: workers and reviewers never
+  push, and the root must verify `origin/main` contains the completion commit
+  before applying `milburn:done` or closing an issue.
+- The `MB-002` worker was interrupted before implementation changes and its
+  branch, worktree, base, assignment, and progress record were preserved.
+- A root push of local `main` was attempted after the rule change and rejected
+  by GitHub repository rule `GH013`: changes to `main` must use a pull request.
+- Remote read-back after the rejected push resolved `origin/main` to
+  `3d363238b2b1654860beca31c64ba185d37e2928`. It does not contain the
+  `MB-001` integration commit `90ad110db3b0b7cc5e491c3946f0cf37af294b5d`
+  or completion record `f40d114ce46cab9b7b35e67a5c3b35c8e08e05f6`.
+- To enforce the new gate, GitHub issue #1 was reopened and changed from
+  `milburn:done` to `milburn:qa`; issue #2 was changed from
+  `milburn:in-progress` to `milburn:blocked` without deleting its worktree.
 
 ## Verification
 
@@ -92,11 +107,17 @@ Wave 1 — Foundation; preparing sequential task `MB-002`
 
 ## Blockers
 
-None recorded.
+- Direct pushes to protected `main` are rejected because repository rules
+  require a pull request. The user must authorize a root-owned branch push and
+  pull request/merge, or change the branch rule so the root can push `main`.
+- `MB-001` cannot return to `done`, and `MB-002` cannot resume, until fetched
+  `origin/main` contains the `MB-001` completion history.
 
 ## Resume here
 
-Monitor `/root/mb002_builder_a01`. On candidate return, verify attribution from
-base `b50ae6f6caffe4629e095d9dafb52b2651aba34c`, owned-path scope, progress,
-acceptance evidence, and required tests, then run independent Spec and Standards
-review before integration. Preserve the completed `MB-001` worktree.
+Obtain user direction for the protected-branch gate. If authorized, push local
+`main` to a root-owned remote branch, open and merge a pull request, fetch
+`origin/main`, and verify it contains both `90ad110db3b0b7cc5e491c3946f0cf37af294b5d`
+and `f40d114ce46cab9b7b35e67a5c3b35c8e08e05f6`. Record the remote tip, then
+restore issue #1 to `milburn:done`/closed and issue #2 to
+`milburn:in-progress`, resume `/root/mb002_builder_a01`, and continue Wave 1.
