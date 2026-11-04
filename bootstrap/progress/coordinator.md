@@ -139,6 +139,12 @@ Wave 1 — Foundation; `MB-002` integrated on its coordinator branch
   recovery facts.
 - Integrated-branch verification passed: 64 domain tests, 75 total smoke tests,
   and `git diff --check` against `origin/main`.
+- The root pushed coordinator branch
+  `bootstrap/coordinator/MB-002/a01-integration` at
+  `6b9976c234c426163d97287067e2aa082a58a2b4` and opened the single
+  evidence-bearing PR #19: `https://github.com/habiberton/milburn/pull/19`.
+  GitHub resolves `Closes #2` to the intended issue and reports the PR clean and
+  mergeable.
 
 ## Verification
 
@@ -157,6 +163,7 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the integration evidence, push the `MB-002` coordinator branch, open its
-single evidence-bearing PR with `Closes #2`, record and update that PR branch,
-then merge only with a merge commit after GitHub reports it mergeable.
+Commit the PR record, update that same coordinator branch, recheck mergeability,
+then merge PR #19 only with a merge commit. Fetch and verify `origin/main`,
+fast-forward the primary checkout, and reconcile issue/task state before
+starting `MB-003`.

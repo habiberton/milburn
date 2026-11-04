@@ -152,8 +152,8 @@
       "integration_branch": "bootstrap/coordinator/MB-002/a01-integration",
       "integration_commit_sha": "fd5cc0554aeef620927ddf444dc344e55a5d74cd",
       "pull_request": {
-        "number": null,
-        "url": null,
+        "number": 19,
+        "url": "https://github.com/habiberton/milburn/pull/19",
         "merge_commit_sha": null
       },
       "progress_path": "bootstrap/progress/tasks/MB-002.md",
