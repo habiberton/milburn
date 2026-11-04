@@ -279,7 +279,7 @@
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "closed",
-        "last_observed_status_label": "milburn:qa",
+        "last_observed_status_label": "milburn:done",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-004"],
@@ -531,7 +531,7 @@
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:blocked",
+        "last_observed_status_label": "milburn:ready",
         "last_observed_assignees": []
       },
       "dependencies": ["MB-004", "MB-020"],

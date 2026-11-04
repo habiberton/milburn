@@ -485,6 +485,9 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   tests, and 243 smoke tests with 3 protected skips. Issue #24 was closed by
   `Closes #24`; after this durable completion record is committed, the root may
   replace `milburn:qa` with `milburn:done` and reconcile MB-022 as ready.
+- Local completion record `2b26151` was committed after remote verification.
+  Closed issue #24 now carries `milburn:done`; open issue #27 now carries
+  `milburn:ready`. MB-022 is the only authorized next implementation dispatch.
 
 ## Verification
 
