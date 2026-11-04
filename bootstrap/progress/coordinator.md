@@ -2,7 +2,7 @@
 
 ## Current wave
 
-Wave 1 — Foundation; `MB-001` done and `MB-002` ready
+Wave 1 — Foundation; preparing sequential task `MB-002`
 
 ## Repository state
 
@@ -70,6 +70,8 @@ Wave 1 — Foundation; `MB-001` done and `MB-002` ready
 - GitHub issue #1 was labeled `milburn:done` and closed as completed. Issue #2
   was reconciled, remains open and unassigned, and was moved from
   `milburn:blocked` to `milburn:ready` after its dependency completed.
+- Issue #2 is now assigned to `habiberton` and labeled `milburn:in-progress`
+  for builder attempt `MB-002/a01`.
 
 ## Verification
 
@@ -88,7 +90,7 @@ None recorded.
 
 ## Resume here
 
-Prepare and launch sequential builder attempt `MB-002/a01`: create its progress
-record, record assignment metadata, commit the coordination checkpoint, create
-and identify its isolated worktree, and dispatch only that task. Preserve the
-completed `MB-001` worktree until it is explicitly archived or removed.
+Commit the `MB-002` coordination checkpoint, use that exact commit as the
+worker base, update the task and progress records, create and identify the
+isolated worktree, and dispatch only that task. Preserve the completed `MB-001`
+worktree until it is explicitly archived or removed.
