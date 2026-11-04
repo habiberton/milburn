@@ -329,6 +329,17 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   independent review: its 16 unit tests passed, but the real tmux contract
   observed a process-identity stabilization race during `create_window()`.
   The same worker is correcting it locally with regression evidence.
+- Corrected MB-005 candidate
+  `a8d4de3f3652b18fd927ca4624b1165cea1cdc6b` now matches process identity by
+  PID plus kernel start time, adds bounded injectable observation retries, and
+  reports 18 unit tests, ten consecutive real-tmux contract passes, and 195
+  smoke tests (one skipped). Coordinator re-verification and review remain.
+- MB-006 Spec review rejected candidate `7d6636b2` before integration: live
+  Codex JSONL output was treated as one JSON document; expected role/result and
+  payload schemas were not enforced; validated skill digests were not carried
+  through launch; and the live contract covered only CLI version output. The
+  same unaffected worker will receive these findings after the amendment
+  planning commit is cleanly recorded.
 - Issue #24 is assigned and `milburn:in-progress`; MB-020/a01 is prepared on
   its own branch/worktree path from planning checkpoint
   `09636fd9f0993493091c515ee9e29c58d5d0f81f`. The worktree is
@@ -340,6 +351,12 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   worker will implement the process and validator and propose evidence-only
   MB-001 through MB-004 backfill entries in its own progress; the coordinator
   will write those historical briefs on the integration branch.
+- Pending plan amendment `AMEND-001` mirrors MB-022/#27, gates MB-007, MB-008,
+  MB-009, MB-017, and MB-018, and classifies already active MB-005, MB-006, and
+  MB-020 as unaffected. GitHub dependency notices were added to issues #7, #8,
+  #9, #21, and #22. No additional implementation worker may launch until the
+  amendment is committed, remotely merged, reconciled, and the MB-020/MB-022
+  sequence completes.
 - MB-020 will use its own coordinator branch and PR. Its implementation will
   backfill only evidence already recorded for MB-001 through MB-004 and will
   not be mixed into the already merged MB-004 history.
@@ -361,5 +378,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Monitor MB-020 and MB-005. Continue MB-006
-verification/review; do not launch MB-007 through MB-009 before MB-020 is done.
+Commit and verify AMEND-001 with the MB-022 registry/spec changes. Continue the
+unaffected MB-005 and MB-006 correction/review/PR paths and monitor MB-020; do
+not launch any additional implementation worker while the amendment is pending.

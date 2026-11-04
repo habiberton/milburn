@@ -77,6 +77,9 @@ cannot begin before the feedback process exists:
 
 - `MB-005` — tmux runtime and fake runtime.
 - `MB-006` — Codex adapter, briefs, and result parsing.
+- `MB-022` — durable bootstrap and product plan-amendment gates. It follows
+  `MB-020` and must complete before any new MB-007, MB-008, MB-009, MB-017, or
+  MB-018 worker dispatch.
 - `MB-017` — observability-only Codex token usage events and replayable usage
   summaries. It depends on `MB-006` and must not run concurrently with
   unfinished `MB-006` work because it extends the adapter contract.
@@ -90,6 +93,27 @@ cannot begin before the feedback process exists:
 
 Run no more than three workers concurrently. Begin with two. Each worker owns a
 separate package surface and must use the shared Wave 1 contracts.
+
+MB-005 and MB-006 were already active when MB-022 was authorized and are the
+recorded unaffected exception: they continue through review and PR integration.
+No other Wave 2 implementation worker launches while the first amendment is
+pending, while coordinator planning files are uncommitted, or before MB-020 and
+MB-022 are remotely merged and reconciled.
+
+### Plan-amendment gate
+
+A user-authorized change to scope, policy, specifications, tasks, dependencies,
+waves, acceptance criteria, or dispatch rules is a pending plan amendment. The
+coordinator records its authority, requested change, affected tasks, active-work
+classification, registry/spec/GitHub changes, effective commit and PR, and
+resolution. Active work is classified as `unaffected`, `needs steering`,
+`must pause`, or `must stop`; unaffected attempts retain ownership and continue.
+
+New worker dispatch remains frozen until planning files are clean, the amended
+registry and specifications agree, the amendment commit is reviewed and merged
+remotely, and the primary checkout and amendment record are reconciled. Startup
+and continuation preflights treat an unresolved amendment as a concrete dispatch
+blocker, not as permission to stop unrelated unaffected work.
 
 ### Wave 3 — Coordination workflows
 

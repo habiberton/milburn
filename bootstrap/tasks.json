@@ -337,7 +337,7 @@
       "branch": "bootstrap/builder/MB-005/a01-tmux-runtime",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-005-a01",
       "base_sha": "61c453848c1364a7b77695c1ecb9477908b80784",
-      "candidate_sha": "6e00d03be1eb2c86aeee6d057a4a8d68c1c7d085",
+      "candidate_sha": "a8d4de3f3652b18fd927ca4624b1165cea1cdc6b",
       "progress_path": "bootstrap/progress/tasks/MB-005.md",
       "owned_paths": [
         "src/milburn/runtime/tmux.py",
@@ -417,7 +417,7 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-002", "MB-003", "MB-006"],
+      "dependencies": ["MB-002", "MB-003", "MB-006", "MB-022"],
       "parallel_group": null,
       "owner": null,
       "branch": null,
@@ -464,7 +464,7 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-002", "MB-003", "MB-006", "MB-017"],
+      "dependencies": ["MB-002", "MB-003", "MB-006", "MB-017", "MB-022"],
       "parallel_group": null,
       "owner": null,
       "branch": null,
@@ -500,6 +500,68 @@
       ]
     },
     {
+      "id": "MB-022",
+      "wave": 2,
+      "title": "Add a durable plan-amendment gate before worker dispatch",
+      "status": "blocked",
+      "github": {
+        "issue_number": 27,
+        "issue_url": "https://github.com/habiberton/milburn/issues/27",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
+      "dependencies": ["MB-004", "MB-020"],
+      "parallel_group": null,
+      "owner": null,
+      "branch": null,
+      "worktree": null,
+      "base_sha": null,
+      "candidate_sha": null,
+      "progress_path": "bootstrap/progress/tasks/MB-022.md",
+      "owned_paths": [
+        "AGENTS.md",
+        "bootstrap/ROOT_PROMPT.md",
+        "bootstrap/README.md",
+        "bootstrap/amendments/",
+        "scripts/smoke-test.sh",
+        "src/milburn/domain/amendments.py",
+        "src/milburn/orchestration/plan_amendments.py",
+        "src/milburn/validation/amendment_policy.py",
+        "src/milburn/persistence/amendment_projections.py",
+        "tests/bootstrap/test_plan_amendments.py",
+        "tests/unit/orchestration/test_plan_amendments.py",
+        "tests/unit/validation/test_amendment_policy.py",
+        "tests/unit/persistence/test_amendment_projections.py",
+        "tests/integration/workflows/test_midrun_plan_amendment.py",
+        "tests/recovery/test_pending_amendment.py"
+      ],
+      "acceptance_criteria": [
+        "A user instruction that changes scope, policy, specifications, tasks, dependencies, waves, acceptance criteria, or dispatch rules becomes a pending plan amendment.",
+        "New worker dispatch freezes while any plan amendment is pending or coordinator-owned planning files have uncommitted changes.",
+        "Existing active work is explicitly classified as unaffected, needs steering, must pause, or must stop.",
+        "Unaffected workers may continue; the coordinator must not cancel or restart them merely because an amendment exists.",
+        "Every amendment records source/authority, requested change, affected tasks, active-work classification, specification changes, registry changes, GitHub changes, effective commit, and resolution status.",
+        "PRD.md, ARCH.md, bootstrap/tasks.json, bootstrap/README.md, and GitHub issue dependencies are reconciled as one reviewed amendment before dispatch resumes.",
+        "The coordinator verifies the committed amendment and remote PR merge before declaring it effective.",
+        "AGENTS.md, bootstrap/ROOT_PROMPT.md, bootstrap/README.md, and smoke validation enforce the amendment gate.",
+        "Startup and final-response preflights detect unresolved amendments.",
+        "Define versioned commands/events for amendment request, impact assessment, approval or rejection, application, and dispatch resumption.",
+        "Controller policy prevents new AgentLaunchRequested effects while an amendment is pending.",
+        "Active attempts retain their generation and ownership until an explicit impact decision changes them.",
+        "Applying an amendment uses expected-version concurrency and is replayable and idempotent.",
+        "Restart reconciliation preserves pending amendments and never silently applies or drops them.",
+        "Operator views explain the amendment, authority, affected work, decision, effective revision, and whether dispatch is frozen.",
+        "Tests reproduce the original failure mode: an amendment arrives while workers are active, unaffected workers continue, and no additional worker launches before the amendment is committed and applied."
+      ],
+      "required_tests": [
+        "python3 -m pytest tests/bootstrap/test_plan_amendments.py tests/unit/orchestration/test_plan_amendments.py tests/unit/validation/test_amendment_policy.py tests/unit/persistence/test_amendment_projections.py tests/integration/workflows/test_midrun_plan_amendment.py tests/recovery/test_pending_amendment.py -q",
+        "scripts/smoke-test.sh"
+      ]
+    },
+    {
       "id": "MB-007",
       "wave": 2,
       "title": "Implement the skill catalog, role rules, skill packages, and digest validation",
@@ -513,7 +575,7 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-004", "MB-020"],
+      "dependencies": ["MB-004", "MB-020", "MB-022"],
       "parallel_group": "wave-2-boundaries",
       "owner": null,
       "branch": null,
@@ -559,7 +621,7 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-004", "MB-020"],
+      "dependencies": ["MB-004", "MB-020", "MB-022"],
       "parallel_group": "wave-2-boundaries",
       "owner": null,
       "branch": null,
@@ -603,7 +665,7 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-004", "MB-020"],
+      "dependencies": ["MB-004", "MB-020", "MB-022"],
       "parallel_group": "wave-2-boundaries",
       "owner": null,
       "branch": null,

@@ -91,6 +91,15 @@ Replacement never copies the private transcript: it starts from a validated,
 versioned handoff manifest and durable controller state. One compaction
 observation alone is not a replacement trigger.
 
+### 2.9 Plan amendments fence dispatch
+
+A user-authorized change to product scope, policy, specifications, task graph,
+acceptance, or dispatch rules is a versioned plan amendment. New launch effects
+stop while an amendment is pending, but existing attempts keep ownership and
+generation unless an explicit impact decision says to steer, pause, or stop
+them. Applying an approved amendment requires an expected planning revision,
+durable remote evidence, and reconciliation before dispatch resumes.
+
 ## 3. System boundaries
 
 ### 3.1 Controller owns
@@ -103,6 +112,8 @@ observation alone is not a replacement trigger.
 - GitHub MCP connection ownership, tool allow-listing, effect journaling, and reconciliation.
 - Coder protocol checks.
 - QA acceptance and completion.
+- Plan-amendment impact classification, expected-version application, and the
+  dispatch freeze/resume decision.
 
 The controller also owns the durable correlation between a worker question, the Coordinator presentation, the user's answer, and the worker acknowledgement.
 
@@ -250,7 +261,7 @@ Only controller code invokes GitHub mutations through the gateway.
 
 ### 5.9 Scheduler
 
-An issue is schedulable only when dependencies are done, no Coder attempt is active, specs and approvals exist, a worktree slot is available, and repository concurrency policy permits it. Version 1 may allow only one active Coder globally.
+An issue is schedulable only when dependencies are done, no Coder attempt is active, specs and approvals exist, a worktree slot is available, repository concurrency policy permits it, and no plan amendment is pending. Version 1 may allow only one active Coder globally.
 
 ### 5.10 Worktree manager
 
@@ -311,6 +322,20 @@ defects, per-task briefs, and recurring lessons. Completion policy rejects an
 unresolved blocking defect or a resolved blocking defect without regression
 evidence. Same-scope failures return to the Coder; separately scoped defects
 become linked GitHub issues through the controller-owned gateway.
+
+### 5.16 Plan amendment coordinator
+
+`PlanAmendmentCoordinator` records a user-authorized request, assesses every
+affected task and active attempt, and classifies active work as `unaffected`,
+`needs_steering`, `must_pause`, or `must_stop`. A pending amendment blocks
+`AgentLaunchRequested`, while unaffected attempts continue unchanged.
+
+Approval binds the expected planning revision plus registry, specification, and
+GitHub effect digests. Application appends one versioned fact, reconciles the
+remote merge revision, and resumes dispatch only when local and remote state
+agree. Stable amendment/effect IDs and expected-version writes make retry and
+replay idempotent. Restart restores both pending amendments and the dispatch
+freeze rather than applying or dropping them implicitly.
 
 ## 6. Codex adapter
 
@@ -602,6 +627,11 @@ DefectResolution
   defect_id, fix_commit, root_cause, resolution_summary,
   regression_command, regression_evidence, resolver_authority, status
 
+PlanAmendment
+  amendment_id, authority, requested_change, affected_tasks,
+  active_work_impacts, specification_revision, registry_revision,
+  github_effects, expected_version, decision, effective_revision, status
+
 TokenUsageObservation
   observation_id, source_version, task_id, role, attempt_id, endpoint,
   model, kind, input_tokens, output_tokens, cached_input_tokens,
@@ -640,6 +670,7 @@ decision:<decision-id>
 usage:<attempt-id>
 session:<attempt-id>
 defect:<repository-id>:<defect-id>
+amendment:<feature-id>:<amendment-id>
 ```
 
 Typical issue sequence:
@@ -690,6 +721,18 @@ DefectObserved → DefectResolutionProposed → DefectResolved
 Each event has a stable correlation identity. Replay derives identical open,
 resolved, per-task, and recurring-lesson projections; duplicate QA reports or
 reconciliation retries do not duplicate defects or evidence.
+
+Plan amendment sequence:
+
+```text
+PlanAmendmentRequested → PlanAmendmentImpactAssessed
+→ PlanAmendmentApproved | PlanAmendmentRejected
+→ PlanAmendmentApplied → AgentDispatchResumed
+```
+
+The request freezes new launches before impact assessment. Application checks
+the expected planning version, and dispatch resumes only after the effective
+commit and remote merge are observed and reconciled.
 
 GitHub mutation sequence:
 
@@ -753,6 +796,9 @@ If the user interface or Coordinator session is unavailable, the notification re
   same-scope evidence to the Coder.
 - **Defect outside task scope:** create a linked issue through controller policy
   rather than hiding it in the current task.
+- **Plan amendment pending:** preserve active attempts according to their impact
+  decisions and reject every new launch request until the amendment is applied
+  and its remote revision reconciled.
 
 ## 14. Security model
 
@@ -760,7 +806,7 @@ tmux organizes processes and worktrees isolate changes; neither is a security sa
 
 ## 15. Observability
 
-The operator can answer which feature and issue are active, which logical role and session generation are running and why, which tmux endpoint and process belong to them, which worktree and SHAs are involved, when progress last changed, which issue-linked commits exist, what QA found, which blocking or resolved defects and regression evidence correlate with the candidate and fix commits, whether the attempt is busy, waiting, unknown, stopped, or failed, why a session continued, rotated, or was replaced, which Coordinator notifications remain unread, and which decisions are still open.
+The operator can answer which feature and issue are active, which logical role and session generation are running and why, which tmux endpoint and process belong to them, which worktree and SHAs are involved, when progress last changed, which issue-linked commits exist, what QA found, which blocking or resolved defects and regression evidence correlate with the candidate and fix commits, which plan amendment authority and change are pending or effective, how active work was classified, which revision applies, whether dispatch is frozen, whether the attempt is busy, waiting, unknown, stopped, or failed, why a session continued, rotated, or was replaced, which Coordinator notifications remain unread, and which decisions are still open.
 
 ## 16. Proposed source tree
 
@@ -800,6 +846,7 @@ milburn/
 │       │   ├── usage.py
 │       │   ├── sessions.py
 │       │   ├── defects.py
+│       │   ├── amendments.py
 │       │   ├── states.py
 │       │   ├── policies.py
 │       │   └── errors.py
@@ -813,6 +860,7 @@ milburn/
 │       │   ├── session_policy.py
 │       │   ├── session_replacement.py
 │       │   ├── feedback.py
+│       │   ├── plan_amendments.py
 │       │   ├── supervisor.py
 │       │   └── reconciliation.py
 │       ├── agents/
@@ -851,6 +899,7 @@ milburn/
 │       │   ├── usage_projections.py
 │       │   ├── session_projections.py
 │       │   ├── defect_projections.py
+│       │   ├── amendment_projections.py
 │       │   └── migrations/
 │       ├── validation/
 │       │   ├── coder_protocol.py
@@ -859,6 +908,7 @@ milburn/
 │       │   ├── handoff_manifest.py
 │       │   ├── session_replacement.py
 │       │   ├── defect_policy.py
+│       │   ├── amendment_policy.py
 │       │   └── skill_validation.py
 │       └── observability/
 │           ├── logging.py
@@ -927,14 +977,14 @@ Unit tests cover one policy or state transition at a time:
 
 | Package | Required coverage |
 |---|---|
-| `domain` | Event versions, serialization, command validation, legal and illegal states, usage and defect observation invariants |
-| `orchestration` | Scheduling, dependencies, decision correlation, notification cursors, handoff validation, fenced session replacement, defect feedback and completion gates, reconciliation choices |
+| `domain` | Event versions, serialization, command validation, legal and illegal states, usage, defect, and plan-amendment invariants |
+| `orchestration` | Scheduling, dependencies, decision correlation, notification cursors, handoff validation, fenced session replacement, defect feedback, plan-amendment dispatch gates, reconciliation choices |
 | `agents` | Brief assembly, result parsing, role/skill binding, digest recording, Codex-reported usage and session-observation conversion |
 | `runtime` | Endpoint parsing, generation protection, safe paths, inbox sequencing |
 | `integrations.mcp` | Tool discovery, argument mapping, timeout/error classification, effect states |
 | `integrations.github` | Issue contracts, idempotency markers, read-after-write, uncertain-effect reconciliation |
-| `persistence` | Expected sequence, replay determinism, migrations, concurrent append rejection, idempotent usage, session, and defect projections |
-| `validation` | Progress parsing, commit markers, candidate SHA, QA and regression evidence, defect completion policy, skill structure, handoff freshness, generation fencing |
+| `persistence` | Expected sequence, replay determinism, migrations, concurrent append rejection, idempotent usage, session, defect, and amendment projections |
+| `validation` | Progress parsing, commit markers, candidate SHA, QA and regression evidence, defect completion policy, amendment expected-version policy, skill structure, handoff freshness, generation fencing |
 
 Core controller, state-machine, event-store, effect-journal, and validation branches target at least 90% branch coverage. Coverage is a diagnostic; required behavioral invariants remain the release gate.
 
@@ -987,6 +1037,8 @@ after generation fencing, before replacement launch
 after replacement launch, before uncertain-effect reconciliation completes
 after defect observation, before resolution
 after defect resolution, before regression evidence
+after amendment request, before impact assessment
+after amendment merge, before dispatch resumption
 ```
 
 Restart must not duplicate issues, launches, user decisions, unsafe steering, or completion. It must not reuse a possibly live worktree or discard an uncertain external effect.
@@ -1028,7 +1080,8 @@ Every commit runs unit tests, static analysis, formatting checks, skill structur
 16. Build Tester and QA policy.
 17. Add role-specific fenced session replacement policy.
 18. Add durable defect resolution, regression evidence, replayable feedback, and completion gates.
-19. Add recovery drills, fault injection, CI gates, live evaluations, and operator views.
+19. Add durable plan amendments, expected-version application, replay, and dispatch fencing.
+20. Add recovery drills, fault injection, CI gates, live evaluations, and operator views.
 
 ## 19. Definition of architectural completion
 

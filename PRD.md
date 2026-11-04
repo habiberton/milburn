@@ -60,6 +60,7 @@ Milburn v1 must:
 20. Persist Codex-reported token usage as replayable telemetry with per-attempt, task, role, and workflow summaries.
 21. Preserve logical agent identity across fenced Codex session generations by using validated durable handoff manifests rather than private transcripts.
 22. Persist concise defect observations, resolutions, regression evidence, and recurring lessons without storing private reasoning or unbounded logs.
+23. Freeze new agent dispatch while a user-authorized plan amendment is pending, without disrupting active work classified as unaffected.
 
 ## 5. Non-goals
 
@@ -336,6 +337,9 @@ SessionObservationRecorded SessionCompactionObserved SessionGenerationStarted
 HandoffManifestValidated   SessionReplacementRequested SessionReplacementCompleted
 DefectObserved             DefectResolutionProposed DefectResolved
 RegressionEvidenceRecorded
+PlanAmendmentRequested     PlanAmendmentImpactAssessed
+PlanAmendmentApproved      PlanAmendmentRejected
+PlanAmendmentApplied       AgentDispatchResumed
 PlanReceived                ArchitecturePackageReceived
 GitHubIssueCreated          GitHubIssueReady
 GitHubEffectRequested       GitHubEffectObserved    GitHubEffectReconciled
@@ -384,6 +388,23 @@ acceptance-criteria references, worktree, branch, base and head SHAs, progress,
 completed and remaining work, exact tests, open decisions, inbox/outbox
 sequences, uncertain effects, and brief/rules digests. Replacement policy
 validates that durable evidence before changing generations.
+
+### 12.3 Plan amendments
+
+A user-authorized change to scope, policy, specifications, tasks, dependencies,
+waves, acceptance criteria, or dispatch rules becomes a durable pending plan
+amendment. While one is pending, the controller accepts no new agent-launch
+effect. Each active attempt is explicitly classified as unaffected, needing
+steering, required to pause, or required to stop; unaffected attempts retain
+their task ownership and session generation.
+
+The amendment records its authority, requested change, affected work, impact
+decisions, registry and specification revisions, GitHub effects, and effective
+revision. Application uses expected-version concurrency and stable identities,
+so retries and replay are idempotent. Restart preserves pending amendments and
+the dispatch freeze. Dispatch resumes only after the approved amendment is
+committed, remotely merged, and reconciled; no amendment is silently applied or
+dropped.
 
 ## 13. Requirements
 
@@ -477,6 +498,7 @@ Version 1 is accepted when:
 23. A logical agent survives fenced replacement sessions through a validated transcript-free handoff manifest; stale manifests, late-generation messages, and unresolved uncertain effects are rejected.
 24. Role-specific policy keeps a Coder session for its task attempt by default, ends Planner and Architect at approved artifacts, uses fresh Router calls, and starts every Tester fresh at the exact candidate SHA.
 25. Blocking defects prevent completion until resolved with regression evidence; replay and duplicate delivery produce deterministic concise feedback views, while separately scoped defects become linked issues.
+26. A mid-run user amendment freezes new launches, preserves unaffected active attempts, applies exactly once at an expected revision, survives restart, and exposes its authority, impact, effective revision, and dispatch status.
 
 ## 16. Delivery milestones
 
