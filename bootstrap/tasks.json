@@ -84,23 +84,29 @@
       "id": "MB-001",
       "wave": 1,
       "title": "Create the package, CLI, configuration, and test foundation",
-      "status": "ready",
+      "status": "qa",
       "github": {
         "issue_number": 1,
         "issue_url": "https://github.com/habiberton/milburn/issues/1",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:ready",
-        "last_observed_assignees": []
+        "last_observed_status_label": "milburn:qa",
+        "last_observed_assignees": ["habiberton"]
       },
       "dependencies": [],
       "parallel_group": null,
-      "owner": null,
-      "branch": null,
-      "worktree": null,
-      "base_sha": null,
-      "candidate_sha": null,
+      "owner": "builder-MB-001-a01",
+      "branch": "bootstrap/builder/MB-001/a01-package-foundation",
+      "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-001-a01",
+      "base_sha": "a8220daf6cdee16414210b4653f8f1fffdfc6216",
+      "candidate_sha": "79bf6e4153d0fbc99a90dd62fbb651d122114b4d",
+      "integration_branch": "bootstrap/coordinator/MB-001/a01-integration",
+      "pull_request": {
+        "number": 18,
+        "url": "https://github.com/habiberton/milburn/pull/18",
+        "merge_commit_sha": null
+      },
       "progress_path": "bootstrap/progress/tasks/MB-001.md",
       "owned_paths": [
         "pyproject.toml",
@@ -134,14 +140,14 @@
         "assignment_source": "github",
         "last_observed_state": "open",
         "last_observed_status_label": "milburn:blocked",
-        "last_observed_assignees": []
+        "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-001"],
       "parallel_group": null,
-      "owner": null,
-      "branch": null,
-      "worktree": null,
-      "base_sha": null,
+      "owner": "builder-MB-002-a01",
+      "branch": "bootstrap/builder/MB-002/a01-domain-contracts",
+      "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-002-a01",
+      "base_sha": "b50ae6f6caffe4629e095d9dafb52b2651aba34c",
       "candidate_sha": null,
       "progress_path": "bootstrap/progress/tasks/MB-002.md",
       "owned_paths": [
