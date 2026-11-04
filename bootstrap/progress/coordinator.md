@@ -276,6 +276,18 @@ Wave 2 — Independent boundaries; reconciling newly ready tasks
   checkout to the exact merge SHA.
 - Post-fast-forward verification passed again: 71 orchestration tests, 177
   total smoke tests, and 19 valid task records.
+- Closed issue #4 now carries `milburn:done`. Issues #5 through #9 were
+  reconciled from `milburn:blocked` to `milburn:ready` after MB-004 completed;
+  MB-017, MB-018, and MB-019 correctly remain blocked by unfinished
+  dependencies.
+- The Wave 2 parallelization gate passed for MB-005 and MB-006: both depend
+  only on completed MB-004, their runtime and adapter path sets do not overlap,
+  neither requires the other's unfinished implementation, and each has
+  independent acceptance tests. The coordinator is beginning with two workers.
+- Issues #5 and #6 are assigned to `habiberton` and labeled
+  `milburn:in-progress`. Builder assignments `MB-005/a01` and `MB-006/a01`
+  are prepared; their progress records will be included in the exact branch
+  base checkpoint before worktrees are created.
 
 ## Verification
 
@@ -294,6 +306,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Apply the final `milburn:done` label to closed issue #4, reconcile Wave 2
-dependencies and GitHub labels, then prepare and dispatch the first two
-independent ready boundary tasks.
+Commit the Wave 2 assignment checkpoint, create and configure MB-005/a01 and
+MB-006/a01 worktrees from that exact base, record the resolved bases, then
+dispatch both bounded workers.
