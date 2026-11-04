@@ -76,7 +76,10 @@ class SessionReplacementPolicy:
             if role is Role.CLASSIFIER_ROUTER:
                 return ReplacementDecision(True, "router calls are short and fresh")
             if role is Role.TESTER:
-                if evidence.candidate_sha is None:
+                if (
+                    not isinstance(evidence.candidate_sha, str)
+                    or not evidence.candidate_sha.strip()
+                ):
                     return ReplacementDecision(
                         False, "tester fresh start requires an exact candidate SHA"
                     )
@@ -128,6 +131,14 @@ class SessionHandoffCoordinator:
         if state.task_id != expectation.task_id or state.attempt_id != expectation.attempt_id:
             raise ReplacementPolicyError("replacement expectation changed task ownership")
         validated = self._validator.validate(manifest, expectation)
+        if state.role is Role.TESTER and (
+            not isinstance(evidence.candidate_sha, str)
+            or not evidence.candidate_sha.strip()
+            or evidence.candidate_sha != validated.head_sha
+        ):
+            raise ReplacementPolicyError(
+                "tester replacement candidate SHA must exactly match the validated handoff head"
+            )
         decision = self._policy.decide(state.role, evidence)
         if not decision.replace:
             return ReplacementPlan(decision, ())

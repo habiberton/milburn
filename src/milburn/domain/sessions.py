@@ -158,12 +158,13 @@ class SessionObservation(VersionedModel):
             raise InvalidEnvelopeError("context usage cannot exceed the reported window")
 
     @property
-    def semantic_key(self) -> tuple[str, str, str, int, str]:
+    def semantic_key(self) -> tuple[str, str, str, int, SessionObservationKind, str]:
         return (
             self.task_id,
             self.role.value,
             self.attempt_id,
             self.generation,
+            self.kind,
             self.source_version,
         )
 
@@ -267,6 +268,9 @@ class HandoffManifest(VersionedModel):
         effect_ids = [effect.effect_id for effect in self.uncertain_effects]
         if len(effect_ids) != len(set(effect_ids)):
             raise InvalidEnvelopeError("uncertain effect IDs must be unique")
+        test_commands = [evidence.command for evidence in self.test_evidence]
+        if len(test_commands) != len(set(test_commands)):
+            raise InvalidEnvelopeError("test evidence commands must be unique")
 
 
 @dataclass(frozen=True, slots=True)

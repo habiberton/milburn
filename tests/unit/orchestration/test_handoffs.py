@@ -3,10 +3,13 @@
 from datetime import UTC, datetime, timedelta
 from itertools import count
 
+import pytest
+
 from milburn.domain.sessions import HandoffManifest, SessionLifecycleEvent, SessionLifecycleKind
 from milburn.domain.states import Role
 from milburn.orchestration.handoffs import (
     ReplacementEvidence,
+    ReplacementPolicyError,
     ReplacementTrigger,
     SessionHandoffCoordinator,
     SessionReplacementPolicy,
@@ -146,3 +149,36 @@ def test_degraded_context_can_replace_without_using_token_budget_policy() -> Non
     )
     assert decision.replace
     assert decision.reason == "degraded_context"
+
+
+@pytest.mark.parametrize("candidate_sha", (None, "", "wrongsha"))
+def test_tester_replacement_requires_exact_validated_candidate_sha(
+    candidate_sha: str | None,
+) -> None:
+    state = project_session_events((start(Role.TESTER),))
+    assert state is not None
+    with pytest.raises(ReplacementPolicyError, match="exactly match"):
+        coordinator(Role.TESTER).plan_replacement(
+            state=state,
+            manifest=manifest(Role.TESTER),
+            expectation=expectation(Role.TESTER),
+            evidence=ReplacementEvidence(
+                ReplacementTrigger.SEMANTIC_BOUNDARY,
+                candidate_sha=candidate_sha,
+            ),
+        )
+
+
+def test_tester_replacement_accepts_manifest_head_exactly() -> None:
+    state = project_session_events((start(Role.TESTER),))
+    assert state is not None
+    plan = coordinator(Role.TESTER).plan_replacement(
+        state=state,
+        manifest=manifest(Role.TESTER),
+        expectation=expectation(Role.TESTER),
+        evidence=ReplacementEvidence(
+            ReplacementTrigger.SEMANTIC_BOUNDARY,
+            candidate_sha="head456",
+        ),
+    )
+    assert plan.decision.replace

@@ -54,7 +54,7 @@ class CodexSessionObservationConverter:
         observed_at: datetime,
         semantic_payload: Mapping[str, object] | None,
         unavailable_kind: SessionObservationKind | None = None,
-        unavailable_source_version: str = "unavailable",
+        unavailable_source_version: str | None = None,
     ) -> SessionObservation:
         if not isinstance(correlation, SessionCorrelation):
             raise SemanticSessionObservationError("session correlation is required")
@@ -73,7 +73,10 @@ class CodexSessionObservationConverter:
                 session_id=correlation.session_id,
                 kind=unavailable_kind,
                 availability=ObservationAvailability.UNAVAILABLE,
-                source_version=unavailable_source_version,
+                source_version=(
+                    unavailable_source_version
+                    or f"unavailable-{unavailable_kind.value}"
+                ),
                 observed_at=observed_at,
                 finality=ObservationFinality.FINAL,
             )

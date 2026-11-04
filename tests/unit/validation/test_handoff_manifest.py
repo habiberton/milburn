@@ -145,3 +145,24 @@ def test_rejects_missing_or_failed_required_test_evidence() -> None:
             ),
             expectation(required_test_commands=(command,)),
         )
+
+
+def test_rejects_duplicate_test_commands_even_when_results_contradict() -> None:
+    command = "pytest tests/unit"
+    with pytest.raises(ValueError, match="test evidence commands must be unique"):
+        manifest(
+            test_evidence=(
+                HandoffTestEvidence(
+                    command=command,
+                    result="1 failed",
+                    passed=False,
+                    revision="head456",
+                ),
+                HandoffTestEvidence(
+                    command=command,
+                    result="12 passed",
+                    passed=True,
+                    revision="head456",
+                ),
+            )
+        )

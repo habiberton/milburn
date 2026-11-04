@@ -73,6 +73,28 @@ def test_missing_capability_is_explicitly_unavailable_without_fabricated_values(
     assert observed.context_window_tokens is None
 
 
+def test_unsupported_compaction_and_context_have_distinct_stable_source_versions() -> None:
+    converter = CodexSessionObservationConverter()
+    compaction = converter.observe(
+        observation_id="compaction-unavailable",
+        correlation=CORRELATION,
+        observed_at=NOW,
+        semantic_payload=None,
+        unavailable_kind=SessionObservationKind.COMPACTION,
+    )
+    context = converter.observe(
+        observation_id="context-unavailable",
+        correlation=CORRELATION,
+        observed_at=NOW,
+        semantic_payload=None,
+        unavailable_kind=SessionObservationKind.CONTEXT_USAGE,
+    )
+
+    assert compaction.source_version == "unavailable-compaction"
+    assert context.source_version == "unavailable-context_usage"
+    assert compaction.semantic_key != context.semantic_key
+
+
 def test_rejects_terminal_prose_unknown_private_fields_and_invalid_counts() -> None:
     converter = CodexSessionObservationConverter()
     with pytest.raises(SemanticSessionObservationError, match="structured"):

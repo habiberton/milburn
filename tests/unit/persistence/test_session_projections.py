@@ -148,6 +148,24 @@ def test_same_source_version_redelivery_is_idempotent_but_conflicts_are_rejected
         project_session_events((start, first, conflicting))
 
 
+@pytest.mark.parametrize("identity_field", ("endpoint", "session_id"))
+def test_same_source_redelivery_with_changed_identity_conflicts_before_deduplication(
+    identity_field: str,
+) -> None:
+    first = observation()
+    changed_identity = SessionObservation.from_dict(
+        {
+            **first.to_dict(),
+            "observation_id": "changed-identity",
+            identity_field: f"stale-{identity_field}",
+        }
+    )
+    with pytest.raises(SessionProjectionError, match="identity does not match"):
+        project_session_events(
+            (event(0, SessionLifecycleKind.GENERATION_STARTED), first, changed_identity)
+        )
+
+
 def test_fencing_is_required_before_next_generation_and_blocks_late_observation() -> None:
     events = (
         event(0, SessionLifecycleKind.GENERATION_STARTED),
@@ -200,3 +218,62 @@ def test_semantic_identity_enriches_generation_and_rejects_identity_drift() -> N
     )
     with pytest.raises(SessionProjectionError, match="identity does not match"):
         project_session_events((event(0, SessionLifecycleKind.GENERATION_STARTED), drift))
+
+
+@pytest.mark.parametrize(
+    ("kind", "sequence", "identity_field"),
+    (
+        (SessionLifecycleKind.HANDOFF_VALIDATED, 1, "endpoint"),
+        (SessionLifecycleKind.HANDOFF_VALIDATED, 1, "session_id"),
+        (SessionLifecycleKind.REPLACEMENT_REQUESTED, 2, "endpoint"),
+        (SessionLifecycleKind.REPLACEMENT_REQUESTED, 2, "session_id"),
+        (SessionLifecycleKind.GENERATION_FENCED, 3, "endpoint"),
+        (SessionLifecycleKind.GENERATION_FENCED, 3, "session_id"),
+    ),
+)
+def test_non_start_lifecycle_events_reject_stale_endpoint_or_session(
+    kind: SessionLifecycleKind, sequence: int, identity_field: str
+) -> None:
+    valid = [
+        event(0, SessionLifecycleKind.GENERATION_STARTED),
+        event(1, SessionLifecycleKind.HANDOFF_VALIDATED, manifest=checkpoint()),
+        event(2, SessionLifecycleKind.REPLACEMENT_REQUESTED),
+        event(3, SessionLifecycleKind.GENERATION_FENCED),
+    ]
+    target = valid[sequence]
+    stale = SessionLifecycleEvent.from_dict(
+        {**target.to_dict(), identity_field: f"stale-{identity_field}"}
+    )
+    with pytest.raises(SessionProjectionError, match="identity does not match"):
+        project_session_events((*valid[:sequence], stale))
+
+
+def test_unavailable_observation_kinds_coexist_and_redeliver_deterministically() -> None:
+    start = event(0, SessionLifecycleKind.GENERATION_STARTED)
+    unavailable = tuple(
+        SessionObservation(
+            observation_id=f"unavailable-{kind.value}",
+            task_id="MB-018",
+            role=Role.CODER,
+            attempt_id="a01",
+            generation=0,
+            endpoint="pane-0",
+            session_id="session-0",
+            kind=kind,
+            availability=ObservationAvailability.UNAVAILABLE,
+            source_version="unavailable",
+            observed_at=NOW,
+            finality=ObservationFinality.FINAL,
+        )
+        for kind in (
+            SessionObservationKind.COMPACTION,
+            SessionObservationKind.CONTEXT_USAGE,
+        )
+    )
+    expected = project_session_events((start, *unavailable))
+    replayed = project_session_events(
+        (start, unavailable[0], unavailable[0], unavailable[1], unavailable[1])
+    )
+    assert replayed == expected
+    assert expected is not None
+    assert len(expected.observations) == 2

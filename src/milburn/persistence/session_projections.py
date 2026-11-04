@@ -7,13 +7,13 @@ from typing import Iterable
 
 from milburn.domain.sessions import (
     HandoffManifest,
+    ObservationAvailability,
     SessionGeneration,
     SessionGenerationStatus,
     SessionLifecycleEvent,
     SessionLifecycleKind,
     SessionObservation,
     SessionObservationKind,
-    ObservationAvailability,
 )
 from milburn.domain.states import Role
 
@@ -47,10 +47,20 @@ def project_session_events(
     state: SessionProjection | None = None
     lifecycle_ids: dict[str, SessionLifecycleEvent] = {}
     observation_ids: dict[str, SessionObservation] = {}
-    observation_versions: dict[tuple[str, str, str, int, str], SessionObservation] = {}
+    observation_versions: dict[
+        tuple[str, str, str, int, SessionObservationKind, str],
+        SessionObservation,
+    ] = {}
 
     for event in events:
         if isinstance(event, SessionObservation):
+            if state is None:
+                raise SessionProjectionError("a generation must start before observations")
+            _require_correlation(state, event.task_id, event.role, event.attempt_id)
+            if event.generation >= len(state.generations):
+                raise SessionProjectionError("observation targets an unknown generation")
+            generation = state.generations[event.generation]
+            _require_observation_identity(generation, event)
             previous = observation_ids.get(event.observation_id)
             if previous is not None:
                 if previous != event:
@@ -66,26 +76,8 @@ def project_session_events(
                     )
                 observation_ids[event.observation_id] = event
                 continue
-            if state is None:
-                raise SessionProjectionError("a generation must start before observations")
-            _require_correlation(state, event.task_id, event.role, event.attempt_id)
-            if event.generation >= len(state.generations):
-                raise SessionProjectionError("observation targets an unknown generation")
-            generation = state.generations[event.generation]
             if generation.status is not SessionGenerationStatus.ACTIVE:
                 raise SessionProjectionError("a fenced generation cannot accept observations")
-            if (
-                generation.endpoint is not None
-                and event.endpoint is not None
-                and generation.endpoint != event.endpoint
-            ) or (
-                generation.session_id is not None
-                and event.session_id is not None
-                and generation.session_id != event.session_id
-            ):
-                raise SessionProjectionError(
-                    "observation identity does not match its session generation"
-                )
             observation_ids[event.observation_id] = event
             observation_versions[event.semantic_key] = event
             generations = state.generations
@@ -193,6 +185,7 @@ def _apply_lifecycle(
     if state is None:
         raise SessionProjectionError("session stream must begin with generation start")
     _require_correlation(state, event.task_id, event.role, event.attempt_id)
+    _require_lifecycle_identity(state, event)
 
     if event.kind is SessionLifecycleKind.HANDOFF_VALIDATED:
         if event.generation != state.current_generation.generation:
@@ -252,11 +245,45 @@ def _require_correlation(
         raise SessionProjectionError("session event changed logical attempt correlation")
 
 
+def _require_observation_identity(
+    generation: SessionGeneration, observation: SessionObservation
+) -> None:
+    if (
+        generation.endpoint is not None
+        and observation.endpoint is not None
+        and generation.endpoint != observation.endpoint
+    ) or (
+        generation.session_id is not None
+        and observation.session_id is not None
+        and generation.session_id != observation.session_id
+    ):
+        raise SessionProjectionError(
+            "observation identity does not match its session generation"
+        )
+
+
+def _require_lifecycle_identity(
+    state: SessionProjection, event: SessionLifecycleEvent
+) -> None:
+    generation = state.current_generation
+    if event.generation != generation.generation:
+        raise SessionProjectionError("lifecycle event targets a stale generation")
+    if (event.endpoint, event.session_id) != (
+        generation.endpoint,
+        generation.session_id,
+    ):
+        raise SessionProjectionError(
+            "lifecycle event identity does not match the live session generation"
+        )
+
+
 def _observation_signature(observation: SessionObservation) -> tuple[object, ...]:
     return (
         observation.kind,
         observation.availability,
         observation.finality,
+        observation.endpoint,
+        observation.session_id,
         observation.compaction_count,
         observation.context_used_tokens,
         observation.context_window_tokens,
