@@ -667,6 +667,10 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   carries `milburn:done`; issue #22 and task MB-018 are ready. MB-018 and the
   already-ready MB-008 have disjoint owned paths and are selected as the next
   preferred two-worker pair; MB-009 remains ready and undispatched.
+- Issues #22 and #8 are assigned to `habiberton` and moved to
+  `milburn:in-progress` for MB-018/a01 and MB-008/a01. Their exact disjoint
+  paths, worktrees, required tests, and two-pass review modes are recorded. No
+  third implementation worker is dispatched.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
