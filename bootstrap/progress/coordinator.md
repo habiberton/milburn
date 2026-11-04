@@ -330,7 +330,9 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   The same worker is correcting it locally with regression evidence.
 - Issue #24 is assigned and `milburn:in-progress`; MB-020/a01 is prepared on
   its own branch/worktree path from planning checkpoint
-  `153f1105d279c2bd03f10b532c624f62fbe41941`.
+  `09636fd9f0993493091c515ee9e29c58d5d0f81f`. The worktree is
+  `/Users/habiberton/projects/milburn-worktrees/MB-020-a01` with identity
+  `Milburn Builder [MB-020/a01]`.
 - MB-020 will use its own coordinator branch and PR. Its implementation will
   backfill only evidence already recorded for MB-001 through MB-004 and will
   not be mixed into the already merged MB-004 history.
@@ -352,6 +354,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the MB-020 assignment checkpoint, create/configure its worktree, and
-dispatch the bounded feedback worker. Continue MB-005 correction and MB-006
+Commit the resolved MB-020 base and dispatch the bounded feedback worker.
+Continue MB-005 correction and MB-006
 verification/review; do not launch MB-007 through MB-009 before MB-020 is done.

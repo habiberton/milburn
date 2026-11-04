@@ -287,7 +287,7 @@
       "owner": "builder-MB-020-a01",
       "branch": "bootstrap/builder/MB-020/a01-feedback-briefs",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-020-a01",
-      "base_sha": "153f1105d279c2bd03f10b532c624f62fbe41941",
+      "base_sha": "09636fd9f0993493091c515ee9e29c58d5d0f81f",
       "candidate_sha": null,
       "progress_path": "bootstrap/progress/tasks/MB-020.md",
       "owned_paths": [
