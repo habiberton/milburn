@@ -23,8 +23,12 @@ def main() -> int:
     if not isinstance(payload, dict) or set(payload) != REQUIRED:
         print("handoff fields do not match the public contract")
         return 1
-    if any(value in (None, "", []) for value in payload.values()):
+    text_fields = {"task_id", "attempt_id", "worktree", "branch", "base_sha", "head_sha", "progress"}
+    if any(not isinstance(payload[field], str) or not payload[field].strip() for field in text_fields):
         print("handoff fields must be explicit and non-empty")
+        return 1
+    if any(not isinstance(payload[field], list) or not payload[field] for field in ("tests", "remaining")):
+        print("handoff tests and remaining work must be non-empty lists")
         return 1
     return 0
 

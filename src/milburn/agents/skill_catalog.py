@@ -65,6 +65,12 @@ class SkillCatalog:
         """Return bindings or explicit failures; never silently omit a requirement."""
 
         required = self.required_skills(role)
+        if not isinstance(expected_bindings, tuple) or any(
+            not isinstance(binding, SkillBinding) for binding in expected_bindings
+        ):
+            raise SkillCatalogConfigurationError(
+                "expected_bindings must be an immutable tuple of SkillBinding values"
+            )
         expected_by_name = {binding.skill_name: binding for binding in expected_bindings}
         if len(expected_by_name) != len(expected_bindings):
             raise SkillCatalogConfigurationError("expected bindings contain duplicates")

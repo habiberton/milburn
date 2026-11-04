@@ -95,6 +95,11 @@ def test_role_configuration_is_strict_and_complete(tmp_path: Path) -> None:
         SkillCatalog(ROOT / ".agents/skills", path, clock=lambda: NOW)
 
 
+def test_expected_bindings_must_be_immutable_validated_values() -> None:
+    with pytest.raises(SkillCatalogConfigurationError, match="immutable tuple"):
+        catalog().resolve_launch(Role.PLANNER, expected_bindings=[])  # type: ignore[arg-type]
+
+
 def test_role_rules_are_separate_and_contain_mandatory_authority_limits() -> None:
     rules = RoleRuleCatalog(
         ROOT / "src/milburn/agents/role_rules", ROOT / "config/policies.yaml"

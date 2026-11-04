@@ -51,6 +51,19 @@ def test_architecture_validator_accepts_reviewable_markdown(tmp_path: Path) -> N
     assert completed.returncode == 0, completed.stdout + completed.stderr
 
 
+def test_architecture_validator_rejects_unreviewable_markdown(tmp_path: Path) -> None:
+    artifact = tmp_path / "PRD.md"
+    artifact.write_text("too short", encoding="utf-8")
+    script = SKILLS / "milburn-architecture/scripts/validate-specs.py"
+
+    completed = subprocess.run(
+        [sys.executable, str(script), str(artifact)], capture_output=True, text=True
+    )
+
+    assert completed.returncode == 1
+    assert "missing top-level heading" in completed.stdout
+
+
 def test_coder_handoff_validator_rejects_missing_public_evidence(tmp_path: Path) -> None:
     manifest = tmp_path / "handoff.json"
     manifest.write_text(json.dumps({"task_id": "MB-007"}), encoding="utf-8")
@@ -62,6 +75,33 @@ def test_coder_handoff_validator_rejects_missing_public_evidence(tmp_path: Path)
 
     assert completed.returncode == 1
     assert "public contract" in completed.stdout
+
+
+def test_coder_handoff_validator_accepts_complete_public_evidence(tmp_path: Path) -> None:
+    manifest = tmp_path / "handoff.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "task_id": "MB-007",
+                "attempt_id": "a01",
+                "worktree": "/tmp/worktree",
+                "branch": "bootstrap/builder/MB-007/a01",
+                "base_sha": "abcdef0",
+                "head_sha": "abcdef1",
+                "progress": "bootstrap/progress/tasks/MB-007.md",
+                "tests": ["20 passed"],
+                "remaining": ["coordinator review"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    script = SKILLS / "milburn-long-running-coder/scripts/verify-handoff.py"
+
+    completed = subprocess.run(
+        [sys.executable, str(script), str(manifest)], capture_output=True, text=True
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
 
 
 def test_qa_validator_prevents_pass_with_blocking_finding(tmp_path: Path) -> None:
@@ -89,3 +129,29 @@ def test_qa_validator_prevents_pass_with_blocking_finding(tmp_path: Path) -> Non
 
     assert completed.returncode == 1
     assert "blocking finding" in completed.stdout
+
+
+def test_qa_validator_accepts_complete_nonblocking_report(tmp_path: Path) -> None:
+    report = tmp_path / "qa.json"
+    report.write_text(
+        json.dumps(
+            {
+                "task_id": "MB-007",
+                "attempt_id": "a01",
+                "candidate_sha": "abcdef0",
+                "acceptance": ["all mapped"],
+                "tests": ["passed"],
+                "findings": [],
+                "risks": [],
+                "outcome": "passed",
+            }
+        ),
+        encoding="utf-8",
+    )
+    script = SKILLS / "milburn-qa/scripts/validate-qa-report.py"
+
+    completed = subprocess.run(
+        [sys.executable, str(script), str(report)], capture_output=True, text=True
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
