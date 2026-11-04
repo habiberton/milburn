@@ -654,6 +654,88 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   `https://github.com/habiberton/milburn/pull/33`. It includes `Closes #21`,
   worker/integration SHAs, acceptance/tests, both review histories, risks, and
   MB-017-F001/F002/F003 summaries.
+- PR #33 merged through GitHub's two-parent merge method as
+  `c90413b6d95a54e3d8f3a3913514b70938eecf9f`. Remote read-back verified
+  `origin/main` contains PR tip `6d01b23`, candidate `cb0604a`, and integration
+  `4025275`; primary `main` fast-forwarded to the exact remote SHA.
+- Post-fast-forward MB-017 verification passed: semantic amendment preflight
+  clear, 10 feedback briefs, 26 focused tests, and 338 smoke tests with 3
+  protected skips and 3 subtests. Issue #21 closed through `Closes #21`; after
+  this completion record commits, the root may apply `milburn:done` and mark
+  MB-018 ready.
+- Local MB-017 completion record `5516553` committed. Closed issue #21 now
+  carries `milburn:done`; issue #22 and task MB-018 are ready. MB-018 and the
+  already-ready MB-008 have disjoint owned paths and are selected as the next
+  preferred two-worker pair; MB-009 remains ready and undispatched.
+- Issues #22 and #8 are assigned to `habiberton` and moved to
+  `milburn:in-progress` for MB-018/a01 and MB-008/a01. Their exact disjoint
+  paths, worktrees, required tests, and two-pass review modes are recorded. No
+  third implementation worker is dispatched.
+- MB-018/a01 returned candidate
+  `e9a73b2240f8cb7baa91b8096e9d5f85139d9042` with two verified attributed
+  commits from exact base `c88f465`. The diff stays within recorded session,
+  handoff, projection, validation, fixture, test, and task-progress paths.
+  Coordinator verification passed 19 focused tests, smoke (357 passed, 3
+  protected skips, 3 subtests), and diff checks. Both reviews are in progress
+  while MB-008 continues.
+- MB-008/a01 returned candidate
+  `47107bf910d47d72ac9b998b2861ee8f75ab2df4` with one verified attributed
+  commit from exact base `c88f465`. The diff stays within recorded GitHub/MCP,
+  fake, contract, unit-test, and task-progress paths. Coordinator verification
+  passed 15 focused unit tests, 1 local contract, smoke (354 passed, 3
+  protected skips, 3 subtests), and diff checks. Its two-pass review waits only
+  for the active MB-018 review slots.
+- Initial MB-018 reviews blocked the candidate on four contract gaps: Tester
+  replacement did not require the exact manifest head SHA; duplicate test
+  commands could hide contradictory evidence; replay could process stale
+  endpoint/session lifecycle facts and deduplicate identity conflicts; and
+  unsupported context/compaction observations shared one source version while
+  semantic identity omitted kind. The same worker is adding strict identity,
+  evidence, Tester SHA, and observation-kind regressions plus feedback
+  proposals. Both fresh review axes are required afterward.
+- Initial MB-008 reviews blocked the candidate on five external-effect gaps:
+  label/close reconciliation ignored requested postconditions; post-call
+  protocol failures stayed `CALL_STARTED`; reused markers were not bound to the
+  semantic request; tool discovery did not prove required properties/types;
+  and generation fences keyed attempt without task. The same worker is adding
+  fail-closed schema, task-scoped fencing, semantic marker/postcondition,
+  uncertainty recovery regressions and feedback proposals. Both fresh review
+  axes are required afterward.
+- Corrected MB-018 candidate
+  `3e621bd3b373e4b47d772569d4eb1e5134f909c8` contains five verified attributed
+  commits. Coordinator verification passed 34 focused tests, smoke (372 passed,
+  3 protected skips, 3 subtests), and diff checks. Both fresh review axes are
+  in progress.
+- Fresh MB-018 Specification review passed all four original fixes, but fresh
+  Standards review found a stale-checkpoint replay hole: a generation-0
+  checkpoint could authorize replacement of current generation 1. The same
+  worker is enforcing current-generation checkpoint correlation, adding a
+  regression and MB-018-F005. Both fresh review axes will restart.
+- Final corrected MB-018 candidate
+  `ae892d925a86082b70f1b960b21e2cc9deac8e99` contains seven verified attributed
+  commits. Coordinator verification passed 36 focused tests, smoke (374 passed,
+  3 protected skips, 3 subtests), and diff checks. Both second fresh reviews
+  are in progress.
+- Both second fresh MB-018 reviews passed with no actionable findings. The root
+  non-squash merged all seven worker commits on the coordinator branch as
+  two-parent integration `3ff4eda0d9cd775b7c7664ce11056d6dba2df3dc` and
+  finalized MB-018-F001-F005 from retained evidence. Integrated verification
+  and the one-ticket PR remain.
+- Final integrated MB-018 Standards review passed. Specification found only
+  contradictory task-progress evidence: a mistyped nonexistent fix SHA and fix
+  commits used as candidate IDs. The coordinator reconciled those proposals to
+  the verified full SHAs, originating candidates, and integration commit; both
+  final axes must confirm the durable record before PR publication.
+- Both final integrated MB-018 axes passed at `93865d9` with no actionable
+  findings. Feedback validation reports 11 briefs, semantic amendment preflight
+  is clear, and the branch remains at 36 focused/374 smoke tests with 3
+  protected skips and 3 subtests. It is ready for the single task PR.
+- The coordinator pushed integration branch
+  `bootstrap/coordinator/MB-018/a01-integration` at `695638a` and opened
+  evidence-bearing PR #34: `https://github.com/habiberton/milburn/pull/34`.
+  The PR records the seven worker commits, both corrections, the two-parent
+  integration, acceptance evidence, required tests, all review cycles,
+  MB-018-F001-F005, risk, and `Closes #22`.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
