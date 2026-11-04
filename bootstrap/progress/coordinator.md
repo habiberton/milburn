@@ -2,7 +2,7 @@
 
 ## Current wave
 
-Wave 1 — Foundation; `MB-003` integrated on its coordinator branch
+Wave 1 — Foundation; `MB-003` PR merged and remotely verified
 
 ## Repository state
 
@@ -186,6 +186,13 @@ Wave 1 — Foundation; `MB-003` integrated on its coordinator branch
   `9530d4bd09542a4e341dccdd98a37db5fa43b388` and opened evidence-bearing PR
   #20: `https://github.com/habiberton/milburn/pull/20`. GitHub resolves
   `Closes #3` correctly and reports the PR clean and mergeable.
+- The same branch was updated to PR tip
+  `ff16f3ecc5e9310dd85f6c8882d5d5c455abd204`; PR #20 merged using a two-parent
+  merge commit `74bf04d75f73750d878c83bd0af26467d3c14454`.
+- The root fetched and verified `origin/main` contains corrected candidate
+  `d2498e97feb273bec083e1e287094a0eb20b0791`, fast-forwarded the primary
+  checkout to the exact remote merge SHA, and reran 31 persistence/106 total
+  smoke tests successfully.
 
 ## Verification
 
@@ -204,6 +211,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the PR record, update that same branch, retest, and merge PR #20 only
-with a merge commit. Verify `origin/main`, fast-forward the primary checkout,
-and reconcile issue/task state before `MB-004`.
+Commit the verified PR merge record, label closed issue #3 `milburn:done`,
+reconcile task status, and make issue #4 ready. Do not begin `MB-004` until all
+remote and local `MB-003` records agree.
