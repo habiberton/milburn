@@ -8,8 +8,8 @@ Wave 1 — Foundation; preparing sequential task `MB-001`
 
 - Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
-- Active workers: `builder-MB-001-a01` (`/root/mb001_builder_a01`)
-- Pending candidates: none
+- Active workers: none
+- Pending candidates: `MB-001` at `79bf6e4153d0fbc99a90dd62fbb651d122114b4d`
 
 ## Completed
 
@@ -47,6 +47,21 @@ Wave 1 — Foundation; preparing sequential task `MB-001`
 - Builder `/root/mb001_builder_a01` was launched with the bounded `MB-001`
   brief, owned paths, acceptance criteria, required tests, and candidate commit
   protocol. No other implementation worker is active.
+- The first candidate required a narrow correction for range-based whitespace
+  errors and a stale handoff record. The same worker produced corrected
+  candidate `79bf6e4153d0fbc99a90dd62fbb651d122114b4d` without amending the original
+  attributed commit.
+- Candidate attribution verification passed for both builder commits; the diff
+  contains only approved task paths and the assigned task progress record.
+- Coordinator verification in a fresh temporary virtual environment passed:
+  11 app unit tests, the complete smoke test, editable package installation,
+  installed `milburn --help`, installed `milburn --version`, and configuration
+  import/loading.
+- Independent Spec review passed all five acceptance criteria with no missing,
+  incorrect, or out-of-scope behavior.
+- Independent Standards review found no hard violations and one accepted low
+  judgement call: version `0.1.0` is duplicated in `pyproject.toml` and
+  `src/milburn/__init__.py`.
 
 ## Verification
 
@@ -65,7 +80,6 @@ None recorded.
 
 ## Resume here
 
-Monitor `/root/mb001_builder_a01`. When it returns a candidate, verify commit
-attribution from base `a8220daf6cdee16414210b4653f8f1fffdfc6216`, inspect its
-progress record and owned-path diff, run the required tests independently, and
-launch a separate reviewer before integration. Wave 1 remains sequential.
+Integrate candidate `79bf6e4153d0fbc99a90dd62fbb651d122114b4d` with a
+non-squash merge, run the combined smoke test, reconcile GitHub issue #1, and
+only then mark `MB-001` done and make `MB-002` ready. Wave 1 remains sequential.
