@@ -501,7 +501,7 @@
       "branch": "bootstrap/builder/MB-018/a01-session-handoffs",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-018-a01",
       "base_sha": "c88f4659607068f06a074cd5c7c1e0a7b9b8bcc5",
-      "candidate_sha": "e9a73b2240f8cb7baa91b8096e9d5f85139d9042",
+      "candidate_sha": "3e621bd3b373e4b47d772569d4eb1e5134f909c8",
       "progress_path": "bootstrap/progress/tasks/MB-018.md",
       "owned_paths": [
         "src/milburn/domain/sessions.py",
