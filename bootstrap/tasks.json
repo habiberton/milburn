@@ -288,9 +288,9 @@
       "branch": "bootstrap/builder/MB-020/a01-feedback-briefs",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-020-a01",
       "base_sha": "09636fd9f0993493091c515ee9e29c58d5d0f81f",
-      "candidate_sha": "cde56a19d7a9009c840c0bcde964d35369c0f790",
+      "candidate_sha": "266b403f1a123645f4eed90ee008880096dbc40c",
       "integration_branch": "bootstrap/coordinator/MB-020/a01-integration",
-      "integration_commit_sha": "cb2c85dd12e286d5377f5e9d03be072436d25d22",
+      "integration_commit_sha": "b6a24a51ab43b9292abed2c8de9159280d53e588",
       "pull_request": {
         "number": null,
         "url": null,
