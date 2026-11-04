@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 
 import pytest
 
@@ -9,12 +10,19 @@ from milburn.agents.codex_adapter import (
     ProcessState,
     SteeringMessage,
 )
-from milburn.agents.result_parser import ResultCorrelation, result_contract
-from milburn.domain import Role
+from milburn.agents.result_parser import ResultDecodingError
+from milburn.domain import CoderOutcome, CoderResult, EvidenceItem, Role, SkillBinding
 from tests.fakes.codex import FakeCodexAdapter, ScriptedCodexRun
 
 
-CORRELATION = ResultCorrelation(Role.CODER, "task-6", "attempt-1")
+SKILL = SkillBinding(
+    skill_name="milburn-long-running-coder",
+    version="1",
+    root_digest="rootabc",
+    resource_digests=("resource123",),
+    workspace_path=".agents/skills/milburn-long-running-coder",
+    validated_at=datetime(2026, 11, 3, tzinfo=timezone.utc),
+)
 
 
 def request() -> LaunchRequest:
@@ -27,12 +35,23 @@ def request() -> LaunchRequest:
         role_rules="Do not approve your own work.",
         task_context="Issue #6 is ready and dependencies are complete.",
         repository_instructions="Read AGENTS.md and preserve unrelated work.",
-        result_contract=result_contract(CORRELATION, "coder_result"),
-        required_skills=("milburn-long-running-coder",),
+        expected_result_type="coder_result",
+        skill_bindings=(SKILL,),
     )
 
 
 def result_document(*, task_success: bool = True) -> str:
+    payload = CoderResult(
+        attempt_id="attempt-1",
+        issue_number=6,
+        outcome=CoderOutcome.CANDIDATE,
+        head_sha="abc123",
+        progress_path=".milburn/issues/6/progress.txt",
+        commits=("abc123",),
+        files_changed=("src/example.py",),
+        test_claims=(EvidenceItem(name="pytest", outcome="passed", evidence="19"),),
+        risks=(),
+    )
     return json.dumps(
         {
             "schema_version": 1,
@@ -41,7 +60,7 @@ def result_document(*, task_success: bool = True) -> str:
             "attempt_id": "attempt-1",
             "task_success": task_success,
             "result_type": "coder_result",
-            "payload": {"head_sha": "abc123"},
+            "payload": payload.to_dict(),
         }
     )
 
@@ -57,6 +76,11 @@ def test_launch_uses_injected_runtime_with_bounded_rendered_brief() -> None:
     assert "- role: coder" in launch.stdin
     assert "- task_id: task-6" in launch.stdin
     assert endpoint.runtime_endpoint == "fake-codex-1"
+    assert endpoint.expected_result_type == "coder_result"
+    assert endpoint.expected_result_schema_version == 1
+    assert endpoint.skill_bindings == (SKILL,)
+    assert "root_digest=rootabc" in launch.stdin
+    assert "resource_digests=resource123" in launch.stdin
     assert len(endpoint.brief_digest) == 64
     assert len(endpoint.rules_digest) == 64
 
@@ -105,6 +129,7 @@ def test_process_exit_and_task_success_are_independent(
     assert collected.process_exit.succeeded is (exit_code == 0)
     assert collected.task_result is not None
     assert collected.task_result.task_success is task_success
+    assert isinstance(collected.task_result.payload, CoderResult)
     assert collected.protocol_error is None
 
 
@@ -122,7 +147,7 @@ def test_deterministic_fake_scripts_missing_and_malformed_results() -> None:
     assert missing.process_exit is not None
     assert missing.process_exit.stderr == "crashed"
     assert missing.task_result is None
-    assert missing.protocol_error == "Codex exited without a semantic task result"
+    assert "exactly one completed agent_message" in (missing.protocol_error or "")
     assert malformed.process_exit is not None
     assert malformed.task_result is None
     assert "not valid JSON" in (malformed.protocol_error or "")
@@ -135,3 +160,25 @@ def test_invalid_runtime_endpoint_is_rejected() -> None:
 
     with pytest.raises(ValueError, match="invalid endpoint"):
         CodexAdapter(InvalidRuntime()).launch(request())  # type: ignore[arg-type]
+
+
+def test_launch_rejects_result_type_not_allowed_for_role_before_runtime_effect() -> None:
+    fake = FakeCodexAdapter((ScriptedCodexRun(result_document()),))
+    invalid = request()
+    invalid = LaunchRequest(
+        role=invalid.role,
+        task_id=invalid.task_id,
+        attempt_id=invalid.attempt_id,
+        worktree=invalid.worktree,
+        objective=invalid.objective,
+        role_rules=invalid.role_rules,
+        task_context=invalid.task_context,
+        repository_instructions=invalid.repository_instructions,
+        expected_result_type="qa_report",
+        skill_bindings=invalid.skill_bindings,
+    )
+
+    with pytest.raises(ResultDecodingError, match="not allowed for role"):
+        fake.launch(invalid)
+
+    assert fake.runtime.launches == []

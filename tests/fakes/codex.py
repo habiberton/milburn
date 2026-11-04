@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 
 from milburn.agents.codex_adapter import (
     Ack,
@@ -65,7 +66,7 @@ class FakeCodexRuntime:
         return ProcessCollection(
             state=ProcessState.EXITED,
             exit_code=run.exit_code,
-            stdout=run.result_document or "",
+            stdout=_codex_jsonl(run.result_document),
             stderr=run.stderr,
         )
 
@@ -105,3 +106,25 @@ class FakeCodexAdapter:
 
     def retire(self, endpoint: AgentEndpoint) -> ControlResult:
         return self._adapter.retire(endpoint)
+
+
+def _codex_jsonl(result_document: str | None) -> str:
+    """Render the semantic event shape emitted by ``codex exec --json``."""
+
+    events: list[dict[str, object]] = [
+        {"type": "thread.started", "thread_id": "fake-thread"},
+        {"type": "turn.started"},
+    ]
+    if result_document is not None:
+        events.append(
+            {
+                "type": "item.completed",
+                "item": {
+                    "id": "fake-item",
+                    "type": "agent_message",
+                    "text": result_document,
+                },
+            }
+        )
+    events.append({"type": "turn.completed", "usage": {}})
+    return "\n".join(json.dumps(event) for event in events) + "\n"

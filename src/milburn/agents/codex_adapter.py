@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
 
-from milburn.domain import Role
+from milburn.domain import Role, SkillBinding
 
 from .briefs import BriefRenderer, LaunchBrief, RenderedBrief
 from .result_parser import (
@@ -14,6 +14,8 @@ from .result_parser import (
     AgentResultParser,
     ParsedAgentResult,
     ResultCorrelation,
+    ResultExpectation,
+    result_contract,
 )
 
 
@@ -83,8 +85,9 @@ class LaunchRequest:
     role_rules: str
     task_context: str
     repository_instructions: str
-    result_contract: str
-    required_skills: tuple[str, ...] = ()
+    expected_result_type: str
+    expected_result_schema_version: int = 1
+    skill_bindings: tuple[SkillBinding, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,8 +96,11 @@ class AgentEndpoint:
     role: Role
     task_id: str
     attempt_id: str
+    expected_result_type: str
+    expected_result_schema_version: int
     brief_digest: str
     rules_digest: str
+    skill_bindings: tuple[SkillBinding, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -159,7 +165,8 @@ class CodexAdapter:
         self._parser = parser or AgentResultParser()
 
     def launch(self, request: LaunchRequest) -> AgentEndpoint:
-        rendered = self._render(request)
+        expectation = self._expectation(request)
+        rendered = self._render(request, expectation)
         runtime_endpoint = self._runtime.launch(
             ProcessLaunch(
                 command=(self._executable, "exec", "--json", "-"),
@@ -174,8 +181,11 @@ class CodexAdapter:
             role=request.role,
             task_id=request.task_id,
             attempt_id=request.attempt_id,
+            expected_result_type=expectation.result_type,
+            expected_result_schema_version=expectation.schema_version,
             brief_digest=rendered.digest,
             rules_digest=rendered.rules_digest,
+            skill_bindings=rendered.skill_bindings,
         )
 
     def steer(self, endpoint: AgentEndpoint, message: SteeringMessage) -> Ack:
@@ -226,12 +236,16 @@ class CodexAdapter:
                 protocol_error="Codex exited without a semantic task result",
             )
         try:
-            task_result = self._parser.parse(
+            task_result = self._parser.parse_jsonl(
                 collected.stdout,
-                ResultCorrelation(
-                    role=endpoint.role,
-                    task_id=endpoint.task_id,
-                    attempt_id=endpoint.attempt_id,
+                ResultExpectation(
+                    correlation=ResultCorrelation(
+                        role=endpoint.role,
+                        task_id=endpoint.task_id,
+                        attempt_id=endpoint.attempt_id,
+                    ),
+                    result_type=endpoint.expected_result_type,
+                    schema_version=endpoint.expected_result_schema_version,
                 ),
             )
         except AgentResultError as error:
@@ -251,7 +265,20 @@ class CodexAdapter:
     def retire(self, endpoint: AgentEndpoint) -> ControlResult:
         return self._runtime.retire(endpoint.runtime_endpoint)
 
-    def _render(self, request: LaunchRequest) -> RenderedBrief:
+    def _expectation(self, request: LaunchRequest) -> ResultExpectation:
+        return ResultExpectation(
+            correlation=ResultCorrelation(
+                role=request.role,
+                task_id=request.task_id,
+                attempt_id=request.attempt_id,
+            ),
+            result_type=request.expected_result_type,
+            schema_version=request.expected_result_schema_version,
+        )
+
+    def _render(
+        self, request: LaunchRequest, expectation: ResultExpectation
+    ) -> RenderedBrief:
         return self._renderer.render(
             LaunchBrief(
                 role=request.role,
@@ -261,7 +288,7 @@ class CodexAdapter:
                 role_rules=request.role_rules,
                 task_context=request.task_context,
                 repository_instructions=request.repository_instructions,
-                result_contract=request.result_contract,
-                required_skills=request.required_skills,
+                result_contract=result_contract(expectation),
+                skill_bindings=request.skill_bindings,
             )
         )

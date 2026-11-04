@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from hashlib import sha256
 
-from milburn.domain import Role
+from milburn.domain import Role, SkillBinding
 
 
 class BriefError(ValueError):
@@ -45,7 +45,7 @@ class LaunchBrief:
     task_context: str
     repository_instructions: str
     result_contract: str
-    required_skills: tuple[str, ...] = ()
+    skill_bindings: tuple[SkillBinding, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.role, Role):
@@ -66,12 +66,15 @@ class LaunchBrief:
             value = getattr(self, field_name)
             if not isinstance(value, str) or not value.strip():
                 raise BriefError(f"{field_name} must be non-empty text")
-        if not isinstance(self.required_skills, tuple):
-            raise BriefError("required_skills must be an immutable tuple")
-        if any(not skill or skill != skill.strip() for skill in self.required_skills):
-            raise BriefError("required_skills must contain non-empty names")
-        if len(set(self.required_skills)) != len(self.required_skills):
-            raise BriefError("required_skills must not contain duplicates")
+        if not isinstance(self.skill_bindings, tuple):
+            raise BriefError("skill_bindings must be an immutable tuple")
+        if any(
+            not isinstance(binding, SkillBinding) for binding in self.skill_bindings
+        ):
+            raise BriefError("skill_bindings must contain validated SkillBinding values")
+        names = tuple(binding.skill_name for binding in self.skill_bindings)
+        if len(set(names)) != len(names):
+            raise BriefError("skill_bindings must not contain duplicate skill names")
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,6 +82,7 @@ class RenderedBrief:
     content: str
     digest: str
     rules_digest: str
+    skill_bindings: tuple[SkillBinding, ...]
 
 
 class BriefRenderer:
@@ -90,7 +94,7 @@ class BriefRenderer:
     def render(self, brief: LaunchBrief) -> RenderedBrief:
         if not isinstance(brief, LaunchBrief):
             raise BriefError("brief must be a LaunchBrief")
-        if len(brief.required_skills) > self._bounds.max_skills:
+        if len(brief.skill_bindings) > self._bounds.max_skills:
             raise BriefTooLargeError(
                 f"required_skills exceeds limit {self._bounds.max_skills}"
             )
@@ -108,7 +112,9 @@ class BriefRenderer:
                     f"{name} exceeds section limit {self._bounds.max_section_chars}"
                 )
 
-        skills = "\n".join(f"- {skill}" for skill in brief.required_skills) or "- none"
+        skills = "\n".join(
+            _render_skill_binding(binding) for binding in brief.skill_bindings
+        ) or "- none"
         rendered_sections = "\n\n".join(
             f"## {name}\n{content}" for name, content in sections
         )
@@ -132,8 +138,20 @@ class BriefRenderer:
             content=content,
             digest=_digest(content),
             rules_digest=_digest(brief.role_rules),
+            skill_bindings=brief.skill_bindings,
         )
 
 
 def _digest(value: str) -> str:
     return sha256(value.encode("utf-8")).hexdigest()
+
+
+def _render_skill_binding(binding: SkillBinding) -> str:
+    resource_digests = ",".join(binding.resource_digests) or "none"
+    return (
+        f"- name={binding.skill_name} version={binding.version} "
+        f"root_digest={binding.root_digest} "
+        f"resource_digests={resource_digests} "
+        f"workspace_path={binding.workspace_path} "
+        f"validated_at={binding.validated_at.isoformat()}"
+    )
