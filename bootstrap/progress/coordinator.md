@@ -6,7 +6,7 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
 
 ## Repository state
 
-- Integration branch: `bootstrap/coordinator/MB-006/a01-integration`
+- Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
 - Active workers: none
 - Pending candidates: MB-020 candidate
@@ -437,6 +437,15 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   evidence-bearing PR #29: `https://github.com/habiberton/milburn/pull/29`.
   GitHub resolves `Closes #6`; the PR records Specification + Standards mode
   and is AMEND-002's effective remote review.
+- PR #29 merged using GitHub's two-parent merge-commit method as
+  `d276cc255088c9ac91eb04da319719eb66c64abe`. The root verified `origin/main`
+  contains candidate `38b28545a6fb409d62fa1145e083109df649d308`, integration
+  `b5c28003e62e4c45ec4d41e588152f2173585f43`, PR tip
+  `f5a081687107c37322339c56897ce86913892dda`, and AMEND-002 planning commit
+  `0398b0e3d0a11f88b9728ea48a8935b1b2eb1840`, then fast-forwarded primary.
+- Post-fast-forward verification passed: 30 focused tests, 233 smoke tests
+  (three protected skips), and 22 task records. AMEND-002 is effective and
+  reconciled.
 - MB-020 will use its own coordinator branch and PR. Its implementation will
   backfill only evidence already recorded for MB-001 through MB-004 and will
   not be mixed into the already merged MB-004 history.
@@ -458,6 +467,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Push the PR/amendment record update, merge PR #29 with a merge commit, verify
-and reconcile `origin/main`, then proceed to MB-020 two-pass review. Keep new
-implementation dispatch frozen.
+Commit the verified MB-006/AMEND-002 result, apply `milburn:done` to issue #6,
+then proceed to MB-020's recorded two-pass review and coordinator-only backfill.
+Keep new implementation dispatch frozen.
