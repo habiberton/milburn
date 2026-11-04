@@ -2,12 +2,12 @@
 
 ## Current wave
 
-Wave 0 — Bootstrap verification and GitHub registry initialization
+Wave 0 — Bootstrap verification complete locally; GitHub reconciliation blocked
 
 ## Repository state
 
 - Integration branch: `main`
-- Bootstrap baseline: resolve `git rev-parse HEAD` at root-agent startup
+- Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
 - Active workers: none
 - Pending candidates: none
 
@@ -28,11 +28,21 @@ Wave 0 — Bootstrap verification and GitHub registry initialization
 - `bootstrap/tasks.json` now records the GitHub issue mapping and last observed
   remote assignment/status while retaining the local dependency and recovery
   mirror.
+- On 2026-11-03 the root coordinator read the approved specifications and all
+  bootstrap records, confirmed a clean `main` checkout at the baseline above,
+  and found no worker branches, worker worktrees, task progress records, or
+  pending candidates.
+- The one-time `scripts/bootstrap-repo.sh` setup completed and configured the
+  primary checkout as `Milburn Coordinator [BOOTSTRAP/root]`.
+- Local reconciliation confirms `MB-001` is the only dependency-ready Wave 1
+  task. Wave 1 remains sequential and no implementation worker was launched.
 
 ## Verification
 
-- Run `scripts/bootstrap-repo.sh` once.
-- Run `scripts/smoke-test.sh` before beginning `MB-001`.
+- `scripts/bootstrap-repo.sh`: passed on 2026-11-03; validated 16 tasks across
+  6 waves and reran the bootstrap smoke checks.
+- `scripts/smoke-test.sh`: passed on 2026-11-03; validated 16 task records and
+  the candidate-attribution verifier. The product test suite does not exist yet.
 - GitHub read-back verified all 16 issues are open, correctly titled, marked,
   labeled, unassigned, and contain their dependency links and acceptance
   criteria.
@@ -40,12 +50,22 @@ Wave 0 — Bootstrap verification and GitHub registry initialization
 
 ## Blockers
 
-None recorded.
+- GitHub issue reconciliation is blocked. The GitHub MCP calls `get_me` and
+  `issue_read` both failed with `github authorization failed: context canceled`.
+  The local `gh` fallback reports that no GitHub host is authenticated.
+- Because GitHub issue assignees and lifecycle labels are authoritative, do not
+  assign or dispatch `MB-001`, and do not change its mirrored task status, until
+  issue #1 can be read and updated successfully.
 
 ## Resume here
 
-Run the one-time bootstrap script if it has not yet been run, then reconcile
-GitHub issue #1 against `MB-001` before assigning the first implementation
-attempt. Wave 1 must remain sequential. Assignment and status changes belong in
-GitHub; update `tasks.json` with the observed remote state after each
-coordination checkpoint.
+Restore GitHub MCP authorization (preferred) or authenticate `gh`, then read
+`habiberton/milburn` issue #1 and verify that it is open, unassigned, marked
+`milburn:task` and `milburn:ready`, and contains `milburn:task-id=MB-001`.
+Assign the first builder attempt in GitHub and move the issue to
+`milburn:in-progress`; mirror the observed state and attempt metadata in
+`bootstrap/tasks.json`, create `bootstrap/progress/tasks/MB-001.md`, commit the
+coordination checkpoint, create branch
+`bootstrap/builder/MB-001/a01-package-foundation` and worktree
+`/Users/habiberton/projects/milburn-worktrees/MB-001-a01`, configure its
+identity, and only then launch the worker. Wave 1 must remain sequential.
