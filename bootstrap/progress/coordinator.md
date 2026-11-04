@@ -861,6 +861,15 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   base=head without correlating that head to the retired lease ancestry. Issue
   #9 returned to `milburn:changes-requested`; the same worker is adding real and
   fake non-ancestor rejection regressions. Both fresh axes restart afterward.
+- Final corrected MB-009 candidate
+  `c86708114bf1692414cbb379b571b17c54caf4b1` contains seven verified builder
+  commits. F004 fix `421da01` serializes the retired verified head and requires
+  recorded-base-to-retired-head-to-current-head ancestry before real or fake
+  reuse, while retaining exact caller base, detachment, process, path, dirty,
+  and ownership gates. Root verification passed 32 focused tests, all 58
+  runtime tests, smoke with 406 passed/3 protected skips/3 subtests,
+  attribution, owned paths, and diff checks. Issue #9 returned to
+  `milburn:in-progress`; both fresh review axes restart on this exact SHA.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
