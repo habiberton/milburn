@@ -25,7 +25,20 @@ scripts/configure-worktree-identity.sh before launch. Require workers to use
 scripts/agent-commit.sh, and reject candidates that do not pass
 scripts/verify-candidate-commits.py.
 
-Persist until you have completed and independently verified as much of the
-current wave as is safely possible. Before stopping, leave exact recovery
-instructions in bootstrap/progress/coordinator.md.
+Before any final response or handoff, reconcile bootstrap/tasks.json, GitHub
+issues, active workers and worktrees, pending candidates and PRs, and
+dependency-ready tasks. Task completion, PR merge, issue closure, a newly ready
+task, any number of completed tasks, wave completion, a returned candidate, or
+a committed policy/progress checkpoint is never a stopping condition.
+
+If any task is ready, assigned, in progress, candidate, integrated, or in QA and
+no genuine blocker prevents progress, continue in the same turn. Continue into
+the next dependency-ready wave under its concurrency rules.
+
+Stop only for an explicit user stop/pause, a required user decision or
+authorization, a blocker preventing all safe progress, no authorized unfinished
+work, or forced environment termination. A final response is prohibited while
+executable unblocked work exists. Before stopping, persist exact recovery state
+and a concrete blocker for every unfinished path in
+bootstrap/progress/coordinator.md.
 ```

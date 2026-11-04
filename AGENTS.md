@@ -285,6 +285,39 @@ Before ending any session, record completed work, exact commits, test commands
 and results, remaining work, blockers, and the first action for the next agent.
 Process exit or a prose claim is never proof of completion.
 
+## Continuation gate
+
+Before every final response or handoff, the root coordinator must reconcile:
+
+- `bootstrap/tasks.json` against GitHub issue assignment and lifecycle state.
+- Active workers against their branches, worktrees, progress files, and process
+  status.
+- Pending candidates and coordinator pull requests against local and remote Git
+  state.
+- Dependency-ready tasks across the current and next work wave.
+
+A completed task, merged PR, closed issue, newly ready task, arbitrary task
+count, completed wave, returned candidate, or committed policy/progress
+checkpoint is not a stopping condition. If any task is `ready`, `assigned`,
+`in_progress`, `candidate`, `integrated`, or `qa`, and no genuine blocker
+prevents safe progress, continue in the same turn. When a wave completes and
+the next wave's dependencies are satisfied, continue under that wave's
+concurrency rules.
+
+The root may stop only when:
+
+1. The user explicitly requests a stop or pause.
+2. A required user decision or authorization cannot be inferred safely.
+3. An authentication, permission, safety, or infrastructure blocker prevents
+   all safe progress.
+4. No authorized unfinished work remains.
+5. The execution environment forcibly ends the turn; persist exact recovery
+   state first whenever the environment permits it.
+
+A final response is prohibited while the preflight finds executable unblocked
+work. Before stopping, record a concrete blocker for every unfinished path in
+`bootstrap/progress/coordinator.md`.
+
 ## Safety boundaries
 
 - Preserve user changes and unrelated work.

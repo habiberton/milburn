@@ -168,6 +168,27 @@ PR merge commit, fast-forwards the primary checkout, and updates task records.
 Only then may it apply `milburn:done`, close an issue not already closed by the
 PR, and begin the next task.
 
+## Continuation gate
+
+Before any final response or handoff, reconcile `tasks.json`, GitHub issues,
+active workers and worktrees, pending candidates and PRs, and every
+dependency-ready task. Milestones are continuation points, not stopping points:
+task completion, PR merge, issue closure, a newly ready task, any task count, a
+completed wave, a returned candidate, or a committed policy/progress checkpoint
+does not permit the root to stop.
+
+Continue in the same turn whenever any task is `ready`, `assigned`,
+`in_progress`, `candidate`, `integrated`, or `qa` and no genuine blocker
+prevents progress. A completed wave flows into the next wave when its
+dependencies are satisfied, subject to that wave's concurrency rules.
+
+Stopping is permitted only for an explicit user stop/pause, a required user
+decision or authorization, a blocker that prevents all safe progress, no
+authorized unfinished work, or forced environment termination. Persist exact
+recovery state before forced termination when possible. A final response is
+prohibited while executable unblocked work exists; record a concrete blocker
+for every unfinished path before stopping.
+
 ## Retirement gate
 
 Archive this bootstrap layer only after Milburn has demonstrated durable task
