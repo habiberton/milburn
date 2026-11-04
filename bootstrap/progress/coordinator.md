@@ -827,6 +827,10 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   `da40e15`, although F010 and `9c90851` own that later correction. The brief
   now scopes F004 to required-set validation and leaves uniqueness with F010;
   no implementation or test changed. Both axes must confirm the corrected tip.
+- Both final integrated MB-008 axes passed corrected tip `006b9fa` with no
+  findings. The branch retains candidate-identical implementation, 39 unit/1
+  contract/414 smoke results, 12 valid feedback briefs, and clear amendment
+  preflight. It is ready for the single evidence-bearing task PR.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
