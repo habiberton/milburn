@@ -500,7 +500,7 @@
       "owner": "builder-MB-018-a01",
       "branch": "bootstrap/builder/MB-018/a01-session-handoffs",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-018-a01",
-      "base_sha": "331483e",
+      "base_sha": "c88f4659607068f06a074cd5c7c1e0a7b9b8bcc5",
       "candidate_sha": null,
       "progress_path": "bootstrap/progress/tasks/MB-018.md",
       "owned_paths": [
@@ -673,7 +673,7 @@
       "owner": "builder-MB-008-a01",
       "branch": "bootstrap/builder/MB-008/a01-github-mcp",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-008-a01",
-      "base_sha": "331483e",
+      "base_sha": "c88f4659607068f06a074cd5c7c1e0a7b9b8bcc5",
       "candidate_sha": null,
       "progress_path": "bootstrap/progress/tasks/MB-008.md",
       "owned_paths": [
