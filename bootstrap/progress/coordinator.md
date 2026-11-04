@@ -476,17 +476,89 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   Specification + Standards mode and rationale, worker/coordinator SHAs,
   acceptance and test evidence, review findings, risks, and the task feedback
   summary.
+- PR #30 merged through GitHub's two-parent merge method as
+  `1f7cb989e80b58333839f30f36fa0ccbf7076e8d`. Remote read-back verified
+  `origin/main` contains PR tip `51c180b`, corrected candidate `266b403`, both
+  coordinator integration merges, and evidence correction `c7b501e`; primary
+  `main` fast-forwarded to the exact remote SHA.
+- Post-fast-forward MB-020 verification passed: 7 feedback briefs, 10 focused
+  tests, and 243 smoke tests with 3 protected skips. Issue #24 was closed by
+  `Closes #24`; after this durable completion record is committed, the root may
+  replace `milburn:qa` with `milburn:done` and reconcile MB-022 as ready.
+- Local completion record `2b26151` was committed after remote verification.
+  Closed issue #24 now carries `milburn:done`; open issue #27 now carries
+  `milburn:ready`. MB-022 is the only authorized next implementation dispatch.
+- Issue #27 is assigned to `habiberton` and moved to `milburn:in-progress` for
+  builder attempt MB-022/a01. Its branch/worktree assignment, exact owned paths,
+  two-pass review mode, and test contract are recorded; no other Wave 2 worker
+  may launch.
+- MB-022/a01 found that the exact required pytest command collects two
+  non-package modules named `test_plan_amendments`, causing an import-file
+  mismatch before tests run. The coordinator approved the minimal owned-path
+  expansion for empty `tests/bootstrap/__init__.py` and
+  `tests/unit/orchestration/__init__.py` package markers. This resolves a test
+  harness detail without changing approved product behavior, dependencies, or
+  authority boundaries; the task remains in two-pass review mode.
+- MB-022/a01 returned candidate
+  `ee86245b8efbd76e8e0efb457e4251d92fa8b1af` with four verified attributed
+  worker commits from exact base `0b6613d`. The diff stays within recorded
+  paths plus the approved package marker. Coordinator verification passed the
+  exact six-path suite (33 tests), smoke (276 passed, 3 protected skips), 2
+  amendment records, 7 feedback briefs, and `git diff --check`. Fresh
+  Specification and Standards reviews are in progress; no integration branch
+  or PR exists yet.
+- Initial MB-022 Specification review passed every issue #27 criterion. Standards
+  review blocked the candidate because bootstrap amendment validation trusted
+  loose document-wide phrases: empty scoped evidence, an unknown impact/status,
+  and a garbage-suffixed PR reference could validate and incorrectly clear the
+  dispatch preflight. The same worker is adding strict section-scoped semantics,
+  exact references, negative regressions, and a feedback proposal. Both fresh
+  review axes are required after correction.
+- Corrected MB-022 candidate
+  `6c365f17874b22f7d39dde03b9473e475b106e8b` contains eight verified attributed
+  commits from the exact base. Coordinator verification passed the expanded
+  six-path suite (41 passed, 3 subtests), smoke (284 passed, 3 protected skips,
+  3 subtests), strict validation of 2 amendment records, and `git diff --check`.
+  Both fresh reviews are in progress.
+- Fresh Standards re-review passed the strict validator correction, but fresh
+  Specification review found AMEND-001 still recorded `Dispatch status:
+  frozen`, so the mandatory real-repository `--preflight` failed. AMEND-001 was
+  already remotely effective and reconciled through PR #28; the remaining
+  freeze is the separate MB-022 task dependency. The same worker is correcting
+  that durable distinction, adding a real-record preflight regression and a
+  second feedback proposal. Both fresh reviews will restart.
+- Final corrected candidate `491f59eda2953b74ed936dfb5d51c7ca59f50c11`
+  has ten verified attributed commits. Coordinator verification passed the real
+  amendment preflight (2 records valid and clear), required suite (42 passed, 3
+  subtests), smoke (285 passed, 3 protected skips, 3 subtests), and diff checks.
+  Both second fresh reviews are in progress.
+- Both second fresh MB-022 reviews passed with no actionable findings. The root
+  non-squash merged all ten worker commits on the coordinator branch as
+  two-parent integration `09e0544dc82dcc3ac6f779a4abad064212fbbd98` and
+  finalized MB-022-F001/F002 from retained evidence. Integrated verification
+  and the one-ticket PR remain.
+- Final integrated reviews initially found only a stale coordinator recovery
+  tail. Commit `33c899e` replaced it with current verification and the exact
+  PR/remote-read-back next action; both final review axes then passed with no
+  actionable findings. MB-022 is ready for its single coordinator PR.
+- The root pushed `bootstrap/coordinator/MB-022/a01-integration` at `06b4a7d`
+  and opened evidence-bearing PR #31:
+  `https://github.com/habiberton/milburn/pull/31`. It contains `Closes #27`,
+  worker/integration SHAs, acceptance and test evidence, both review histories,
+  risks, and MB-022-F001/F002 summaries.
 
-## Verification
+## Current verification
 
-- `scripts/bootstrap-repo.sh`: passed on 2026-11-03; validated 16 tasks across
-  6 waves and reran the bootstrap smoke checks.
-- `scripts/smoke-test.sh`: passed on 2026-11-03; validated 16 task records and
-  the candidate-attribution verifier. The product test suite does not exist yet.
-- GitHub read-back verified all 16 issues are open, correctly titled, marked,
-  labeled, unassigned, and contain their dependency links and acceptance
-  criteria.
-- No implementation agents have been launched.
+- Candidate attribution: 10 builder commits verified from exact base
+  `0b6613d8199c70d6d43d8e3acfb7cdf79a39243a` through `491f59e`.
+- Integrated amendment preflight: 2 checked-in records valid and clear.
+- Required MB-022 suite: 42 passed, 3 subtests passed.
+- Integrated smoke: 22 task records, 8 feedback briefs, and 2 amendment records
+  valid; 285 product tests passed with 3 protected skips and 3 subtests.
+- Final integrated Specification and Standards review found only this stale
+  coordinator-tail handoff; the current verification and resume sections now
+  replace it. Both axes must confirm the correction before PR publication.
+- `git diff --check`: passed.
 
 ## Blockers
 
@@ -494,7 +566,8 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Push `bootstrap/coordinator/MB-020/a01-integration`, open its evidence-bearing
-PR with `Closes #24`, merge by merge commit, verify and fast-forward
-`origin/main`, then begin MB-022. Keep all other implementation dispatch
-frozen.
+Record the final integrated MB-022 reviews and verification, push
+`bootstrap/coordinator/MB-022/a01-integration`, and open its one-ticket
+evidence-bearing PR with `Closes #27`. Merge only by merge commit, verify and
+fast-forward `origin/main`, update task records, and only then reconcile the
+next dependency-ready Wave 2 tasks for dispatch.

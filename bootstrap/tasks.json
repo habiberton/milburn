@@ -272,14 +272,14 @@
       "id": "MB-020",
       "wave": 1,
       "title": "Add concise defect feedback briefs to the bootstrap workflow",
-      "status": "integrated",
+      "status": "done",
       "github": {
         "issue_number": 24,
         "issue_url": "https://github.com/habiberton/milburn/issues/24",
         "status_source": "github",
         "assignment_source": "github",
-        "last_observed_state": "open",
-        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_state": "closed",
+        "last_observed_status_label": "milburn:done",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-004"],
@@ -294,7 +294,7 @@
       "pull_request": {
         "number": 30,
         "url": "https://github.com/habiberton/milburn/pull/30",
-        "merge_commit_sha": null
+        "merge_commit_sha": "1f7cb989e80b58333839f30f36fa0ccbf7076e8d"
       },
       "progress_path": "bootstrap/progress/tasks/MB-020.md",
       "owned_paths": [
@@ -524,23 +524,30 @@
       "id": "MB-022",
       "wave": 2,
       "title": "Add a durable plan-amendment gate before worker dispatch",
-      "status": "blocked",
+      "status": "integrated",
       "github": {
         "issue_number": 27,
         "issue_url": "https://github.com/habiberton/milburn/issues/27",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:blocked",
-        "last_observed_assignees": []
+        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-004", "MB-020"],
       "parallel_group": null,
-      "owner": null,
-      "branch": null,
-      "worktree": null,
-      "base_sha": null,
-      "candidate_sha": null,
+      "owner": "builder-MB-022-a01",
+      "branch": "bootstrap/builder/MB-022/a01-plan-amendment-gate",
+      "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-022-a01",
+      "base_sha": "0b6613d8199c70d6d43d8e3acfb7cdf79a39243a",
+      "candidate_sha": "491f59eda2953b74ed936dfb5d51c7ca59f50c11",
+      "integration_branch": "bootstrap/coordinator/MB-022/a01-integration",
+      "integration_commit_sha": "09e0544dc82dcc3ac6f779a4abad064212fbbd98",
+      "pull_request": {
+        "number": 31,
+        "url": "https://github.com/habiberton/milburn/pull/31",
+        "merge_commit_sha": null
+      },
       "progress_path": "bootstrap/progress/tasks/MB-022.md",
       "owned_paths": [
         "AGENTS.md",
@@ -553,7 +560,9 @@
         "src/milburn/validation/amendment_policy.py",
         "src/milburn/persistence/amendment_projections.py",
         "tests/bootstrap/test_plan_amendments.py",
+        "tests/bootstrap/__init__.py",
         "tests/unit/orchestration/test_plan_amendments.py",
+        "tests/unit/orchestration/__init__.py",
         "tests/unit/validation/test_amendment_policy.py",
         "tests/unit/persistence/test_amendment_projections.py",
         "tests/integration/workflows/test_midrun_plan_amendment.py",
