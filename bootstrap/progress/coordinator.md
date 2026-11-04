@@ -220,10 +220,19 @@ Wave 1 — Foundation; preparing sequential task `MB-004`
   role, and workflow totals, no fabricated counts, and no transcript storage.
   Issue #21 remains open with `milburn:blocked` until `MB-006` completes.
 - Builder `/root/mb004_builder_a01` returned candidate
-  `03d253eb8b89c004f1150eb6ee2424c17509c44b` (implementation commit
+  `03d253e23a161dad156fc76ab461e45c8e466e50` (implementation commit
   `52997e58abaff37ac2f64833db751ffd2512b4aa`) with reported evidence of 63
-  orchestration tests and 169 total smoke tests; coordinator verification and
-  independent review are next.
+  orchestration tests and 169 total smoke tests. The handoff message contained
+  a one-character SHA transcription error; the exact branch tip above was
+  resolved from the assigned worktree. Coordinator attribution, approved-path
+  scope, 63 orchestration tests, and 169 total candidate smoke tests passed;
+  independent review then rejected the candidate before integration.
+- Spec review found that `Controller.handle()` accepts an arbitrary event type,
+  allowing an otherwise authorized command to append an observational or
+  completion event before evidence. Standards review also found that its
+  `TypeVar` does not survive through the non-generic command receipt. The same
+  worker is correcting the authority mapping, regression coverage, and result
+  typing locally; no MB-004 coordinator branch or PR exists yet.
 
 ## Verification
 
@@ -242,6 +251,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Verify MB-004 candidate `03d253eb8b89c004f1150eb6ee2424c17509c44b`
-for attribution, scope, tests, and both review axes before creating its
-coordinator branch and evidence-bearing PR.
+Monitor `/root/mb004_builder_a01` for the corrected candidate. Re-run
+attribution, scope, required tests, and fresh two-axis review before creating
+its coordinator branch or evidence-bearing PR.
