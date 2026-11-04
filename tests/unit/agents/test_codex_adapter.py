@@ -108,6 +108,7 @@ def test_lifecycle_delegates_through_runtime_and_correlates_steering() -> None:
     assert ack.accepted
     assert interrupted.observed
     assert stopped.process_state is ProcessState.EXITED
+    assert stopped.exit_code == -15
     assert not late_ack.accepted
     assert not repeated_interrupt.observed
     assert retired.observed
@@ -132,6 +133,23 @@ def test_lifecycle_delegates_through_runtime_and_correlates_steering() -> None:
             endpoint,
             SteeringMessage(Role.CODER, "task-6", "attempt-2", "Wrong target."),
         )
+
+
+def test_interruption_cannot_be_collected_as_scripted_task_success() -> None:
+    fake = FakeCodexAdapter(
+        (ScriptedCodexRun(result_document(task_success=True), exit_code=0),)
+    )
+    endpoint = fake.launch(request())
+
+    assert fake.interrupt(endpoint).observed
+    collected = fake.collect(endpoint)
+
+    assert collected.process_exit is not None
+    assert collected.process_exit.exit_code == -15
+    assert not collected.process_exit.succeeded
+    assert collected.process_exit.stderr == "scripted process interrupted"
+    assert collected.task_result is None
+    assert collected.protocol_error == "Codex exited without a semantic task result"
 
 
 @pytest.mark.parametrize(

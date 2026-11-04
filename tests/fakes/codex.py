@@ -32,6 +32,7 @@ class ScriptedCodexRun:
 class _ActiveRun:
     script: ScriptedCodexRun
     state: ProcessState = ProcessState.RUNNING
+    interrupted: bool = False
 
 
 class FakeCodexRuntime:
@@ -62,7 +63,12 @@ class FakeCodexRuntime:
 
     def status(self, endpoint: str) -> ProcessStatus:
         run = self._require(endpoint)
-        exit_code = run.script.exit_code if run.state is ProcessState.EXITED else None
+        if run.state is not ProcessState.EXITED:
+            exit_code = None
+        elif run.interrupted:
+            exit_code = -15
+        else:
+            exit_code = run.script.exit_code
         return ProcessStatus(run.state, exit_code)
 
     def interrupt(self, endpoint: str) -> ControlResult:
@@ -70,12 +76,20 @@ class FakeCodexRuntime:
         if run.state is not ProcessState.RUNNING:
             return ControlResult(observed=False, detail="endpoint already exited")
         run.state = ProcessState.EXITED
+        run.interrupted = True
         self.interrupted.append(endpoint)
         return ControlResult(observed=True, detail="scripted interrupt")
 
     def collect(self, endpoint: str) -> ProcessCollection:
         run = self._require(endpoint)
         run.state = ProcessState.EXITED
+        if run.interrupted:
+            return ProcessCollection(
+                state=ProcessState.EXITED,
+                exit_code=-15,
+                stdout="",
+                stderr="scripted process interrupted",
+            )
         return ProcessCollection(
             state=ProcessState.EXITED,
             exit_code=run.script.exit_code,
