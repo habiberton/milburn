@@ -566,6 +566,12 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   `milburn:in-progress` for builder attempts MB-017/a01 and MB-007/a01. Their
   exact disjoint owned paths, worktrees, test contracts, and two-pass review
   modes are recorded. No third implementation worker is dispatched.
+- MB-017/a01 found the exact required pytest command collects three non-package
+  modules named `test_usage.py`, causing import-file mismatch. The coordinator
+  approved empty `tests/unit/domain/__init__.py`,
+  `tests/unit/agents/__init__.py`, and `tests/unit/persistence/__init__.py`
+  package markers as the minimal owned-path expansion. This is a test-harness
+  detail, not a plan amendment; global pytest configuration remains unchanged.
 
 ## Current verification
 

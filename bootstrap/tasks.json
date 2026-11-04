@@ -451,8 +451,11 @@
         "src/milburn/agents/usage.py",
         "src/milburn/persistence/usage_projections.py",
         "tests/unit/domain/test_usage.py",
+        "tests/unit/domain/__init__.py",
         "tests/unit/agents/test_usage.py",
+        "tests/unit/agents/__init__.py",
         "tests/unit/persistence/test_usage_projections.py",
+        "tests/unit/persistence/__init__.py",
         "tests/fixtures/agents/usage/"
       ],
       "acceptance_criteria": [
