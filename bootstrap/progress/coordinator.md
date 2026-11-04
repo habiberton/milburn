@@ -706,6 +706,11 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   commits. Coordinator verification passed 34 focused tests, smoke (372 passed,
   3 protected skips, 3 subtests), and diff checks. Both fresh review axes are
   in progress.
+- Fresh MB-018 Specification review passed all four original fixes, but fresh
+  Standards review found a stale-checkpoint replay hole: a generation-0
+  checkpoint could authorize replacement of current generation 1. The same
+  worker is enforcing current-generation checkpoint correlation, adding a
+  regression and MB-018-F005. Both fresh review axes will restart.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
