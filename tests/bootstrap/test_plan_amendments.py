@@ -88,6 +88,19 @@ class PlanAmendmentBootstrapTests(unittest.TestCase):
                     any(expected in error for error in validate_records(self.root))
                 )
 
+    def test_unrelated_heading_cannot_supply_empty_required_section(self) -> None:
+        disguised_empty = VALID_RECORD.replace(
+            "Change the task graph.", "## Unrelated notes\n\nLooks nonempty elsewhere."
+        )
+        self.write_record(disguised_empty)
+
+        self.assertTrue(
+            any(
+                "Requested change section must be nonempty" in error
+                for error in validate_records(self.root)
+            )
+        )
+
     def test_active_work_requires_known_classification_or_explicit_none(self) -> None:
         impact = """| Work | Classification | Decision |
 |---|---|---|

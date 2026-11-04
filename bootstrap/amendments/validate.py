@@ -145,12 +145,14 @@ def _parse_sections(
         position for _, position in heading_positions
     ):
         return {}, [f"{source}: required headings are out of order"]
+    all_section_positions = sorted(
+        index for index, line in enumerate(lines) if line.startswith("## ")
+    )
     sections: dict[str, list[str]] = {}
-    for index, (heading, start) in enumerate(heading_positions):
-        end = (
-            heading_positions[index + 1][1]
-            if index + 1 < len(heading_positions)
-            else len(lines)
+    for heading, start in heading_positions:
+        end = next(
+            (position for position in all_section_positions if position > start),
+            len(lines),
         )
         sections[heading] = lines[start + 1 : end]
     return sections, []
