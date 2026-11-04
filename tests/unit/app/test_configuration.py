@@ -82,4 +82,3 @@ def test_invalid_configuration_is_explicit(
 def test_missing_configuration_file_is_explicit(repository_path: Path) -> None:
     with pytest.raises(ConfigurationError, match="could not load configuration"):
         load_configuration(repository_path / "missing.toml", cwd=repository_path)
-

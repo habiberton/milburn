@@ -26,4 +26,3 @@ def test_version_is_available(capsys: pytest.CaptureFixture[str]) -> None:
 
 def test_empty_command_finishes_without_external_work() -> None:
     assert main([]) == 0
-

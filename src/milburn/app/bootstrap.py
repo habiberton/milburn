@@ -9,4 +9,3 @@ def bootstrap(configuration: Configuration) -> Configuration:
     """Return the validated configuration until later tasks add components."""
 
     return configuration
-

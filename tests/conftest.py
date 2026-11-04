@@ -14,4 +14,3 @@ def repository_path(tmp_path: Path) -> Path:
     repository = tmp_path / "repository"
     repository.mkdir()
     return repository
-

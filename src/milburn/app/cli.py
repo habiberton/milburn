@@ -38,4 +38,3 @@ def run() -> int:
 
 if __name__ == "__main__":  # pragma: no cover - exercised by the console script
     raise SystemExit(run())
-

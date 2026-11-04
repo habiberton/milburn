@@ -27,4 +27,3 @@ where = ["src"]
 addopts = ["--strict-config", "--strict-markers"]
 testpaths = ["tests"]
 timeout = 10
-

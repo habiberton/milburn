@@ -89,4 +89,3 @@ def _string_value(value: object, field: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ConfigurationError(f"{field} must be a non-empty string")
     return value.strip()
-
