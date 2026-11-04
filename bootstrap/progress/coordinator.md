@@ -488,6 +488,10 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
 - Local completion record `2b26151` was committed after remote verification.
   Closed issue #24 now carries `milburn:done`; open issue #27 now carries
   `milburn:ready`. MB-022 is the only authorized next implementation dispatch.
+- Issue #27 is assigned to `habiberton` and moved to `milburn:in-progress` for
+  builder attempt MB-022/a01. Its branch/worktree assignment, exact owned paths,
+  two-pass review mode, and test contract are recorded; no other Wave 2 worker
+  may launch.
 
 ## Verification
 
