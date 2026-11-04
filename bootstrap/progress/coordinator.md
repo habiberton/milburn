@@ -116,6 +116,14 @@ Wave 1 — Foundation; `MB-001` remotely complete and resuming `MB-002`
   `MB-001` history and the durable coordinator PR strategy.
 - The same `/root/mb002_builder_a01` worker was resumed with that exact base and
   explicit instructions to return local commits only under the new PR rules.
+- Initial `MB-002` candidate `b4fa8c56801f395e53824b888a78c4ccf42ae62b`
+  passed attribution, owned-path, whitespace, 52 domain-test, and 63-test smoke
+  verification, but independent review rejected it before integration.
+- Spec findings: unapproved feature/issue transition edges and public transition
+  guards accepting raw strings. Standards findings: missing negative command
+  validation tests and duplicated timezone-aware datetime validation.
+- The same worker is correcting those findings locally. No `MB-002` coordinator
+  integration branch or PR exists yet.
 
 ## Verification
 
@@ -134,6 +142,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Monitor `/root/mb002_builder_a01`. On candidate return, verify attribution from
-base `b2df26c73f0cd9c39cd19ec07b5b5d2c24fa872e`, owned paths, tests, and
-progress, then integrate through one coordinator-owned `MB-002` branch and PR.
+Monitor `/root/mb002_builder_a01` for a corrected candidate. Re-run attribution,
+tests, and both independent review axes before creating the single coordinator
+integration branch or PR for `MB-002`.
