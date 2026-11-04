@@ -585,6 +585,14 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   Coordinator verification passed 24 focused tests, smoke (309 passed, 3
   protected skips, 3 subtests), and diff checks. Independent review waits only
   for the active MB-017 review slots to free.
+- Initial MB-017 reviews both blocked the candidate. Specification reproduced
+  source-version duplicates conflicting solely because delivery time changed,
+  including repeated unavailable observations. Standards reproduced optional
+  session/endpoint enrichment splitting one cumulative source, double counting
+  partial plus final usage and leaving the result partial. The same worker is
+  correcting stable semantic equality and source reconciliation, adding
+  delayed-duplicate/enrichment/distinct-source regressions and feedback
+  proposals. Both fresh review axes are required afterward.
 
 ## Current verification
 
