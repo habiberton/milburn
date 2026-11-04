@@ -72,6 +72,9 @@ Wave 1 — Foundation; preparing sequential task `MB-002`
   `milburn:blocked` to `milburn:ready` after its dependency completed.
 - Issue #2 is now assigned to `habiberton` and labeled `milburn:in-progress`
   for builder attempt `MB-002/a01`.
+- The `MB-002` worker branch and worktree were created from exact base
+  `b50ae6f6caffe4629e095d9dafb52b2651aba34c` and configured with identity
+  `Milburn Builder [MB-002/a01]`.
 
 ## Verification
 
@@ -90,7 +93,6 @@ None recorded.
 
 ## Resume here
 
-Commit the `MB-002` coordination checkpoint, use that exact commit as the
-worker base, update the task and progress records, create and identify the
-isolated worktree, and dispatch only that task. Preserve the completed `MB-001`
-worktree until it is explicitly archived or removed.
+Launch the `MB-002` builder with exact base
+`b50ae6f6caffe4629e095d9dafb52b2651aba34c` and dispatch no other task.
+Preserve the completed `MB-001` worktree until explicitly archived or removed.
