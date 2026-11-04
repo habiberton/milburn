@@ -49,9 +49,10 @@ this amendment.
 
 - Planning commit: `4c6f773a1612fc431c26919b0c28e8272fb7f78e`
 - Effective remote PR: #28 (`https://github.com/habiberton/milburn/pull/28`)
-- Effective merge commit: pending
+- Effective merge commit: `182b414ad33540730dec5896a64e3e60024cf78c`
 - Dispatch status: frozen for new implementation workers
-- Resolution status: committed; pending remote PR merge and reconciliation
+- Resolution status: effective and reconciled; implementation dispatch remains
+  frozen until MB-020 and MB-022 are complete
 
 The coordinator may continue already active unaffected work. It may not launch
 another implementation worker until this record names the effective commit and

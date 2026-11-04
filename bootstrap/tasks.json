@@ -321,14 +321,14 @@
       "id": "MB-005",
       "wave": 2,
       "title": "Implement the tmux runtime and fake runtime",
-      "status": "integrated",
+      "status": "done",
       "github": {
         "issue_number": 5,
         "issue_url": "https://github.com/habiberton/milburn/issues/5",
         "status_source": "github",
         "assignment_source": "github",
-        "last_observed_state": "open",
-        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_state": "closed",
+        "last_observed_status_label": "milburn:done",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-004", "MB-020"],
@@ -343,7 +343,7 @@
       "pull_request": {
         "number": 28,
         "url": "https://github.com/habiberton/milburn/pull/28",
-        "merge_commit_sha": null
+        "merge_commit_sha": "182b414ad33540730dec5896a64e3e60024cf78c"
       },
       "progress_path": "bootstrap/progress/tasks/MB-005.md",
       "owned_paths": [
@@ -370,7 +370,7 @@
       "id": "MB-006",
       "wave": 2,
       "title": "Implement the Codex adapter, launch briefs, and result parsing",
-      "status": "candidate",
+      "status": "integrated",
       "github": {
         "issue_number": 6,
         "issue_url": "https://github.com/habiberton/milburn/issues/6",
@@ -386,7 +386,14 @@
       "branch": "bootstrap/builder/MB-006/a01-codex-adapter",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-006-a01",
       "base_sha": "61c453848c1364a7b77695c1ecb9477908b80784",
-      "candidate_sha": "8e1fa8aaf21e7b08e613b668780ca30656bc5c42",
+      "candidate_sha": "38b28545a6fb409d62fa1145e083109df649d308",
+      "integration_branch": "bootstrap/coordinator/MB-006/a01-integration",
+      "integration_commit_sha": "b5c28003e62e4c45ec4d41e588152f2173585f43",
+      "pull_request": {
+        "number": 29,
+        "url": "https://github.com/habiberton/milburn/pull/29",
+        "merge_commit_sha": null
+      },
       "progress_path": "bootstrap/progress/tasks/MB-006.md",
       "owned_paths": [
         "src/milburn/agents/codex_adapter.py",

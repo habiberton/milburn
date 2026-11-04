@@ -212,11 +212,12 @@ When a worker returns a candidate:
 5. Reject or explicitly review unapproved path changes.
 6. Check every acceptance criterion against evidence.
 7. Run the task tests independently.
-8. Review compatibility with approved shared interfaces.
+8. Review compatibility with approved shared interfaces, then select and
+   record the required review mode under the risk-based policy below.
 9. Create or resume the ticket's coordinator integration branch and integrate
    one candidate at a time with a non-squash merge so worker attribution remains
    intact.
-10. Run the independent review and every required test, including
+10. Run the selected independent review mode and every required test, including
     `scripts/smoke-test.sh`, against the integrated task branch.
 11. Record candidate SHAs, integration commits, review findings, test evidence,
     and known risks in the task registry and coordinator progress.
@@ -240,24 +241,40 @@ When a worker returns a candidate:
 Do not delete a worktree until its candidate is integrated, rejected, or
 explicitly archived.
 
-## Independent review procedure
+## Risk-based independent review procedure
 
-Before marking an integrated task `done`, the coordinator launches a separate
-review subagent when subagent tools are available. The reviewer receives the
-task record, approved specification sections, base commit, and candidate or
-integrated commit. It reviews two questions separately:
+Every candidate receives coordinator verification, acceptance-criteria and
+owned-path checks, required tests, `scripts/smoke-test.sh`, and PR evidence.
+Before integration, the coordinator records one of these review modes and its
+risk reason in the task progress record; the PR body repeats that decision.
 
-1. Does the change satisfy every task acceptance criterion and the approved
-   specification?
-2. Does the change preserve repository conventions, public interfaces,
-   maintainability, and test quality?
+Use two independent passes—**Specification** and **Standards**—for domain
+contracts or state transitions; persistence, migrations, or replay; tmux or
+process lifecycle; Codex adapters or external tools; GitHub or MCP effects;
+recovery, session replacement, or plan amendments; security-sensitive changes;
+shared public interfaces; and every task with a prior blocking review finding.
+Specification checks every acceptance criterion and approved requirement.
+Standards checks repository conventions, public interfaces, maintainability,
+and test quality.
 
-The reviewer does not modify the candidate branch, push commits, open or update
-pull requests, or merge. It returns findings with file locations and evidence.
-The coordinator either records a pass or returns the same task to a worker with
-the findings. When subagent tools are unavailable, the root performs a distinct
-review pass after clearing the implementation context as much as practical and
-records that limitation.
+Use one **Focused** independent pass for documentation-only changes, fixtures,
+mechanical refactors, isolated test additions, and other small changes with no
+public interface, state transition, persistence, recovery behavior, or external
+side effect. The focused reviewer still evaluates applicable acceptance
+criteria, implementation quality, tests, and risks.
+
+Escalate Focused to both fresh Specification and Standards passes when it finds
+a blocking issue. Select both passes immediately when task scope expands, a
+plan amendment changes dependencies or authority boundaries, or risk is
+uncertain. MB-005 and MB-006 retain both passes; completed task history is not
+rewritten.
+
+Reviewers receive the task record, approved specification sections, base, and
+candidate or integrated commit. They do not modify candidate branches, push,
+open or update PRs, or merge. The coordinator records a pass or returns the
+same task to its worker with findings. When review subagents are unavailable,
+the root performs the selected distinct pass or passes after clearing
+implementation context as much as practical and records that limitation.
 
 ## Conflict procedure
 

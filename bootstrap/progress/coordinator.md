@@ -6,12 +6,12 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
 
 ## Repository state
 
-- Integration branch: `bootstrap/coordinator/MB-005/a01-integration`
+- Integration branch: `bootstrap/coordinator/MB-006/a01-integration`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
 - Active workers: none
-- Pending candidates: corrected MB-006 candidate
-  `8e1fa8aaf21e7b08e613b668780ca30656bc5c42` and MB-020 candidate
-  `cde56a19d7a9009c840c0bcde964d35369c0f790`
+- Pending candidates: MB-020 candidate
+  `cde56a19d7a9009c840c0bcde964d35369c0f790`; accepted MB-006 candidate
+  `38b28545a6fb409d62fa1145e083109df649d308` is entering integration
 
 ## Completed
 
@@ -383,12 +383,60 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   evidence-bearing PR #28: `https://github.com/habiberton/milburn/pull/28`.
   GitHub resolves `Closes #5`; the PR carries AMEND-001 and is recorded as its
   effective remote review.
+- PR #28 merged using GitHub's two-parent merge-commit method as
+  `182b414ad33540730dec5896a64e3e60024cf78c`. The root fetched and verified
+  `origin/main` contains candidate `b9bab642d97075302e9c79949eab68c2f5502296`,
+  integration commit `c21a1aaf748625b70b0235cc3af552c3cca89b68`,
+  PR tip `1d8d0e272a761b9caf8e7bc2ce69cb3bfd9aaf50`, and AMEND-001 planning commit
+  `4c6f773a1612fc431c26919b0c28e8272fb7f78e`, then fast-forwarded the primary
+  checkout to the exact remote merge SHA.
+- Post-fast-forward verification passed: 26 runtime tests, the real tmux
+  contract, 203 smoke tests (one protected skip), and 22 valid task records.
+  AMEND-001 is effective and reconciled; new implementation dispatch remains
+  frozen until MB-020 and MB-022 are complete.
+- Pending AMEND-002 replaces blanket two-pass review with recorded risk-based
+  selection. Every candidate retains coordinator verification, acceptance/path
+  checks, required and smoke tests, and PR evidence. MB-006 stays in
+  Specification-plus-Standards mode because it is a Codex adapter with prior
+  blocking findings; MB-020 will also receive both passes because this policy
+  expands its shared agent-instruction scope. Completed history is unchanged.
+- AMEND-002 planning is committed as
+  `0398b0e3d0a11f88b9728ea48a8935b1b2eb1840`; remote effectiveness will be
+  recorded through the MB-006 coordinator PR.
 - Corrected MB-006 candidate
   `8e1fa8aaf21e7b08e613b668780ca30656bc5c42` addresses semantic Codex JSONL
   extraction, typed role/result/payload enforcement, exact skill/resource
   binding retention, and expanded opt-in live lifecycle coverage. It reports
   four attributed commits, 28 focused tests, and 205 smoke tests (one protected
   live skip); coordinator verification and fresh reviews remain.
+- Second-round MB-006 candidate `5444f2e5` added full protected lifecycle
+  coverage and terminal/retired fake guards. Final Specification review passed,
+  but Standards review found interrupted fake collection could still emit a
+  successful scripted result unlike the live boundary. The same unaffected
+  worker is preserving an explicit interrupted outcome and adding regression
+  evidence; no integration branch or PR exists.
+- Third-round MB-006 candidate `4a354aca` fixed interrupt-to-collect parity and
+  passed fresh Specification review. Standards review found one remaining
+  fake/live mismatch: fake retirement could delete a still-running endpoint
+  that the live boundary rejects. The same worker is adding terminal-state
+  preconditions and a non-invalidation regression before another fresh
+  two-pass review.
+- Final MB-006 candidate `38b28545a6fb409d62fa1145e083109df649d308`
+  corrected running-retirement parity. Coordinator verification passed ten
+  attributed commits, approved paths, 30 focused tests, and 207 smoke tests
+  (two protected live skips). Recorded review mode is Specification + Standards
+  because this is a Codex/external adapter with prior blocking findings; both
+  final fresh reviews passed with no actionable findings. It will use
+  `bootstrap/coordinator/MB-006/a01-integration` and one PR carrying AMEND-002.
+- MB-006 was non-squash merged on its coordinator branch as two-parent commit
+  `b5c28003e62e4c45ec4d41e588152f2173585f43`. Integrated verification passed
+  30 focused tests, 233 smoke tests (three protected skips), 22 valid task
+  records, and `git diff --check` against `origin/main`.
+- The root pushed `bootstrap/coordinator/MB-006/a01-integration` at
+  `abc650ff9d63513ee33e464d869de6d7d6e742ad` and opened clean, mergeable,
+  evidence-bearing PR #29: `https://github.com/habiberton/milburn/pull/29`.
+  GitHub resolves `Closes #6`; the PR records Specification + Standards mode
+  and is AMEND-002's effective remote review.
 - MB-020 will use its own coordinator branch and PR. Its implementation will
   backfill only evidence already recorded for MB-001 through MB-004 and will
   not be mixed into the already merged MB-004 history.
@@ -410,6 +458,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Push the PR/amendment record update, merge PR #28 with a merge commit, verify
-and reconcile `origin/main`, then verify and freshly review corrected MB-006.
-Keep all new implementation dispatch frozen.
+Push the PR/amendment record update, merge PR #29 with a merge commit, verify
+and reconcile `origin/main`, then proceed to MB-020 two-pass review. Keep new
+implementation dispatch frozen.
