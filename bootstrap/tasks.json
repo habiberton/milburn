@@ -428,31 +428,34 @@
       "id": "MB-017",
       "wave": 2,
       "title": "Persist per-agent token usage and replayable usage summaries",
-      "status": "blocked",
+      "status": "candidate",
       "github": {
         "issue_number": 21,
         "issue_url": "https://github.com/habiberton/milburn/issues/21",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:blocked",
-        "last_observed_assignees": []
+        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-002", "MB-003", "MB-006", "MB-022"],
       "parallel_group": null,
-      "owner": null,
-      "branch": null,
-      "worktree": null,
-      "base_sha": null,
-      "candidate_sha": null,
+      "owner": "builder-MB-017-a01",
+      "branch": "bootstrap/builder/MB-017/a01-token-usage",
+      "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-017-a01",
+      "base_sha": "425dd6e3ee42c5b7a7ee7177f4a2f86455bc2ae6",
+      "candidate_sha": "35e0bda2dc1844579c682862c270f94bbef9ad21",
       "progress_path": "bootstrap/progress/tasks/MB-017.md",
       "owned_paths": [
         "src/milburn/domain/usage.py",
         "src/milburn/agents/usage.py",
         "src/milburn/persistence/usage_projections.py",
         "tests/unit/domain/test_usage.py",
+        "tests/unit/domain/__init__.py",
         "tests/unit/agents/test_usage.py",
+        "tests/unit/agents/__init__.py",
         "tests/unit/persistence/test_usage_projections.py",
+        "tests/unit/persistence/__init__.py",
         "tests/fixtures/agents/usage/"
       ],
       "acceptance_criteria": [
@@ -524,14 +527,14 @@
       "id": "MB-022",
       "wave": 2,
       "title": "Add a durable plan-amendment gate before worker dispatch",
-      "status": "integrated",
+      "status": "done",
       "github": {
         "issue_number": 27,
         "issue_url": "https://github.com/habiberton/milburn/issues/27",
         "status_source": "github",
         "assignment_source": "github",
-        "last_observed_state": "open",
-        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_state": "closed",
+        "last_observed_status_label": "milburn:done",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-004", "MB-020"],
@@ -546,7 +549,7 @@
       "pull_request": {
         "number": 31,
         "url": "https://github.com/habiberton/milburn/pull/31",
-        "merge_commit_sha": null
+        "merge_commit_sha": "b2104b764215f9cd16591dd51a7086c9fec63d04"
       },
       "progress_path": "bootstrap/progress/tasks/MB-022.md",
       "owned_paths": [
@@ -595,23 +598,30 @@
       "id": "MB-007",
       "wave": 2,
       "title": "Implement the skill catalog, role rules, skill packages, and digest validation",
-      "status": "blocked",
+      "status": "integrated",
       "github": {
         "issue_number": 7,
         "issue_url": "https://github.com/habiberton/milburn/issues/7",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:blocked",
-        "last_observed_assignees": []
+        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-004", "MB-020", "MB-022"],
       "parallel_group": "wave-2-boundaries",
-      "owner": null,
-      "branch": null,
-      "worktree": null,
-      "base_sha": null,
-      "candidate_sha": null,
+      "owner": "builder-MB-007-a01",
+      "branch": "bootstrap/builder/MB-007/a01-skill-catalog",
+      "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-007-a01",
+      "base_sha": "425dd6e3ee42c5b7a7ee7177f4a2f86455bc2ae6",
+      "candidate_sha": "0b33817be39c9b78442e17c273a230910c44ee0d",
+      "integration_branch": "bootstrap/coordinator/MB-007/a01-integration",
+      "integration_commit_sha": "71acc3fcfa5c594dc4605b05793deb94ba25181b",
+      "pull_request": {
+        "number": 32,
+        "url": "https://github.com/habiberton/milburn/pull/32",
+        "merge_commit_sha": null
+      },
       "progress_path": "bootstrap/progress/tasks/MB-007.md",
       "owned_paths": [
         ".agents/skills/",
@@ -641,14 +651,14 @@
       "id": "MB-008",
       "wave": 2,
       "title": "Implement the GitHub gateway, MCP effect journal, and local fakes",
-      "status": "blocked",
+      "status": "ready",
       "github": {
         "issue_number": 8,
         "issue_url": "https://github.com/habiberton/milburn/issues/8",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:blocked",
+        "last_observed_status_label": "milburn:ready",
         "last_observed_assignees": []
       },
       "dependencies": ["MB-004", "MB-020", "MB-022"],
@@ -685,14 +695,14 @@
       "id": "MB-009",
       "wave": 2,
       "title": "Implement the Git worktree manager and fake workspace manager",
-      "status": "blocked",
+      "status": "ready",
       "github": {
         "issue_number": 9,
         "issue_url": "https://github.com/habiberton/milburn/issues/9",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:blocked",
+        "last_observed_status_label": "milburn:ready",
         "last_observed_assignees": []
       },
       "dependencies": ["MB-004", "MB-020", "MB-022"],

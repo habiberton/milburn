@@ -1,0 +1,10 @@
+{
+  "roles": {
+    "coordinator": {"required_skills": ["milburn-coordination"]},
+    "planner": {"required_skills": ["milburn-planning"]},
+    "classifier_router": {"required_skills": ["milburn-routing"]},
+    "architect": {"required_skills": ["milburn-architecture"]},
+    "coder": {"required_skills": ["milburn-long-running-coder"]},
+    "tester": {"required_skills": ["milburn-qa"]}
+  }
+}

@@ -1,0 +1,7 @@
+Task and attempt:
+Exact base and current SHA:
+Completed slices:
+Test commands and results:
+Decisions and blockers:
+Candidate and remaining work:
+First recovery action:

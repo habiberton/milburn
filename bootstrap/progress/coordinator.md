@@ -546,6 +546,90 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   `https://github.com/habiberton/milburn/pull/31`. It contains `Closes #27`,
   worker/integration SHAs, acceptance and test evidence, both review histories,
   risks, and MB-022-F001/F002 summaries.
+- PR #31 merged through GitHub's two-parent merge method as
+  `b2104b764215f9cd16591dd51a7086c9fec63d04`. Remote read-back verified
+  `origin/main` contains PR tip `f9140d7`, candidate `491f59e`, integration
+  `09e0544`, and recovery correction `33c899e`; primary `main` fast-forwarded
+  to the exact remote SHA.
+- Post-fast-forward MB-022 verification passed: real amendment preflight clear,
+  8 feedback briefs, 42 focused tests plus 3 subtests, and 285 smoke tests with
+  3 protected skips and 3 subtests. Issue #27 was closed by `Closes #27`; after
+  this durable completion record commits, the root may apply `milburn:done` and
+  reconcile dependency-ready Wave 2 issues.
+- Local MB-022 completion record `47dc63c` committed with semantic preflight
+  clear. Closed issue #27 now carries `milburn:done`; open issues #7, #8, #9,
+  and #21 carry `milburn:ready`. Their owned paths are disjoint. Under the
+  preferred two-worker limit, MB-017 and MB-007 are selected first because
+  MB-017 unlocks MB-018 and MB-007 advances the original Wave 2 boundaries;
+  MB-008 and MB-009 remain ready but undispatched.
+- Issues #21 and #7 are assigned to `habiberton` and moved to
+  `milburn:in-progress` for builder attempts MB-017/a01 and MB-007/a01. Their
+  exact disjoint owned paths, worktrees, test contracts, and two-pass review
+  modes are recorded. No third implementation worker is dispatched.
+- MB-017/a01 found the exact required pytest command collects three non-package
+  modules named `test_usage.py`, causing import-file mismatch. The coordinator
+  approved empty `tests/unit/domain/__init__.py`,
+  `tests/unit/agents/__init__.py`, and `tests/unit/persistence/__init__.py`
+  package markers as the minimal owned-path expansion. This is a test-harness
+  detail, not a plan amendment; global pytest configuration remains unchanged.
+- MB-017/a01 returned candidate
+  `5d28f949c001503312d80f4fcb56535e01a503e3` with three verified attributed
+  commits from exact base `425dd6e`. The diff stays within recorded paths plus
+  the approved package markers. Coordinator verification passed 17 focused
+  tests, smoke (302 passed, 3 protected skips, 3 subtests), and diff checks.
+  Specification and Standards reviews are in progress while MB-007 continues.
+- MB-007/a01 returned candidate
+  `6e620981d6192111469881ace003bb0733c821ed` with three verified attributed
+  commits from exact base `425dd6e`. The diff is confined to recorded skill,
+  role-rule, configuration, validation, fixture, test, and task-progress paths.
+  Coordinator verification passed 24 focused tests, smoke (309 passed, 3
+  protected skips, 3 subtests), and diff checks. Independent review waits only
+  for the active MB-017 review slots to free.
+- Initial MB-017 reviews both blocked the candidate. Specification reproduced
+  source-version duplicates conflicting solely because delivery time changed,
+  including repeated unavailable observations. Standards reproduced optional
+  session/endpoint enrichment splitting one cumulative source, double counting
+  partial plus final usage and leaving the result partial. The same worker is
+  correcting stable semantic equality and source reconciliation, adding
+  delayed-duplicate/enrichment/distinct-source regressions and feedback
+  proposals. Both fresh review axes are required afterward.
+- Initial MB-007 reviews both blocked the candidate on approved-root security.
+  Package validation skipped directory symlinks before checking them, leaving
+  undeclared external directory links valid and outside the digest. Role-rule
+  loading checked only final files, allowing a symlinked parent directory to
+  source mandatory authority rules externally. The same worker is adding
+  ancestor containment/symlink rejection, regressions, and feedback proposals;
+  both fresh review axes are required afterward.
+- Corrected MB-017 candidate
+  `35e0bda2dc1844579c682862c270f94bbef9ad21` contains six verified attributed
+  commits from the exact base. Coordinator verification passed 23 focused
+  tests, smoke (308 passed, 3 protected skips, 3 subtests), and diff checks.
+  Both fresh review axes are in progress.
+- Corrected MB-007 candidate
+  `0b33817be39c9b78442e17c273a230910c44ee0d` contains five verified attributed
+  commits. Coordinator verification passed 27 focused tests, smoke (312 passed,
+  3 protected skips, 3 subtests), and diff checks. Both fresh reviews are in
+  progress.
+- Fresh MB-007 Specification and Standards reviews both passed with no findings.
+  The root non-squash merged all five worker commits on the coordinator branch
+  as two-parent integration `71acc3fcfa5c594dc4605b05793deb94ba25181b`
+  and finalized MB-007-F001/F002 from retained evidence. Integrated verification
+  and the one-ticket PR remain.
+- Final integrated MB-007 Specification and Standards reviews both passed with
+  no actionable findings at `e35d974`. The branch passes 27 focused tests, 312
+  smoke tests with 3 protected skips and 3 subtests, 9 feedback briefs, semantic
+  amendment preflight, and diff checks. It is ready for the single task PR.
+- The root pushed `bootstrap/coordinator/MB-007/a01-integration` at `efc210b`
+  and opened evidence-bearing PR #32:
+  `https://github.com/habiberton/milburn/pull/32`. It includes `Closes #7`,
+  worker/integration SHAs, acceptance/tests, both review histories, risks, and
+  MB-007-F001/F002 summaries.
+- Fresh MB-017 reviews found two remaining reconciliation blockers. A source
+  known only by one session could merge with an observation known only by a
+  disjoint endpoint without positive shared identity, risking undercount; and
+  historical unavailable evidence permanently kept a compatible authoritative
+  final aggregate partial. The same worker is adding fail-closed cross-identity
+  handling plus same-source unavailable-to-final supersession regressions.
 
 ## Current verification
 
@@ -566,8 +650,5 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Record the final integrated MB-022 reviews and verification, push
-`bootstrap/coordinator/MB-022/a01-integration`, and open its one-ticket
-evidence-bearing PR with `Closes #27`. Merge only by merge commit, verify and
-fast-forward `origin/main`, update task records, and only then reconcile the
-next dependency-ready Wave 2 tasks for dispatch.
+Commit the Wave 2 readiness reconciliation, prepare isolated MB-017/a01 and
+MB-007/a01 worktrees, and dispatch only those two non-overlapping workers.
