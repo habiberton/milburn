@@ -95,13 +95,37 @@ def test_lifecycle_delegates_through_runtime_and_correlates_steering() -> None:
         SteeringMessage(Role.CODER, "task-6", "attempt-1", "Continue."),
     )
     interrupted = fake.interrupt(endpoint)
+    stopped = fake.status(endpoint)
+    late_ack = fake.steer(
+        endpoint,
+        SteeringMessage(Role.CODER, "task-6", "attempt-1", "Too late."),
+    )
+    repeated_interrupt = fake.interrupt(endpoint)
     retired = fake.retire(endpoint)
 
-    assert status.process_state is ProcessState.EXITED
+    assert status.process_state is ProcessState.RUNNING
+    assert status.exit_code is None
     assert ack.accepted
     assert interrupted.observed
+    assert stopped.process_state is ProcessState.EXITED
+    assert not late_ack.accepted
+    assert not repeated_interrupt.observed
     assert retired.observed
     assert fake.runtime.steering == [("fake-codex-1", "Continue.")]
+
+    with pytest.raises(AssertionError, match="unknown fake endpoint"):
+        fake.status(endpoint)
+    with pytest.raises(AssertionError, match="unknown fake endpoint"):
+        fake.collect(endpoint)
+    with pytest.raises(AssertionError, match="unknown fake endpoint"):
+        fake.steer(
+            endpoint,
+            SteeringMessage(Role.CODER, "task-6", "attempt-1", "Retired."),
+        )
+    with pytest.raises(AssertionError, match="unknown fake endpoint"):
+        fake.interrupt(endpoint)
+    with pytest.raises(AssertionError, match="unknown fake endpoint"):
+        fake.retire(endpoint)
 
     with pytest.raises(EndpointCorrelationError):
         fake.steer(

@@ -28,12 +28,18 @@ class ScriptedCodexRun:
     stderr: str = ""
 
 
+@dataclass(slots=True)
+class _ActiveRun:
+    script: ScriptedCodexRun
+    state: ProcessState = ProcessState.RUNNING
+
+
 class FakeCodexRuntime:
     """A process boundary that consumes one scripted run per launch."""
 
     def __init__(self, scripts: tuple[ScriptedCodexRun, ...]) -> None:
         self._remaining = list(scripts)
-        self._runs: dict[str, ScriptedCodexRun] = {}
+        self._runs: dict[str, _ActiveRun] = {}
         self.launches: list[ProcessLaunch] = []
         self.steering: list[tuple[str, str]] = []
         self.interrupted: list[str] = []
@@ -44,38 +50,46 @@ class FakeCodexRuntime:
             raise AssertionError("no scripted Codex run remains")
         endpoint = f"fake-codex-{len(self.launches) + 1}"
         self.launches.append(spec)
-        self._runs[endpoint] = self._remaining.pop(0)
+        self._runs[endpoint] = _ActiveRun(self._remaining.pop(0))
         return endpoint
 
     def steer(self, endpoint: str, message: str) -> Ack:
-        self._require(endpoint)
+        run = self._require(endpoint)
+        if run.state is not ProcessState.RUNNING:
+            return Ack(accepted=False, detail="endpoint is not running")
         self.steering.append((endpoint, message))
         return Ack(accepted=True, detail="scripted acknowledgement")
 
     def status(self, endpoint: str) -> ProcessStatus:
         run = self._require(endpoint)
-        return ProcessStatus(ProcessState.EXITED, run.exit_code)
+        exit_code = run.script.exit_code if run.state is ProcessState.EXITED else None
+        return ProcessStatus(run.state, exit_code)
 
     def interrupt(self, endpoint: str) -> ControlResult:
-        self._require(endpoint)
+        run = self._require(endpoint)
+        if run.state is not ProcessState.RUNNING:
+            return ControlResult(observed=False, detail="endpoint already exited")
+        run.state = ProcessState.EXITED
         self.interrupted.append(endpoint)
         return ControlResult(observed=True, detail="scripted interrupt")
 
     def collect(self, endpoint: str) -> ProcessCollection:
         run = self._require(endpoint)
+        run.state = ProcessState.EXITED
         return ProcessCollection(
             state=ProcessState.EXITED,
-            exit_code=run.exit_code,
-            stdout=_codex_jsonl(run.result_document),
-            stderr=run.stderr,
+            exit_code=run.script.exit_code,
+            stdout=_codex_jsonl(run.script.result_document),
+            stderr=run.script.stderr,
         )
 
     def retire(self, endpoint: str) -> ControlResult:
         self._require(endpoint)
         self.retired.append(endpoint)
+        del self._runs[endpoint]
         return ControlResult(observed=True, detail="scripted retirement")
 
-    def _require(self, endpoint: str) -> ScriptedCodexRun:
+    def _require(self, endpoint: str) -> _ActiveRun:
         try:
             return self._runs[endpoint]
         except KeyError as error:
