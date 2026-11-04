@@ -2,7 +2,7 @@
 
 ## Current wave
 
-Wave 1 — Foundation; `MB-002` PR merged and remotely verified
+Wave 1 — Foundation; `MB-002` done and `MB-003` ready
 
 ## Repository state
 
@@ -154,6 +154,9 @@ Wave 1 — Foundation; `MB-002` PR merged and remotely verified
   checkout to the exact remote SHA.
 - Post-fast-forward verification passed again: 64 domain tests and 75 total
   smoke tests.
+- Closed issue #2 now carries `milburn:done`. Issue #3 was reconciled against
+  `MB-003`, remains open and unassigned, and moved from `milburn:blocked` to
+  `milburn:ready` after its dependency completed.
 
 ## Verification
 
@@ -172,6 +175,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the verified remote merge record, change closed issue #2 from
-`milburn:in-progress` to `milburn:done`, reconcile task status, then make issue
-#3 ready. Begin `MB-003` only after remote and local records agree.
+Commit the reconciled `MB-002` completion and `MB-003` readiness. Prepare the
+sequential `MB-003/a01` worker, preserving the completed `MB-001` and `MB-002`
+worktrees until explicitly archived or removed.
