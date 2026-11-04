@@ -182,6 +182,10 @@ Wave 1 — Foundation; `MB-003` integrated on its coordinator branch
   progress record and the resolution retained all worker evidence.
 - Integrated-branch verification passed: 31 persistence tests, 106 total smoke
   tests, and `git diff --check` against `origin/main`.
+- The root pushed the coordinator branch at
+  `9530d4bd09542a4e341dccdd98a37db5fa43b388` and opened evidence-bearing PR
+  #20: `https://github.com/habiberton/milburn/pull/20`. GitHub resolves
+  `Closes #3` correctly and reports the PR clean and mergeable.
 
 ## Verification
 
@@ -200,5 +204,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the integration evidence, push the coordinator branch, and open the
-single evidence-bearing `MB-003` PR with `Closes #3`.
+Commit the PR record, update that same branch, retest, and merge PR #20 only
+with a merge commit. Verify `origin/main`, fast-forward the primary checkout,
+and reconcile issue/task state before `MB-004`.
