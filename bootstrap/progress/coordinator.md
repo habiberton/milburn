@@ -261,6 +261,12 @@ Wave 1 — Foundation; preparing sequential task `MB-004`
 - Integrated-branch verification passed: 71 orchestration tests, 177 total
   smoke tests, 19 valid task records, and `git diff --check` against
   `origin/main`.
+- The root pushed coordinator branch
+  `bootstrap/coordinator/MB-004/a01-integration` at
+  `defba5782747c7b7e4f81700e9bdec090d368510` and opened the single
+  evidence-bearing PR #26: `https://github.com/habiberton/milburn/pull/26`.
+  GitHub resolves `Closes #4` to the intended issue and reports the PR clean
+  and mergeable.
 
 ## Verification
 
@@ -279,6 +285,5 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Push `bootstrap/coordinator/MB-004/a01-integration`, open its single
-evidence-bearing PR with `Closes #4`, merge only with a merge commit, verify
+Push the PR-record update, merge PR #26 only with a merge commit, verify
 `origin/main`, and fast-forward the primary checkout before advancing Wave 2.
