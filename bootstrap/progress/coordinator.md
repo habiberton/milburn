@@ -615,6 +615,10 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   as two-parent integration `71acc3fcfa5c594dc4605b05793deb94ba25181b`
   and finalized MB-007-F001/F002 from retained evidence. Integrated verification
   and the one-ticket PR remain.
+- Final integrated MB-007 Specification and Standards reviews both passed with
+  no actionable findings at `e35d974`. The branch passes 27 focused tests, 312
+  smoke tests with 3 protected skips and 3 subtests, 9 feedback briefs, semantic
+  amendment preflight, and diff checks. It is ready for the single task PR.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
