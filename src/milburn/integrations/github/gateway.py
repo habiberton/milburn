@@ -140,14 +140,11 @@ class GitHubMcpGateway:
         client: McpClient,
         journal: EffectJournal,
         generation_fence: GenerationFence,
-        *,
-        verify_tools: bool = True,
     ) -> None:
         self._client = client
         self._journal = journal
         self._generation_fence = generation_fence
-        if verify_tools:
-            self.verify_compatibility()
+        self.verify_compatibility()
 
     def verify_compatibility(self) -> None:
         try:
@@ -211,6 +208,9 @@ class GitHubMcpGateway:
             return _one_marked(
                 issues,
                 body=lambda issue: issue.body,
+                semantic_match=lambda issue: (
+                    issue.title == command.title and issue.body == body
+                ),
                 command=command,
                 arguments=arguments,
                 object_name="issues",
@@ -221,14 +221,17 @@ class GitHubMcpGateway:
             "create_issue",
             arguments,
             reconcile,
-            lambda: self._call(
-                CREATE_ISSUE,
-                {
-                    "owner": command.repository_id.owner,
-                    "repo": command.repository_id.name,
-                    "title": command.title,
-                    "body": body,
-                },
+            lambda start_call: _started_call(
+                start_call,
+                lambda: self._call(
+                    CREATE_ISSUE,
+                    {
+                        "owner": command.repository_id.owner,
+                        "repo": command.repository_id.name,
+                        "title": command.title,
+                        "body": body,
+                    },
+                ),
             ),
             lambda issue: str(issue.number),
         )
@@ -255,6 +258,10 @@ class GitHubMcpGateway:
             return _one_marked(
                 comments,
                 body=lambda comment: comment.body,
+                semantic_match=lambda comment: (
+                    comment.issue_number == command.issue_number
+                    and comment.body == body
+                ),
                 command=command,
                 arguments=arguments,
                 object_name="comments",
@@ -265,12 +272,17 @@ class GitHubMcpGateway:
             "add_comment",
             arguments,
             reconcile,
-            lambda: self._call(
-                ADD_COMMENT,
-                {
-                    **_issue_coordinates(command.repository_id, command.issue_number),
-                    "body": body,
-                },
+            lambda start_call: _started_call(
+                start_call,
+                lambda: self._call(
+                    ADD_COMMENT,
+                    {
+                        **_issue_coordinates(
+                            command.repository_id, command.issue_number
+                        ),
+                        "body": body,
+                    },
+                ),
             ),
             lambda comment: comment.comment_id,
         )
@@ -294,15 +306,17 @@ class GitHubMcpGateway:
                 return issue
             return None
 
-        def invoke() -> JsonObject:
+        def invoke(start_call: Callable[[], None]) -> JsonObject:
             issue = current()
+            call_arguments = {
+                **_issue_coordinates(command.repository_id, command.issue_number),
+                "body": _with_marker(issue.body, marker),
+                "labels": list(command.labels),
+            }
+            start_call()
             return self._call(
                 UPDATE_ISSUE,
-                {
-                    **_issue_coordinates(command.repository_id, command.issue_number),
-                    "body": _with_marker(issue.body, marker),
-                    "labels": list(command.labels),
-                },
+                call_arguments,
             )
 
         return self._mutate(
@@ -334,15 +348,17 @@ class GitHubMcpGateway:
                 return issue
             return None
 
-        def invoke() -> JsonObject:
+        def invoke(start_call: Callable[[], None]) -> JsonObject:
             issue = current()
+            call_arguments = {
+                **_issue_coordinates(command.repository_id, command.issue_number),
+                "body": _with_marker(issue.body, marker),
+                "state": "closed",
+            }
+            start_call()
             return self._call(
                 UPDATE_ISSUE,
-                {
-                    **_issue_coordinates(command.repository_id, command.issue_number),
-                    "body": _with_marker(issue.body, marker),
-                    "state": "closed",
-                },
+                call_arguments,
             )
 
         return self._mutate(
@@ -364,7 +380,7 @@ class GitHubMcpGateway:
         operation: str,
         arguments: JsonObject,
         reconcile: Callable[[], T | None],
-        invoke: Callable[[], JsonObject],
+        invoke: Callable[[Callable[[], None]], JsonObject],
         identity: Callable[[T], str],
     ) -> T:
         self._generation_fence.assert_current(command.fence)
@@ -403,13 +419,27 @@ class GitHubMcpGateway:
             )
 
         self._journal.transition(command.effect_id, EffectStatus.RECONCILED)
-        self._generation_fence.assert_current(command.fence)
-        self._journal.transition(command.effect_id, EffectStatus.CALL_STARTED)
+        call_started = False
+
+        def start_call() -> None:
+            nonlocal call_started
+            if call_started:
+                raise RuntimeError("mutation call can start only once")
+            self._generation_fence.assert_current(command.fence)
+            self._journal.transition(command.effect_id, EffectStatus.CALL_STARTED)
+            call_started = True
+
         try:
-            invoke()
+            invoke(start_call)
         except McpError as error:
-            self._journal.transition(command.effect_id, EffectStatus.UNCERTAIN)
-            raise UncertainEffectError(command.effect_id) from error
+            if call_started:
+                self._journal.transition(command.effect_id, EffectStatus.UNCERTAIN)
+                raise UncertainEffectError(command.effect_id) from error
+            raise ReconciliationUnavailableError(
+                f"cannot prepare GitHub effect {command.effect_id!r}"
+            ) from error
+        if not call_started:
+            raise RuntimeError("mutation invocation returned without starting a call")
 
         try:
             observed = reconcile()
@@ -471,12 +501,15 @@ def _has_exact_marker(
     body: str, command: MutationCommand, arguments: JsonObject
 ) -> bool:
     exact = _effect_marker(command, arguments)
-    if exact in body:
+    prefix = _marker_prefix(command.idempotency_marker)
+    prefix_count = body.count(prefix)
+    exact_count = body.count(exact)
+    if prefix_count == 1 and exact_count == 1:
         return True
-    if _marker_prefix(command.idempotency_marker) in body:
+    if prefix_count:
         raise EffectConflictError(
             f"idempotency marker {command.idempotency_marker!r} is bound to "
-            "another semantic effect"
+            "another or multiple semantic effects"
         )
     return False
 
@@ -491,6 +524,7 @@ def _one_marked(
     values: tuple[T, ...],
     *,
     body: Callable[[T], str],
+    semantic_match: Callable[[T], bool],
     command: MutationCommand,
     arguments: JsonObject,
     object_name: str,
@@ -502,7 +536,21 @@ def _one_marked(
         raise EffectConflictError(
             f"idempotency marker matches multiple remote {object_name}"
         )
-    return matches[0] if matches else None
+    if not matches:
+        return None
+    match = matches[0]
+    if not semantic_match(match):
+        raise EffectConflictError(
+            f"bound marker does not match requested remote {object_name} semantics"
+        )
+    return match
+
+
+def _started_call(
+    start_call: Callable[[], None], call: Callable[[], JsonObject]
+) -> JsonObject:
+    start_call()
+    return call()
 
 
 def _digest(arguments: JsonObject) -> str:
@@ -525,6 +573,7 @@ def _verify_tool_schema(name: str, schema: JsonObject) -> None:
     if (
         not isinstance(required, list)
         or any(not isinstance(item, str) for item in required)
+        or len(required) != len(set(required))
         or set(required) != expected_required
     ):
         raise ToolCompatibilityError(
