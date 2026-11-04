@@ -520,6 +520,13 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   six-path suite (41 passed, 3 subtests), smoke (284 passed, 3 protected skips,
   3 subtests), strict validation of 2 amendment records, and `git diff --check`.
   Both fresh reviews are in progress.
+- Fresh Standards re-review passed the strict validator correction, but fresh
+  Specification review found AMEND-001 still recorded `Dispatch status:
+  frozen`, so the mandatory real-repository `--preflight` failed. AMEND-001 was
+  already remotely effective and reconciled through PR #28; the remaining
+  freeze is the separate MB-022 task dependency. The same worker is correcting
+  that durable distinction, adding a real-record preflight regression and a
+  second feedback proposal. Both fresh reviews will restart.
 
 ## Verification
 
