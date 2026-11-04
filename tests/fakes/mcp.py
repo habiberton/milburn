@@ -19,6 +19,7 @@ class ScriptedOutcome(StrEnum):
     FAILURE = "failure"
     TIMEOUT_BEFORE = "timeout_before"
     TIMEOUT_AFTER = "timeout_after"
+    MALFORMED_AFTER = "malformed_after"
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,4 +69,6 @@ class DeterministicMcpClient:
         result = self._handler(name, detached)
         if outcome is ScriptedOutcome.TIMEOUT_AFTER:
             raise McpTimeoutError(f"scripted post-effect timeout for {name}")
+        if outcome is ScriptedOutcome.MALFORMED_AFTER:
+            return {"malformed": "scripted response shape"}
         return result

@@ -13,7 +13,7 @@ from milburn.integrations.github.gateway import (
     GET_REPOSITORY,
     LIST_COMMENTS,
     LIST_ISSUES,
-    REQUIRED_TOOL_ARGUMENTS,
+    TOOL_SCHEMAS,
     UPDATE_ISSUE,
 )
 from milburn.integrations.mcp import JsonObject, McpProtocolError, McpTool
@@ -29,12 +29,15 @@ class FakeGitHubMcpServer:
         self.issues: dict[int, JsonObject] = {}
         self.comments: dict[int, list[JsonObject]] = {}
         self.mutation_counts: dict[str, int] = {}
+        self.ignored_update_fields: set[str] = set()
         tools = tuple(
             McpTool(
                 name=name,
                 input_schema={
                     "type": "object",
-                    "required": sorted(REQUIRED_TOOL_ARGUMENTS[name]),
+                    "properties": deepcopy(TOOL_SCHEMAS[name][0]),
+                    "required": sorted(TOOL_SCHEMAS[name][1]),
+                    "additionalProperties": False,
                 },
             )
             for name in sorted(ALLOWED_TOOLS)
@@ -104,11 +107,11 @@ class FakeGitHubMcpServer:
         if tool == UPDATE_ISSUE:
             self._mutated(tool)
             issue = self._issue(arguments)
-            if "body" in arguments:
+            if "body" in arguments and "body" not in self.ignored_update_fields:
                 issue["body"] = _string(arguments, "body")
-            if "state" in arguments:
+            if "state" in arguments and "state" not in self.ignored_update_fields:
                 issue["state"] = _string(arguments, "state")
-            if "labels" in arguments:
+            if "labels" in arguments and "labels" not in self.ignored_update_fields:
                 labels = arguments["labels"]
                 if not isinstance(labels, list) or any(
                     not isinstance(label, str) for label in labels

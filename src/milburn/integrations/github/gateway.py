@@ -8,6 +8,7 @@ import json
 from typing import Any, TypeVar
 
 from milburn.integrations.mcp import (
+    EffectConflictError,
     EffectJournal,
     EffectRequest,
     EffectStatus,
@@ -16,8 +17,6 @@ from milburn.integrations.mcp import (
     McpClient,
     McpError,
     McpProtocolError,
-    McpTimeoutError,
-    McpUnavailableError,
 )
 
 from .contracts import (
@@ -54,14 +53,51 @@ ALLOWED_TOOLS = frozenset(
     }
 )
 
-REQUIRED_TOOL_ARGUMENTS = {
-    GET_REPOSITORY: frozenset({"owner", "repo"}),
-    LIST_ISSUES: frozenset({"owner", "repo", "state"}),
-    GET_ISSUE: frozenset({"owner", "repo", "issue_number"}),
-    CREATE_ISSUE: frozenset({"owner", "repo", "title", "body"}),
-    LIST_COMMENTS: frozenset({"owner", "repo", "issue_number"}),
-    ADD_COMMENT: frozenset({"owner", "repo", "issue_number", "body"}),
-    UPDATE_ISSUE: frozenset({"owner", "repo", "issue_number"}),
+_STRING = {"type": "string"}
+_INTEGER = {"type": "integer"}
+_STRING_ARRAY = {"type": "array", "items": {"type": "string"}}
+
+TOOL_SCHEMAS: dict[str, tuple[dict[str, JsonObject], frozenset[str]]] = {
+    GET_REPOSITORY: (
+        {"owner": _STRING, "repo": _STRING},
+        frozenset({"owner", "repo"}),
+    ),
+    LIST_ISSUES: (
+        {"owner": _STRING, "repo": _STRING, "state": _STRING},
+        frozenset({"owner", "repo", "state"}),
+    ),
+    GET_ISSUE: (
+        {"owner": _STRING, "repo": _STRING, "issue_number": _INTEGER},
+        frozenset({"owner", "repo", "issue_number"}),
+    ),
+    CREATE_ISSUE: (
+        {"owner": _STRING, "repo": _STRING, "title": _STRING, "body": _STRING},
+        frozenset({"owner", "repo", "title", "body"}),
+    ),
+    LIST_COMMENTS: (
+        {"owner": _STRING, "repo": _STRING, "issue_number": _INTEGER},
+        frozenset({"owner", "repo", "issue_number"}),
+    ),
+    ADD_COMMENT: (
+        {
+            "owner": _STRING,
+            "repo": _STRING,
+            "issue_number": _INTEGER,
+            "body": _STRING,
+        },
+        frozenset({"owner", "repo", "issue_number", "body"}),
+    ),
+    UPDATE_ISSUE: (
+        {
+            "owner": _STRING,
+            "repo": _STRING,
+            "issue_number": _INTEGER,
+            "body": _STRING,
+            "labels": _STRING_ARRAY,
+            "state": _STRING,
+        },
+        frozenset({"owner", "repo", "issue_number"}),
+    ),
 }
 
 
@@ -119,6 +155,8 @@ class GitHubMcpGateway:
         except McpError as error:
             raise ToolCompatibilityError("unable to discover GitHub MCP tools") from error
         names = {tool.name for tool in tools}
+        if len(names) != len(tools):
+            raise ToolCompatibilityError("GitHub MCP server returned duplicate tool names")
         missing = ALLOWED_TOOLS - names
         if missing:
             raise ToolCompatibilityError(
@@ -127,33 +165,20 @@ class GitHubMcpGateway:
         for tool in tools:
             if tool.name not in ALLOWED_TOOLS:
                 continue
-            if tool.input_schema.get("type") != "object":
-                raise ToolCompatibilityError(
-                    f"GitHub MCP tool {tool.name!r} has an incompatible input schema"
-                )
-            required = tool.input_schema.get("required")
-            if not isinstance(required, list) or any(
-                not isinstance(item, str) for item in required
-            ):
-                raise ToolCompatibilityError(
-                    f"GitHub MCP tool {tool.name!r} lacks a required-field schema"
-                )
-            missing_arguments = REQUIRED_TOOL_ARGUMENTS[tool.name] - set(required)
-            if missing_arguments:
-                raise ToolCompatibilityError(
-                    f"GitHub MCP tool {tool.name!r} is missing required arguments: "
-                    f"{sorted(missing_arguments)}"
-                )
+            _verify_tool_schema(tool.name, tool.input_schema)
 
     def get_repository(self, repository: RepositoryId) -> Repository:
         payload = self._call(
             GET_REPOSITORY, {"owner": repository.owner, "repo": repository.name}
         )
         value = _object(payload, "repository")
-        return Repository(
-            repository_id=_repository_id(value),
-            default_branch=_string(value, "default_branch"),
-        )
+        try:
+            return Repository(
+                repository_id=_repository_id(value),
+                default_branch=_string(value, "default_branch"),
+            )
+        except ValueError as error:
+            raise McpProtocolError("MCP repository payload is invalid") from error
 
     def list_issues(self, query: IssueQuery) -> tuple[Issue, ...]:
         arguments: JsonObject = {
@@ -166,32 +191,35 @@ class GitHubMcpGateway:
         issues = tuple(_issue(query.repository_id, value) for value in values)
         if query.idempotency_marker is None:
             return issues
-        marker = _marker(query.idempotency_marker)
-        return tuple(issue for issue in issues if marker in issue.body)
+        marker_prefix = _marker_prefix(query.idempotency_marker)
+        return tuple(issue for issue in issues if marker_prefix in issue.body)
 
     def create_issue(self, command: CreateIssueCommand) -> Issue:
-        body = _with_marker(command.body, command.idempotency_marker)
+        arguments: JsonObject = {
+            "repository": command.repository_id.value,
+            "title": command.title,
+            "body": command.body,
+        }
+        _require_unclaimed_marker(command.body, command)
+        marker = _effect_marker(command, arguments)
+        body = _with_marker(command.body, marker)
 
         def reconcile() -> Issue | None:
-            matches = self.list_issues(
-                IssueQuery(
-                    repository_id=command.repository_id,
-                    state="all",
-                    idempotency_marker=command.idempotency_marker,
-                )
+            issues = self.list_issues(
+                IssueQuery(repository_id=command.repository_id, state="all")
             )
-            if len(matches) > 1:
-                raise GitHubGatewayError("idempotency marker matches multiple issues")
-            return matches[0] if matches else None
+            return _one_marked(
+                issues,
+                body=lambda issue: issue.body,
+                command=command,
+                arguments=arguments,
+                object_name="issues",
+            )
 
         return self._mutate(
             command,
             "create_issue",
-            {
-                "repository": command.repository_id.value,
-                "title": command.title,
-                "body": body,
-            },
+            arguments,
             reconcile,
             lambda: self._call(
                 CREATE_ISSUE,
@@ -206,31 +234,36 @@ class GitHubMcpGateway:
         )
 
     def add_comment(self, command: AddCommentCommand) -> IssueComment:
-        body = _with_marker(command.body, command.idempotency_marker)
+        arguments: JsonObject = {
+            "repository": command.repository_id.value,
+            "issue_number": command.issue_number,
+            "body": command.body,
+        }
+        _require_unclaimed_marker(command.body, command)
+        marker = _effect_marker(command, arguments)
+        body = _with_marker(command.body, marker)
 
         def reconcile() -> IssueComment | None:
             payload = self._call(
                 LIST_COMMENTS,
                 _issue_coordinates(command.repository_id, command.issue_number),
             )
-            marker = _marker(command.idempotency_marker)
-            matches = tuple(
+            comments = tuple(
                 _comment(command.repository_id, value)
                 for value in _list(payload, "comments")
-                if marker in _string(value, "body")
             )
-            if len(matches) > 1:
-                raise GitHubGatewayError("idempotency marker matches multiple comments")
-            return matches[0] if matches else None
+            return _one_marked(
+                comments,
+                body=lambda comment: comment.body,
+                command=command,
+                arguments=arguments,
+                object_name="comments",
+            )
 
         return self._mutate(
             command,
             "add_comment",
-            {
-                "repository": command.repository_id.value,
-                "issue_number": command.issue_number,
-                "body": body,
-            },
+            arguments,
             reconcile,
             lambda: self._call(
                 ADD_COMMENT,
@@ -243,12 +276,21 @@ class GitHubMcpGateway:
         )
 
     def set_labels(self, command: SetLabelsCommand) -> Issue:
+        arguments: JsonObject = {
+            "repository": command.repository_id.value,
+            "issue_number": command.issue_number,
+            "labels": list(command.labels),
+        }
+        marker = _effect_marker(command, arguments)
+
         def current() -> Issue:
             return self._get_issue(command.repository_id, command.issue_number)
 
         def reconcile() -> Issue | None:
             issue = current()
-            if _marker(command.idempotency_marker) in issue.body:
+            if _has_exact_marker(issue.body, command, arguments) and (
+                set(issue.labels) == set(command.labels)
+            ):
                 return issue
             return None
 
@@ -258,7 +300,7 @@ class GitHubMcpGateway:
                 UPDATE_ISSUE,
                 {
                     **_issue_coordinates(command.repository_id, command.issue_number),
-                    "body": _with_marker(issue.body, command.idempotency_marker),
+                    "body": _with_marker(issue.body, marker),
                     "labels": list(command.labels),
                 },
             )
@@ -266,23 +308,29 @@ class GitHubMcpGateway:
         return self._mutate(
             command,
             "set_labels",
-            {
-                "repository": command.repository_id.value,
-                "issue_number": command.issue_number,
-                "labels": list(command.labels),
-            },
+            arguments,
             reconcile,
             invoke,
             lambda issue: str(issue.number),
         )
 
     def close_issue(self, command: CloseIssueCommand) -> Issue:
+        arguments: JsonObject = {
+            "repository": command.repository_id.value,
+            "issue_number": command.issue_number,
+            "state": "closed",
+        }
+        marker = _effect_marker(command, arguments)
+
         def current() -> Issue:
             return self._get_issue(command.repository_id, command.issue_number)
 
         def reconcile() -> Issue | None:
             issue = current()
-            if _marker(command.idempotency_marker) in issue.body:
+            if (
+                _has_exact_marker(issue.body, command, arguments)
+                and issue.state == "closed"
+            ):
                 return issue
             return None
 
@@ -292,7 +340,7 @@ class GitHubMcpGateway:
                 UPDATE_ISSUE,
                 {
                     **_issue_coordinates(command.repository_id, command.issue_number),
-                    "body": _with_marker(issue.body, command.idempotency_marker),
+                    "body": _with_marker(issue.body, marker),
                     "state": "closed",
                 },
             )
@@ -300,10 +348,7 @@ class GitHubMcpGateway:
         return self._mutate(
             command,
             "close_issue",
-            {
-                "repository": command.repository_id.value,
-                "issue_number": command.issue_number,
-            },
+            arguments,
             reconcile,
             invoke,
             lambda issue: str(issue.number),
@@ -334,8 +379,10 @@ class GitHubMcpGateway:
         record = self._journal.request(request)
         try:
             existing = reconcile()
-        except (McpTimeoutError, McpUnavailableError) as error:
-            if record.status is EffectStatus.UNCERTAIN:
+        except (McpError, GitHubGatewayError) as error:
+            if record.status is EffectStatus.CALL_STARTED:
+                self._journal.transition(command.effect_id, EffectStatus.UNCERTAIN)
+            if record.status in {EffectStatus.CALL_STARTED, EffectStatus.UNCERTAIN}:
                 raise UncertainEffectError(command.effect_id) from error
             raise ReconciliationUnavailableError(
                 f"cannot reconcile GitHub effect {command.effect_id!r}"
@@ -360,13 +407,13 @@ class GitHubMcpGateway:
         self._journal.transition(command.effect_id, EffectStatus.CALL_STARTED)
         try:
             invoke()
-        except McpTimeoutError as error:
+        except McpError as error:
             self._journal.transition(command.effect_id, EffectStatus.UNCERTAIN)
             raise UncertainEffectError(command.effect_id) from error
 
         try:
             observed = reconcile()
-        except (McpTimeoutError, McpUnavailableError) as error:
+        except (McpError, GitHubGatewayError, EffectConflictError) as error:
             self._journal.transition(command.effect_id, EffectStatus.UNCERTAIN)
             raise UncertainEffectError(command.effect_id) from error
         if observed is None:
@@ -402,20 +449,87 @@ def _issue_coordinates(repository: RepositoryId, number: int) -> JsonObject:
     return {"owner": repository.owner, "repo": repository.name, "issue_number": number}
 
 
-def _marker(marker: str) -> str:
-    return f"<!-- milburn-effect:{marker} -->"
+def _marker_prefix(marker: str) -> str:
+    return f"<!-- milburn-effect:{marker};"
 
 
-def _with_marker(body: str, marker: str) -> str:
-    encoded = _marker(marker)
+def _effect_marker(command: MutationCommand, arguments: JsonObject) -> str:
+    return (
+        f"{_marker_prefix(command.idempotency_marker)}"
+        f"effect-id:{command.effect_id};digest:{_digest(arguments)} -->"
+    )
+
+
+def _require_unclaimed_marker(body: str, command: MutationCommand) -> None:
+    if _marker_prefix(command.idempotency_marker) in body:
+        raise EffectConflictError(
+            "command body contains a reserved idempotency marker prefix"
+        )
+
+
+def _has_exact_marker(
+    body: str, command: MutationCommand, arguments: JsonObject
+) -> bool:
+    exact = _effect_marker(command, arguments)
+    if exact in body:
+        return True
+    if _marker_prefix(command.idempotency_marker) in body:
+        raise EffectConflictError(
+            f"idempotency marker {command.idempotency_marker!r} is bound to "
+            "another semantic effect"
+        )
+    return False
+
+
+def _with_marker(body: str, encoded: str) -> str:
     if encoded in body:
         return body
     return f"{body.rstrip()}\n\n{encoded}"
 
 
+def _one_marked(
+    values: tuple[T, ...],
+    *,
+    body: Callable[[T], str],
+    command: MutationCommand,
+    arguments: JsonObject,
+    object_name: str,
+) -> T | None:
+    matches = tuple(
+        value for value in values if _has_exact_marker(body(value), command, arguments)
+    )
+    if len(matches) > 1:
+        raise EffectConflictError(
+            f"idempotency marker matches multiple remote {object_name}"
+        )
+    return matches[0] if matches else None
+
+
 def _digest(arguments: JsonObject) -> str:
     encoded = json.dumps(arguments, sort_keys=True, separators=(",", ":"))
     return sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def _verify_tool_schema(name: str, schema: JsonObject) -> None:
+    expected_properties, expected_required = TOOL_SCHEMAS[name]
+    if schema.get("type") != "object" or schema.get("additionalProperties") is not False:
+        raise ToolCompatibilityError(
+            f"GitHub MCP tool {name!r} must be a closed object schema"
+        )
+    properties = schema.get("properties")
+    if not isinstance(properties, dict) or properties != expected_properties:
+        raise ToolCompatibilityError(
+            f"GitHub MCP tool {name!r} has incompatible properties or types"
+        )
+    required = schema.get("required")
+    if (
+        not isinstance(required, list)
+        or any(not isinstance(item, str) for item in required)
+        or set(required) != expected_required
+    ):
+        raise ToolCompatibilityError(
+            f"GitHub MCP tool {name!r} has incompatible required fields"
+        )
 
 
 def _object(payload: JsonObject, key: str) -> JsonObject:
@@ -447,27 +561,38 @@ def _integer(payload: JsonObject, key: str) -> int:
 
 
 def _repository_id(payload: JsonObject) -> RepositoryId:
-    return RepositoryId(owner=_string(payload, "owner"), name=_string(payload, "name"))
+    try:
+        return RepositoryId(
+            owner=_string(payload, "owner"), name=_string(payload, "name")
+        )
+    except ValueError as error:
+        raise McpProtocolError("MCP repository identity is invalid") from error
 
 
 def _issue(repository: RepositoryId, payload: JsonObject) -> Issue:
     labels = payload.get("labels")
     if not isinstance(labels, list) or any(not isinstance(label, str) for label in labels):
         raise McpProtocolError("MCP issue labels must be a string list")
-    return Issue(
-        repository_id=repository,
-        number=_integer(payload, "number"),
-        title=_string(payload, "title"),
-        body=_string(payload, "body"),
-        state=_string(payload, "state"),
-        labels=tuple(labels),
-    )
+    try:
+        return Issue(
+            repository_id=repository,
+            number=_integer(payload, "number"),
+            title=_string(payload, "title"),
+            body=_string(payload, "body"),
+            state=_string(payload, "state"),
+            labels=tuple(labels),
+        )
+    except ValueError as error:
+        raise McpProtocolError("MCP issue payload is invalid") from error
 
 
 def _comment(repository: RepositoryId, payload: JsonObject) -> IssueComment:
-    return IssueComment(
-        repository_id=repository,
-        comment_id=_string(payload, "id"),
-        issue_number=_integer(payload, "issue_number"),
-        body=_string(payload, "body"),
-    )
+    try:
+        return IssueComment(
+            repository_id=repository,
+            comment_id=_string(payload, "id"),
+            issue_number=_integer(payload, "issue_number"),
+            body=_string(payload, "body"),
+        )
+    except ValueError as error:
+        raise McpProtocolError("MCP comment payload is invalid") from error

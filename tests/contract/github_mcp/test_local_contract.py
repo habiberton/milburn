@@ -13,7 +13,9 @@ def test_local_stub_covers_discovery_conversion_idempotency_and_read_after_write
     repository = RepositoryId("acme", "milburn")
     fence_value = EffectFence("MB-008", "attempt-contract", 4)
     fence = InMemoryGenerationFence()
-    fence.activate(fence_value.attempt_id, fence_value.generation)
+    fence.activate(
+        fence_value.task_id, fence_value.attempt_id, fence_value.generation
+    )
     server = FakeGitHubMcpServer()
     gateway = GitHubMcpGateway(server.client, InMemoryEffectJournal(), fence)
     command = CreateIssueCommand(

@@ -89,19 +89,21 @@ class InMemoryGenerationFence:
     """Deterministic controller-side fence suitable for local composition/tests."""
 
     def __init__(self) -> None:
-        self._current: dict[str, int] = {}
+        self._current: dict[tuple[str, str], int] = {}
 
-    def activate(self, attempt_id: str, generation: int) -> None:
-        current = self._current.get(attempt_id)
+    def activate(self, task_id: str, attempt_id: str, generation: int) -> None:
+        key = (task_id, attempt_id)
+        current = self._current.get(key)
         if current is not None and generation < current:
             raise StaleGenerationError("cannot reactivate an older generation")
-        self._current[attempt_id] = generation
+        self._current[key] = generation
 
     def assert_current(self, fence: EffectFence) -> None:
-        current = self._current.get(fence.attempt_id)
+        current = self._current.get((fence.task_id, fence.attempt_id))
         if current is None or current != fence.generation:
             raise StaleGenerationError(
-                f"generation {fence.generation} is not active for {fence.attempt_id}"
+                f"generation {fence.generation} is not active for "
+                f"{fence.task_id}/{fence.attempt_id}"
             )
 
 
@@ -110,6 +112,7 @@ class InMemoryEffectJournal:
 
     def __init__(self) -> None:
         self._records: dict[str, EffectRecord] = {}
+        self._markers: dict[tuple[str, str], str] = {}
         self.history: list[EffectRecord] = []
 
     def request(self, request: EffectRequest) -> EffectRecord:
@@ -120,7 +123,15 @@ class InMemoryEffectJournal:
                     f"effect ID {request.effect_id!r} is already bound to another request"
                 )
             return current
+        marker_key = (request.repository_id, request.idempotency_marker)
+        marker_effect = self._markers.get(marker_key)
+        if marker_effect is not None:
+            raise EffectConflictError(
+                f"idempotency marker {request.idempotency_marker!r} is already "
+                f"bound to effect {marker_effect!r}"
+            )
         record = EffectRecord(request=request, status=EffectStatus.REQUESTED)
+        self._markers[marker_key] = request.effect_id
         self._store(record)
         return record
 
