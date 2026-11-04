@@ -11,6 +11,7 @@ from milburn.runtime.processes import CommandResult, ProcessIdentity
 from milburn.runtime.tmux import (
     EndpointUnavailableError,
     ObservationStatus,
+    ObservationPolicy,
     RuntimeEndpoint,
     StaleEndpointError,
     TmuxRuntime,
@@ -35,6 +36,7 @@ class TmuxSimulator:
         self.exists = False
         self.dead = False
         self.process = ProcessIdentity(4321, "Mon Nov  2 10:00:00 2026", "python3")
+        self.identity_failures = 0
 
     def run(self, arguments: tuple[str, ...]) -> CommandResult:
         self.calls.append(tuple(arguments))
@@ -59,6 +61,9 @@ class TmuxSimulator:
 
     def identify(self, pid: int) -> ProcessIdentity | None:
         if not self.exists or self.dead:
+            return None
+        if self.identity_failures:
+            self.identity_failures -= 1
             return None
         assert pid == self.process.pid
         return self.process
@@ -157,6 +162,40 @@ def test_process_start_identity_detects_pid_reuse() -> None:
     assert observation.status is ObservationStatus.PROCESS_MISMATCH
 
 
+def test_exec_executable_change_preserves_same_process_identity() -> None:
+    simulator = TmuxSimulator()
+    runtime = TmuxRuntime(simulator, simulator)
+    endpoint = runtime.create_window(spec())
+    simulator.process = ProcessIdentity(
+        endpoint.process.pid,
+        endpoint.process.started_at,
+        "codex-after-exec",
+    )
+
+    observation = runtime.inspect(endpoint)
+
+    assert observation.status is ObservationStatus.RUNNING
+    assert observation.observed_process is not None
+    assert observation.observed_process.executable == "codex-after-exec"
+
+
+def test_startup_process_observation_retries_are_bounded_and_injected() -> None:
+    simulator = TmuxSimulator()
+    simulator.identity_failures = 2
+    sleeps: list[float] = []
+    runtime = TmuxRuntime(
+        simulator,
+        simulator,
+        observation_policy=ObservationPolicy(attempts=3, interval_seconds=0.5),
+        sleeper=sleeps.append,
+    )
+
+    endpoint = runtime.create_window(spec())
+
+    assert endpoint.process == simulator.process
+    assert sleeps == [0.5, 0.5]
+
+
 def test_lifecycle_operations_return_observed_postconditions() -> None:
     simulator = TmuxSimulator()
     runtime = TmuxRuntime(simulator, simulator)
@@ -177,7 +216,13 @@ def test_lifecycle_operations_return_observed_postconditions() -> None:
 
 def test_interrupt_rejects_unobserved_success() -> None:
     simulator = TmuxSimulator()
-    runtime = TmuxRuntime(simulator, simulator)
+    sleeps: list[float] = []
+    runtime = TmuxRuntime(
+        simulator,
+        simulator,
+        observation_policy=ObservationPolicy(attempts=3, interval_seconds=0.5),
+        sleeper=sleeps.append,
+    )
     endpoint = runtime.create_window(spec())
     simulator.dead = False
 
@@ -192,6 +237,7 @@ def test_interrupt_rejects_unobserved_success() -> None:
     simulator.run = ignore_interrupt  # type: ignore[method-assign]
     with pytest.raises(EndpointUnavailableError, match="postcondition"):
         runtime.interrupt(endpoint)
+    assert sleeps == [0.5, 0.5]
 
 
 def test_fake_runtime_is_deterministic_and_records_actions() -> None:

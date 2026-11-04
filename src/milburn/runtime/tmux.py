@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 import shlex
-from typing import Protocol
+import time
+from typing import Callable, Protocol
 
 from .messaging import SendResult, validate_doorbell_token
 from .processes import (
@@ -39,6 +40,7 @@ class EndpointUnavailableError(RuntimeErrorBase):
 
 class ObservationStatus(str, Enum):
     RUNNING = "running"
+    UNKNOWN = "unknown"
     MISSING = "missing"
     EXITED = "exited"
     STALE_GENERATION = "stale_generation"
@@ -158,6 +160,20 @@ class RuntimeObservation:
         return self.status is ObservationStatus.RUNNING
 
 
+@dataclass(frozen=True, slots=True)
+class ObservationPolicy:
+    """Bounded retries for process startup and lifecycle observation."""
+
+    attempts: int = 20
+    interval_seconds: float = 0.025
+
+    def __post_init__(self) -> None:
+        if self.attempts < 1:
+            raise ValueError("observation attempts must be positive")
+        if self.interval_seconds < 0:
+            raise ValueError("observation interval must be non-negative")
+
+
 class TmuxRuntimeProtocol(Protocol):
     def create_window(self, spec: WindowSpec) -> RuntimeEndpoint: ...
     def register_endpoint(self, endpoint: RuntimeEndpoint) -> None: ...
@@ -176,10 +192,14 @@ class TmuxRuntime:
         process_inspector: ProcessInspector | None = None,
         *,
         tmux_binary: str = "tmux",
+        observation_policy: ObservationPolicy | None = None,
+        sleeper: Callable[[float], None] = time.sleep,
     ) -> None:
         self._runner = runner or SubprocessCommandRunner()
         self._processes = process_inspector or PsProcessInspector()
         self._tmux_binary = tmux_binary
+        self._observation_policy = observation_policy or ObservationPolicy()
+        self._sleep = sleeper
         self._active: dict[str, RuntimeEndpoint] = {}
 
     def create_window(self, spec: WindowSpec) -> RuntimeEndpoint:
@@ -209,7 +229,7 @@ class TmuxRuntime:
         session_id, window_id, pane_id, pid, pane_dead = _parse_row(created.stdout)
         if pane_dead:
             raise EndpointUnavailableError("new tmux pane exited before observation")
-        process = self._processes.identify(pid)
+        process = self._identify_process(pid)
         if process is None:
             raise EndpointUnavailableError("new tmux pane process could not be identified")
         endpoint = RuntimeEndpoint(
@@ -224,7 +244,8 @@ class TmuxRuntime:
             worktree=spec.worktree,
         )
         self.register_endpoint(endpoint)
-        if not self.inspect(endpoint).matched:
+        observed = self._observe_until(endpoint, {ObservationStatus.RUNNING})
+        if not observed.matched:
             raise EndpointUnavailableError("new tmux endpoint failed postcondition inspection")
         if spec.title is not None:
             title = self._run("select-pane", "-t", pane_id, "-T", spec.title)
@@ -277,11 +298,13 @@ class TmuxRuntime:
         ):
             return RuntimeObservation(endpoint, ObservationStatus.PROCESS_MISMATCH, pane_dead, None)
         observed_process = self._processes.identify(pid)
-        if pane_dead or observed_process is None:
+        if pane_dead:
             return RuntimeObservation(endpoint, ObservationStatus.EXITED, pane_dead, observed_process)
+        if observed_process is None:
+            return RuntimeObservation(endpoint, ObservationStatus.UNKNOWN, pane_dead, None)
         status = (
             ObservationStatus.RUNNING
-            if observed_process == endpoint.process
+            if observed_process.matches(endpoint.process)
             else ObservationStatus.PROCESS_MISMATCH
         )
         return RuntimeObservation(endpoint, status, pane_dead, observed_process)
@@ -294,8 +317,19 @@ class TmuxRuntime:
         result = self._run("send-keys", "-t", endpoint.pane_id, "C-c")
         if result.returncode:
             raise RuntimeCommandError(result.stderr.strip() or "tmux interrupt failed")
-        after = self.inspect(endpoint)
-        if after.matched:
+        after = self._observe_until(
+            endpoint,
+            {
+                ObservationStatus.EXITED,
+                ObservationStatus.MISSING,
+                ObservationStatus.PROCESS_MISMATCH,
+            },
+        )
+        if after.status not in {
+            ObservationStatus.EXITED,
+            ObservationStatus.MISSING,
+            ObservationStatus.PROCESS_MISMATCH,
+        }:
             raise EndpointUnavailableError("interrupt postcondition was not observed")
         return after
 
@@ -307,7 +341,7 @@ class TmuxRuntime:
         result = self._run("kill-pane", "-t", endpoint.pane_id)
         if result.returncode:
             raise RuntimeCommandError(result.stderr.strip() or "tmux termination failed")
-        after = self.inspect(endpoint)
+        after = self._observe_until(endpoint, {ObservationStatus.MISSING})
         if after.status is not ObservationStatus.MISSING:
             raise EndpointUnavailableError("termination postcondition was not observed")
         return after
@@ -319,6 +353,32 @@ class TmuxRuntime:
 
     def _run(self, *arguments: str):
         return self._runner.run((self._tmux_binary, *arguments))
+
+    def _identify_process(self, pid: int) -> ProcessIdentity | None:
+        for attempt in range(self._observation_policy.attempts):
+            process = self._processes.identify(pid)
+            if process is not None:
+                return process
+            self._sleep_before_retry(attempt)
+        return None
+
+    def _observe_until(
+        self,
+        endpoint: RuntimeEndpoint,
+        accepted: set[ObservationStatus],
+    ) -> RuntimeObservation:
+        observation: RuntimeObservation | None = None
+        for attempt in range(self._observation_policy.attempts):
+            observation = self.inspect(endpoint)
+            if observation.status in accepted:
+                return observation
+            self._sleep_before_retry(attempt)
+        assert observation is not None
+        return observation
+
+    def _sleep_before_retry(self, attempt: int) -> None:
+        if attempt + 1 < self._observation_policy.attempts:
+            self._sleep(self._observation_policy.interval_seconds)
 
 
 def _parse_row(output: str) -> tuple[str, str, str, int, bool]:

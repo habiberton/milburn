@@ -54,6 +54,15 @@ class ProcessIdentity:
             "executable": self.executable,
         }
 
+    def matches(self, other: ProcessIdentity) -> bool:
+        """Compare OS identity; executable is mutable diagnostic metadata.
+
+        A process may ``exec`` during tmux startup without changing either its
+        PID or kernel start time. PID plus start time still fences PID reuse.
+        """
+
+        return self.pid == other.pid and self.started_at == other.started_at
+
     @classmethod
     def from_dict(cls, value: dict[str, object]) -> ProcessIdentity:
         if set(value) != {"pid", "started_at", "executable"}:
