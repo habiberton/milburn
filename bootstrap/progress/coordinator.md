@@ -2,7 +2,7 @@
 
 ## Current wave
 
-Wave 1 — Foundation; preparing sequential task `MB-003`
+Wave 1 — Foundation; `MB-003` integrated on its coordinator branch
 
 ## Repository state
 
@@ -177,6 +177,11 @@ Wave 1 — Foundation; preparing sequential task `MB-003`
 - Fresh Spec and Standards re-reviews both passed with no actionable findings.
 - `MB-003` owns coordinator integration branch
   `bootstrap/coordinator/MB-003/a01-integration` and will have one PR.
+- Corrected candidate was non-squash merged as
+  `1f1e7f1270ee34cdf753b741230b5ca498e051f2`; the only conflict was the task
+  progress record and the resolution retained all worker evidence.
+- Integrated-branch verification passed: 31 persistence tests, 106 total smoke
+  tests, and `git diff --check` against `origin/main`.
 
 ## Verification
 
@@ -195,6 +200,5 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the accepted candidate, create the `MB-003` coordinator branch,
-non-squash merge the worker commits, verify the integrated branch, then push and
-open its single evidence-bearing PR with `Closes #3`.
+Commit the integration evidence, push the coordinator branch, and open the
+single evidence-bearing `MB-003` PR with `Closes #3`.
