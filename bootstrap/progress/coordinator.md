@@ -736,6 +736,106 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   The PR records the seven worker commits, both corrections, the two-parent
   integration, acceptance evidence, required tests, all review cycles,
   MB-018-F001-F005, risk, and `Closes #22`.
+- PR #34 merged through GitHub's required two-parent merge method as
+  `ef2cd748a742d111e15a0d01968c19590cd828e7`. The root fetched and proved
+  `origin/main` contains PR tip `a55804c`, integration `3ff4eda`, and candidate
+  `ae892d9`, verified the merge has parents `c90413b` and `a55804c`, and
+  fast-forwarded the primary checkout to the remote merge.
+- Post-merge MB-018 verification passed 36 focused tests, smoke with 374
+  passed/3 protected skips/3 subtests, amendment and feedback validation, and
+  `git diff --check`. MB-018 is locally complete pending only the final GitHub
+  done/closed reconciliation.
+- GitHub issue #22 was automatically closed by PR #34 and, only after remote
+  verification and the local completion record, transitioned from
+  `milburn:qa` to `milburn:done`. Registry and GitHub now agree that MB-018 is
+  complete.
+- Corrected MB-008 candidate
+  `664f66dbab75ebe2ee56c6672f8f1b8e304b7ddf` contains three verified builder
+  commits from exact base `c88f465`. Fix commit `da40e15` closes all five
+  initial blockers: semantic label/close reconciliation, post-call uncertainty,
+  request-bound markers, fail-closed MCP schemas, and task-scoped generation
+  fences. Root verification passed 29 unit tests, 1 local contract, smoke with
+  368 passed/3 protected skips/3 subtests, attribution, and owned-path checks.
+  Both fresh independent review axes are required before integration.
+- With MB-018 remotely complete and the amendment gate clear, MB-009 became
+  the next disjoint Wave 2 implementation task. Issue #9 is assigned and moved
+  to `milburn:in-progress`; builder-MB-009-a01 owns only the recorded runtime
+  worktree manager, fake, fixtures, unit test, and task-progress paths. Review
+  mode is Specification + Standards because the task controls Git mutation,
+  ownership/reuse, process-state reconciliation, and safe retirement.
+- MB-009/a01 worktree `/Users/habiberton/projects/milburn-worktrees/MB-009-a01`
+  was created from exact base `5a243407f5c099ce088d188590b7b36052860941`
+  on `bootstrap/builder/MB-009/a01-worktree-manager` and configured with the
+  approved `Milburn Builder [MB-009/a01]` identity before dispatch.
+- Fresh MB-008 Specification and Standards reviews confirmed F001-F005, then
+  blocked candidate `664f66d` on five further fail-closed gaps: create/comment
+  semantic postconditions, mixed exact/conflicting markers, a public schema
+  verification bypass, a generation-fence race during pre-update reads, and
+  duplicate `required` schema fields. Issue #8 is marked
+  `milburn:changes-requested`; the same worker is correcting all findings and
+  recording F006-F010 with adversarial regressions. Both fresh review axes must
+  restart on the next candidate.
+- Second corrected MB-008 candidate
+  `47365f0cb512b4fff90ac2b41b95e960783b9ad5` contains five verified builder
+  commits. Fix `9c90851` adds exact create/comment semantic reconciliation,
+  full-body marker conflict detection, mandatory discovery, immediately-before-
+  mutation generation assertions, and duplicate-required rejection, with
+  F006-F010 and adversarial regressions. Root verification passed 37 unit tests,
+  1 local contract, smoke with 376 passed/3 protected skips/3 subtests,
+  attribution, owned paths, and diff checks. Issue #8 returned to
+  `milburn:in-progress`; both fresh review axes are restarting.
+- MB-009/a01 returned candidate
+  `139a9e31e91799ae6177e6c488794e3c0cd392ee` with three verified builder
+  commits from exact base `5a243407f5c099ce088d188590b7b36052860941`.
+  Its diff is confined to the worktree manager, fake, unit test, and task
+  progress. Root verification passed 19 required tests, all 45 runtime tests,
+  smoke with 393 passed/3 protected skips/3 subtests, attribution, and diff
+  checks. MB-009-F001 records the base-existence/ancestry recovery correction;
+  both independent review axes remain required before integration.
+- MB-008 candidate `47365f0` passed fresh Specification review across F001-F010,
+  but Standards found F011: after successful initial reconciliation, a definite
+  pre-mutation preparation-read failure leaves the effect `RECONCILED`, and a
+  same-ID retry attempts an invalid self-transition instead of safely
+  continuing. Issue #8 returned to `milburn:changes-requested`; the same worker
+  is adding a retry regression and narrow journal/gateway correction. Both
+  review axes restart after the next candidate.
+- Final corrected MB-008 candidate
+  `1deabba047043570ce05881db7e979202c71ca93` contains seven verified builder
+  commits. F011 fix `e50eb65` preserves `RECONCILED` after a definite
+  pre-mutation preparation failure and makes the same-effect retry continue
+  without an invalid self-transition; label and close regressions prove zero
+  first-attempt updates and exactly one eventual mutation. Root verification
+  passed 39 unit tests, 1 local contract, smoke with 378 passed/3 protected
+  skips/3 subtests, attribution, owned paths, and diff checks. Issue #8 returned
+  to `milburn:in-progress`; both review axes must restart on this exact SHA.
+- Final MB-008 Specification review passed all issue criteria and F001-F011 at
+  `1deabba`; Standards is restarting independently on that exact SHA.
+- Initial MB-009 reviews blocked candidate `139a9e3` on safe later-attempt
+  acquisition of the branch intentionally preserved by retirement and on fake
+  parity: simultaneous branch ownership, fabricated-base/ancestry evidence,
+  later-attempt recovery, and idempotent retirement. Issue #9 is marked
+  `milburn:changes-requested`; the same worker is correcting the real lifecycle
+  and fake equivalence with new feedback proposals and regressions. Both review
+  axes restart on the next candidate.
+- Final fresh MB-008 Specification and Standards reviews both passed candidate
+  `1deabba` across every issue criterion and F001-F011. The root non-squash
+  merged all seven worker commits as two-parent integration
+  `8167128673163277dd8e23e6fac847de51bfa5d9` and finalized the eleven durable
+  feedback findings. Integrated verification and final integrated review remain.
+- Final integrated MB-008 Standards passed at `152108e`. Specification found
+  one evidence-only mismatch: F004 attributed `required` multiplicity to
+  `da40e15`, although F010 and `9c90851` own that later correction. The brief
+  now scopes F004 to required-set validation and leaves uniqueness with F010;
+  no implementation or test changed. Both axes must confirm the corrected tip.
+- Both final integrated MB-008 axes passed corrected tip `006b9fa` with no
+  findings. The branch retains candidate-identical implementation, 39 unit/1
+  contract/414 smoke results, 12 valid feedback briefs, and clear amendment
+  preflight. It is ready for the single evidence-bearing task PR.
+- The root pushed `bootstrap/coordinator/MB-008/a01-integration` at `fbbb15f`
+  and opened evidence-bearing PR #35:
+  `https://github.com/habiberton/milburn/pull/35`. The PR records full worker
+  attribution, two-parent integration, acceptance/tests, every review cycle,
+  F001-F011, risk, and `Closes #8`.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and

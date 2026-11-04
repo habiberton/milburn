@@ -485,14 +485,14 @@
       "id": "MB-018",
       "wave": 2,
       "title": "Record session compaction and build durable handoff manifests",
-      "status": "integrated",
+      "status": "done",
       "github": {
         "issue_number": 22,
         "issue_url": "https://github.com/habiberton/milburn/issues/22",
         "status_source": "github",
         "assignment_source": "github",
-        "last_observed_state": "open",
-        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_state": "closed",
+        "last_observed_status_label": "milburn:done",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-002", "MB-003", "MB-006", "MB-017", "MB-022"],
@@ -507,7 +507,7 @@
       "pull_request": {
         "number": 34,
         "url": "https://github.com/habiberton/milburn/pull/34",
-        "merge_commit_sha": null
+        "merge_commit_sha": "ef2cd748a742d111e15a0d01968c19590cd828e7"
       },
       "progress_path": "bootstrap/progress/tasks/MB-018.md",
       "owned_paths": [
@@ -665,7 +665,7 @@
       "id": "MB-008",
       "wave": 2,
       "title": "Implement the GitHub gateway, MCP effect journal, and local fakes",
-      "status": "candidate",
+      "status": "integrated",
       "github": {
         "issue_number": 8,
         "issue_url": "https://github.com/habiberton/milburn/issues/8",
@@ -681,7 +681,14 @@
       "branch": "bootstrap/builder/MB-008/a01-github-mcp",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-008-a01",
       "base_sha": "c88f4659607068f06a074cd5c7c1e0a7b9b8bcc5",
-      "candidate_sha": "47107bf910d47d72ac9b998b2861ee8f75ab2df4",
+      "candidate_sha": "1deabba047043570ce05881db7e979202c71ca93",
+      "integration_branch": "bootstrap/coordinator/MB-008/a01-integration",
+      "integration_commit_sha": "8167128673163277dd8e23e6fac847de51bfa5d9",
+      "pull_request": {
+        "number": 35,
+        "url": "https://github.com/habiberton/milburn/pull/35",
+        "merge_commit_sha": null
+      },
       "progress_path": "bootstrap/progress/tasks/MB-008.md",
       "owned_paths": [
         "src/milburn/integrations/mcp/",
@@ -709,23 +716,23 @@
       "id": "MB-009",
       "wave": 2,
       "title": "Implement the Git worktree manager and fake workspace manager",
-      "status": "ready",
+      "status": "assigned",
       "github": {
         "issue_number": 9,
         "issue_url": "https://github.com/habiberton/milburn/issues/9",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:ready",
-        "last_observed_assignees": []
+        "last_observed_status_label": "milburn:changes-requested",
+        "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-004", "MB-020", "MB-022"],
       "parallel_group": "wave-2-boundaries",
-      "owner": null,
-      "branch": null,
-      "worktree": null,
-      "base_sha": null,
-      "candidate_sha": null,
+      "owner": "builder-MB-009-a01",
+      "branch": "bootstrap/builder/MB-009/a01-worktree-manager",
+      "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-009-a01",
+      "base_sha": "5a243407f5c099ce088d188590b7b36052860941",
+      "candidate_sha": "139a9e31e91799ae6177e6c488794e3c0cd392ee",
       "progress_path": "bootstrap/progress/tasks/MB-009.md",
       "owned_paths": [
         "src/milburn/runtime/worktrees.py",
