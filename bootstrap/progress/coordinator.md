@@ -9,7 +9,7 @@ Wave 1 — Foundation; repairing `MB-001` through its coordinator PR
 - Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
 - Active workers: none; `/root/mb002_builder_a01` interrupted with its worktree preserved
-- Pending candidates: `MB-001` is integrated locally but not present on `origin/main`
+- Pending candidates: none
 
 ## Completed
 
@@ -100,6 +100,15 @@ Wave 1 — Foundation; repairing `MB-001` through its coordinator PR
   and opened evidence-bearing PR #18:
   `https://github.com/habiberton/milburn/pull/18`. GitHub reports it clean and
   mergeable, and `Closes #1` resolves to the intended task issue.
+- PR #18 was updated through the same coordinator branch to tip
+  `30677950ff1d14a554add1ce21f979d37e977760` and merged using GitHub's merge
+  commit method. The remote merge commit is
+  `be8f277ffd60b66181afd7fb97e5975179bdfdd8` with two parents.
+- The root fetched `origin/main`, verified it equals that merge commit and
+  contains both the worker integration history and the prior completion record,
+  then fast-forwarded the primary checkout to the same SHA.
+- Post-fast-forward verification passed again: 11 app unit tests and the full
+  smoke test.
 
 ## Verification
 
@@ -118,7 +127,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the PR record, update the same `MB-001` branch, and merge PR #18 with a
-merge commit. Fetch and verify `origin/main`, fast-forward the primary checkout,
-restore issue #1 to `milburn:done`, then unblock and resume the preserved
-`MB-002/a01` attempt.
+Commit the verified PR merge record, change closed issue #1 from `milburn:qa`
+to `milburn:done`, reconcile task status, then restore issue #2 to
+`milburn:in-progress` and resume the preserved `MB-002/a01` attempt.
