@@ -2,7 +2,7 @@
 
 ## Current wave
 
-Wave 1 — Foundation; `MB-002` integrated on its coordinator branch
+Wave 1 — Foundation; `MB-002` PR merged and remotely verified
 
 ## Repository state
 
@@ -145,6 +145,15 @@ Wave 1 — Foundation; `MB-002` integrated on its coordinator branch
   evidence-bearing PR #19: `https://github.com/habiberton/milburn/pull/19`.
   GitHub resolves `Closes #2` to the intended issue and reports the PR clean and
   mergeable.
+- The same branch was updated to PR tip
+  `b752a39058dcc2f046336c1329664f9a126a4f59`; PR #19 merged using GitHub's
+  merge-commit method as `a797fb5577b024c95f3648ae6b5189a0d577680c`.
+- The root fetched `origin/main`, verified that two-parent merge commit contains
+  candidate `b661baea1cb70d6eb56e35b5d303ca9aad249579` and local integration
+  `fd5cc0554aeef620927ddf444dc344e55a5d74cd`, then fast-forwarded the primary
+  checkout to the exact remote SHA.
+- Post-fast-forward verification passed again: 64 domain tests and 75 total
+  smoke tests.
 
 ## Verification
 
@@ -163,7 +172,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the PR record, update that same coordinator branch, recheck mergeability,
-then merge PR #19 only with a merge commit. Fetch and verify `origin/main`,
-fast-forward the primary checkout, and reconcile issue/task state before
-starting `MB-003`.
+Commit the verified remote merge record, change closed issue #2 from
+`milburn:in-progress` to `milburn:done`, reconcile task status, then make issue
+#3 ready. Begin `MB-003` only after remote and local records agree.

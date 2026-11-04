@@ -154,7 +154,7 @@
       "pull_request": {
         "number": 19,
         "url": "https://github.com/habiberton/milburn/pull/19",
-        "merge_commit_sha": null
+        "merge_commit_sha": "a797fb5577b024c95f3648ae6b5189a0d577680c"
       },
       "progress_path": "bootstrap/progress/tasks/MB-002.md",
       "owned_paths": [
