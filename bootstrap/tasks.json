@@ -269,10 +269,59 @@
       ]
     },
     {
+      "id": "MB-020",
+      "wave": 1,
+      "title": "Add concise defect feedback briefs to the bootstrap workflow",
+      "status": "blocked",
+      "github": {
+        "issue_number": 24,
+        "issue_url": "https://github.com/habiberton/milburn/issues/24",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
+      "dependencies": ["MB-004"],
+      "parallel_group": null,
+      "owner": null,
+      "branch": null,
+      "worktree": null,
+      "base_sha": null,
+      "candidate_sha": null,
+      "progress_path": "bootstrap/progress/tasks/MB-020.md",
+      "owned_paths": [
+        "AGENTS.md",
+        "bootstrap/README.md",
+        "bootstrap/feedback/",
+        "bootstrap/progress/tasks/TEMPLATE.md",
+        "scripts/smoke-test.sh",
+        "tests/bootstrap/"
+      ],
+      "acceptance_criteria": [
+        "Add bootstrap/feedback/README.md defining the feedback purpose, entry format, identifier convention, and retention policy.",
+        "Keep one compact Markdown feedback file per task at bootstrap/feedback/<task-id>.md.",
+        "Every blocking or meaningful review, test, integration, recovery, or production defect records: feedback ID, discovery phase, severity, symptom, root cause, resolution, fix commit, regression evidence, lesson, and status.",
+        "Minor formatting-only corrections may be omitted.",
+        "Findings remain linked to the originating task, attempt, worker candidate, coordinator integration, and GitHub PR when available.",
+        "A task cannot be marked done until every resolved meaningful finding has fix and regression evidence, while unresolved or separately scoped findings become linked GitHub issues.",
+        "PR descriptions include a feedback-summary section and link to the task feedback brief.",
+        "Workers may propose entries in their task progress record, but only the coordinator writes or finalizes bootstrap/feedback files.",
+        "Feedback briefs do not copy private transcripts, model reasoning, secrets, or large command logs.",
+        "Update AGENTS.md, bootstrap/README.md, bootstrap/progress/tasks/TEMPLATE.md, and scripts/smoke-test.sh to enforce the workflow.",
+        "Backfill concise briefs for MB-001 through MB-004 using already recorded findings; do not invent missing root causes or evidence.",
+        "The smoke test validates naming, required headings, known task IDs, unique feedback IDs, and that resolved entries contain fix and regression evidence."
+      ],
+      "required_tests": [
+        "scripts/smoke-test.sh",
+        "Any focused bootstrap feedback-validation tests added by the task"
+      ]
+    },
+    {
       "id": "MB-005",
       "wave": 2,
       "title": "Implement the tmux runtime and fake runtime",
-      "status": "in_progress",
+      "status": "candidate",
       "github": {
         "issue_number": 5,
         "issue_url": "https://github.com/habiberton/milburn/issues/5",
@@ -282,13 +331,13 @@
         "last_observed_status_label": "milburn:in-progress",
         "last_observed_assignees": ["habiberton"]
       },
-      "dependencies": ["MB-004"],
+      "dependencies": ["MB-004", "MB-020"],
       "parallel_group": "wave-2-boundaries",
       "owner": "builder-MB-005-a01",
       "branch": "bootstrap/builder/MB-005/a01-tmux-runtime",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-005-a01",
       "base_sha": "61c453848c1364a7b77695c1ecb9477908b80784",
-      "candidate_sha": null,
+      "candidate_sha": "6e00d03be1eb2c86aeee6d057a4a8d68c1c7d085",
       "progress_path": "bootstrap/progress/tasks/MB-005.md",
       "owned_paths": [
         "src/milburn/runtime/tmux.py",
@@ -324,7 +373,7 @@
         "last_observed_status_label": "milburn:in-progress",
         "last_observed_assignees": ["habiberton"]
       },
-      "dependencies": ["MB-004"],
+      "dependencies": ["MB-004", "MB-020"],
       "parallel_group": "wave-2-boundaries",
       "owner": "builder-MB-006-a01",
       "branch": "bootstrap/builder/MB-006/a01-codex-adapter",
@@ -454,17 +503,17 @@
       "id": "MB-007",
       "wave": 2,
       "title": "Implement the skill catalog, role rules, skill packages, and digest validation",
-      "status": "ready",
+      "status": "blocked",
       "github": {
         "issue_number": 7,
         "issue_url": "https://github.com/habiberton/milburn/issues/7",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:ready",
+        "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-004"],
+      "dependencies": ["MB-004", "MB-020"],
       "parallel_group": "wave-2-boundaries",
       "owner": null,
       "branch": null,
@@ -500,17 +549,17 @@
       "id": "MB-008",
       "wave": 2,
       "title": "Implement the GitHub gateway, MCP effect journal, and local fakes",
-      "status": "ready",
+      "status": "blocked",
       "github": {
         "issue_number": 8,
         "issue_url": "https://github.com/habiberton/milburn/issues/8",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:ready",
+        "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-004"],
+      "dependencies": ["MB-004", "MB-020"],
       "parallel_group": "wave-2-boundaries",
       "owner": null,
       "branch": null,
@@ -544,17 +593,17 @@
       "id": "MB-009",
       "wave": 2,
       "title": "Implement the Git worktree manager and fake workspace manager",
-      "status": "ready",
+      "status": "blocked",
       "github": {
         "issue_number": 9,
         "issue_url": "https://github.com/habiberton/milburn/issues/9",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:ready",
+        "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-004"],
+      "dependencies": ["MB-004", "MB-020"],
       "parallel_group": "wave-2-boundaries",
       "owner": null,
       "branch": null,
@@ -792,6 +841,59 @@
       ]
     },
     {
+      "id": "MB-021",
+      "wave": 4,
+      "title": "Persist defect resolutions and regression feedback in Milburn",
+      "status": "blocked",
+      "github": {
+        "issue_number": 25,
+        "issue_url": "https://github.com/habiberton/milburn/issues/25",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
+      "dependencies": ["MB-003", "MB-014"],
+      "parallel_group": null,
+      "owner": null,
+      "branch": null,
+      "worktree": null,
+      "base_sha": null,
+      "candidate_sha": null,
+      "progress_path": "bootstrap/progress/tasks/MB-021.md",
+      "owned_paths": [
+        "src/milburn/domain/defects.py",
+        "src/milburn/orchestration/feedback.py",
+        "src/milburn/persistence/defect_projections.py",
+        "src/milburn/validation/defect_policy.py",
+        "src/milburn/observability/feedback_views.py",
+        "tests/unit/domain/test_defects.py",
+        "tests/unit/orchestration/test_feedback.py",
+        "tests/unit/persistence/test_defect_projections.py",
+        "tests/unit/validation/test_defect_policy.py",
+        "tests/integration/workflows/test_defect_feedback.py",
+        "tests/recovery/test_defect_replay.py",
+        "tests/fixtures/workflows/defects/"
+      ],
+      "acceptance_criteria": [
+        "Define versioned contracts and events for DefectObserved, DefectResolutionProposed, DefectResolved, and RegressionEvidenceRecorded, or equivalent approved names.",
+        "Every defect links repository, issue/task, role, attempt, session generation when available, candidate SHA, discovery phase, severity, symptom, evidence, and status.",
+        "Resolution records link the fix commit, concise root cause, resolution summary, regression command/test, result evidence, and resolver authority.",
+        "Replay produces deterministic open-defect, resolved-defect, per-task feedback, and recurring-lesson projections.",
+        "Duplicate QA reports, retries, and restart reconciliation do not duplicate defects or regression evidence.",
+        "A task cannot reach done while a blocking defect is unresolved or a resolved blocking defect lacks regression evidence.",
+        "Failed QA for the same task returns evidence to the Coder; separately scoped defects create linked GitHub issues through controller policy.",
+        "Operator APIs/views can show concise defect briefs and links without exposing private transcripts, prompts, secrets, or raw reasoning.",
+        "Feedback is evidence, not model memory: a replacement agent reads the concise projection and repository state rather than a previous transcript.",
+        "Fixtures and tests cover discovery, correction, re-review, duplicate delivery, restart replay, unresolved blocking defects, and separately scoped follow-up issues."
+      ],
+      "required_tests": [
+        "python3 -m pytest tests/unit/domain/test_defects.py tests/unit/orchestration/test_feedback.py tests/unit/persistence/test_defect_projections.py tests/unit/validation/test_defect_policy.py tests/integration/workflows/test_defect_feedback.py tests/recovery/test_defect_replay.py -q",
+        "scripts/smoke-test.sh"
+      ]
+    },
+    {
       "id": "MB-019",
       "wave": 4,
       "title": "Implement role-specific session rotation and replacement policy",
@@ -898,7 +1000,7 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-014", "MB-015"],
+      "dependencies": ["MB-014", "MB-015", "MB-021"],
       "parallel_group": null,
       "owner": null,
       "branch": null,

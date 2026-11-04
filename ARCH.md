@@ -297,6 +297,21 @@ uncertain external effect. Token telemetry may compare continuation and
 replacement, but it never restores budget policy or becomes the sole safety
 signal.
 
+### 5.15 Defect feedback service
+
+`DefectFeedbackService` accepts versioned observations from QA and controller
+boundaries, correlates repository, task, role, attempt, session generation,
+candidate SHA, and QA result, and records concise symptom and evidence. A
+resolution links resolver authority, fix commit, concise root cause and
+resolution, plus exact regression command and result evidence.
+
+Stable defect and evidence identities make duplicate reports, retries, and
+restart reconciliation idempotent. Projections expose open defects, resolved
+defects, per-task briefs, and recurring lessons. Completion policy rejects an
+unresolved blocking defect or a resolved blocking defect without regression
+evidence. Same-scope failures return to the Coder; separately scoped defects
+become linked GitHub issues through the controller-owned gateway.
+
 ## 6. Codex adapter
 
 ```python
@@ -578,6 +593,15 @@ HandoffManifest
   test_evidence, open_decisions, inbox_sequence, outbox_sequence,
   uncertain_effects, brief_digest, rules_digest
 
+DefectObservation
+  defect_id, repository_id, task_id, issue_number, role, attempt_id,
+  session_generation, candidate_sha, qa_report_id, discovery_phase,
+  severity, symptom, evidence, status
+
+DefectResolution
+  defect_id, fix_commit, root_cause, resolution_summary,
+  regression_command, regression_evidence, resolver_authority, status
+
 TokenUsageObservation
   observation_id, source_version, task_id, role, attempt_id, endpoint,
   model, kind, input_tokens, output_tokens, cached_input_tokens,
@@ -615,6 +639,7 @@ coordinator:<milburn-home-id>
 decision:<decision-id>
 usage:<attempt-id>
 session:<attempt-id>
+defect:<repository-id>:<defect-id>
 ```
 
 Typical issue sequence:
@@ -654,6 +679,17 @@ generation cannot receive steering or lifecycle commands. Before replacement,
 uncertain external effects are reconciled rather than copied forward or
 retried; replay reconstructs every generation and the latest valid checkpoint
 deterministically.
+
+Defect feedback sequence:
+
+```text
+DefectObserved → DefectResolutionProposed → DefectResolved
+→ RegressionEvidenceRecorded
+```
+
+Each event has a stable correlation identity. Replay derives identical open,
+resolved, per-task, and recurring-lesson projections; duplicate QA reports or
+reconciliation retries do not duplicate defects or evidence.
 
 GitHub mutation sequence:
 
@@ -713,14 +749,18 @@ If the user interface or Coordinator session is unavailable, the notification re
 - **Compaction observed:** record the semantic observation; do not replace a session solely because one compaction occurred.
 - **Replacement requested:** validate the durable handoff, fence the old generation, and reconcile uncertain effects before launching the next generation.
 - **Late generation message:** reject it without delivery or state transition.
+- **Blocking defect unresolved:** retain the task before `done` and return
+  same-scope evidence to the Coder.
+- **Defect outside task scope:** create a linked issue through controller policy
+  rather than hiding it in the current task.
 
 ## 14. Security model
 
-tmux organizes processes and worktrees isolate changes; neither is a security sandbox. The GitHub MCP credential is owned by the controller, restricted to selected repositories, and initially limited to metadata read, issue read/write, pull-request read, and checks read. Merge, release, administration, and repository-content write permissions are excluded from v1. Secrets never enter briefs, progress files, issues, events, or terminal captures. Repository and issue text are untrusted data, and destructive or publishing actions require policy approval.
+tmux organizes processes and worktrees isolate changes; neither is a security sandbox. The GitHub MCP credential is owned by the controller, restricted to selected repositories, and initially limited to metadata read, issue read/write, pull-request read, and checks read. Merge, release, administration, and repository-content write permissions are excluded from v1. Secrets never enter briefs, progress files, issues, events, terminal captures, or defect feedback. Defect records contain concise evidence and links, never prompts, transcripts, chain-of-thought, private reasoning, or unbounded logs. Repository and issue text are untrusted data, and destructive or publishing actions require policy approval.
 
 ## 15. Observability
 
-The operator can answer which feature and issue are active, which logical role and session generation are running and why, which tmux endpoint and process belong to them, which worktree and SHAs are involved, when progress last changed, which issue-linked commits exist, what QA found, whether the attempt is busy, waiting, unknown, stopped, or failed, why a session continued, rotated, or was replaced, which Coordinator notifications remain unread, and which decisions are still open.
+The operator can answer which feature and issue are active, which logical role and session generation are running and why, which tmux endpoint and process belong to them, which worktree and SHAs are involved, when progress last changed, which issue-linked commits exist, what QA found, which blocking or resolved defects and regression evidence correlate with the candidate and fix commits, whether the attempt is busy, waiting, unknown, stopped, or failed, why a session continued, rotated, or was replaced, which Coordinator notifications remain unread, and which decisions are still open.
 
 ## 16. Proposed source tree
 
@@ -759,6 +799,7 @@ milburn/
 │       │   ├── models.py
 │       │   ├── usage.py
 │       │   ├── sessions.py
+│       │   ├── defects.py
 │       │   ├── states.py
 │       │   ├── policies.py
 │       │   └── errors.py
@@ -771,6 +812,7 @@ milburn/
 │       │   ├── handoffs.py
 │       │   ├── session_policy.py
 │       │   ├── session_replacement.py
+│       │   ├── feedback.py
 │       │   ├── supervisor.py
 │       │   └── reconciliation.py
 │       ├── agents/
@@ -808,6 +850,7 @@ milburn/
 │       │   ├── projections.py
 │       │   ├── usage_projections.py
 │       │   ├── session_projections.py
+│       │   ├── defect_projections.py
 │       │   └── migrations/
 │       ├── validation/
 │       │   ├── coder_protocol.py
@@ -815,9 +858,11 @@ milburn/
 │       │   ├── qa_policy.py
 │       │   ├── handoff_manifest.py
 │       │   ├── session_replacement.py
+│       │   ├── defect_policy.py
 │       │   └── skill_validation.py
 │       └── observability/
 │           ├── logging.py
+│           ├── feedback_views.py
 │           └── operator_views.py
 └── tests/
     ├── fakes/
@@ -882,14 +927,14 @@ Unit tests cover one policy or state transition at a time:
 
 | Package | Required coverage |
 |---|---|
-| `domain` | Event versions, serialization, command validation, legal and illegal states, usage observation invariants |
-| `orchestration` | Scheduling, dependencies, decision correlation, notification cursors, handoff validation, fenced session replacement, reconciliation choices |
+| `domain` | Event versions, serialization, command validation, legal and illegal states, usage and defect observation invariants |
+| `orchestration` | Scheduling, dependencies, decision correlation, notification cursors, handoff validation, fenced session replacement, defect feedback and completion gates, reconciliation choices |
 | `agents` | Brief assembly, result parsing, role/skill binding, digest recording, Codex-reported usage and session-observation conversion |
 | `runtime` | Endpoint parsing, generation protection, safe paths, inbox sequencing |
 | `integrations.mcp` | Tool discovery, argument mapping, timeout/error classification, effect states |
 | `integrations.github` | Issue contracts, idempotency markers, read-after-write, uncertain-effect reconciliation |
-| `persistence` | Expected sequence, replay determinism, migrations, concurrent append rejection, idempotent usage and session projections |
-| `validation` | Progress parsing, commit markers, candidate SHA, QA evidence, skill structure, handoff freshness, generation fencing |
+| `persistence` | Expected sequence, replay determinism, migrations, concurrent append rejection, idempotent usage, session, and defect projections |
+| `validation` | Progress parsing, commit markers, candidate SHA, QA and regression evidence, defect completion policy, skill structure, handoff freshness, generation fencing |
 
 Core controller, state-machine, event-store, effect-journal, and validation branches target at least 90% branch coverage. Coverage is a diagnostic; required behavioral invariants remain the release gate.
 
@@ -940,6 +985,8 @@ after Tester pass, before issue closure
 after handoff validation, before generation fencing
 after generation fencing, before replacement launch
 after replacement launch, before uncertain-effect reconciliation completes
+after defect observation, before resolution
+after defect resolution, before regression evidence
 ```
 
 Restart must not duplicate issues, launches, user decisions, unsafe steering, or completion. It must not reuse a possibly live worktree or discard an uncertain external effect.
@@ -980,7 +1027,8 @@ Every commit runs unit tests, static analysis, formatting checks, skill structur
 15. Build protocol guard and progress watcher.
 16. Build Tester and QA policy.
 17. Add role-specific fenced session replacement policy.
-18. Add recovery drills, fault injection, CI gates, live evaluations, and operator views.
+18. Add durable defect resolution, regression evidence, replayable feedback, and completion gates.
+19. Add recovery drills, fault injection, CI gates, live evaluations, and operator views.
 
 ## 19. Definition of architectural completion
 

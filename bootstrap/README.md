@@ -61,13 +61,19 @@ Build shared foundations in order:
 2. `MB-002` — domain contracts, commands, events, states, and errors.
 3. `MB-003` — SQLite event store, expected sequence, projections, and replay.
 4. `MB-004` — workflow controller shell and deterministic transition guard.
+5. `MB-020` — temporary bootstrap defect-feedback briefs, validation, and
+   backfill for MB-001 through MB-004.
 
 These tasks are sequential because every later worker depends on their
-interfaces and test conventions.
+interfaces, test conventions, and feedback process. `MB-020` uses its own
+one-ticket coordinator branch and PR after MB-004; its implementation must not
+be mixed into the MB-004 PR.
 
 ### Wave 2 — Independent boundaries, parallel
 
-After Wave 1 is integrated, dispatch independent boundary implementations:
+After Wave 1 including `MB-020` is integrated, dispatch independent boundary
+implementations. `MB-005` through `MB-009` all depend on `MB-020`, so Wave 2
+cannot begin before the feedback process exists:
 
 - `MB-005` — tmux runtime and fake runtime.
 - `MB-006` — Codex adapter, briefs, and result parsing.
@@ -105,6 +111,9 @@ session-lifecycle telemetry.
 After a complete Coder candidate path exists:
 
 - `MB-014` — independent Tester and QA state transitions.
+- `MB-021` — durable defect observations, resolutions, regression evidence,
+  replayable feedback projections, and completion gates. It follows `MB-003`
+  and `MB-014`.
 - `MB-019` — role-specific session continuation, rotation, and replacement
   policy. It follows `MB-010`, `MB-013`, `MB-017`, and `MB-018`.
 - `MB-015` — supervision, reconciliation, crash recovery, and fault handling.
@@ -117,7 +126,8 @@ Other Wave 4 work may run in parallel only if its owned paths remain separate.
 
 `MB-016` connects the complete workflow, runs scripted end-to-end scenarios,
 adds protected live evaluations, completes operational documentation, and
-proves the acceptance criteria in `PRD.md`.
+proves the acceptance criteria in `PRD.md`. It depends on `MB-021` so final
+operator views and acceptance evidence include defect feedback.
 
 ## Task lifecycle
 

@@ -59,6 +59,7 @@ Milburn v1 must:
 19. Provide deterministic unit, contract, integration, recovery, skill, and live-evaluation suites with explicit CI gates.
 20. Persist Codex-reported token usage as replayable telemetry with per-attempt, task, role, and workflow summaries.
 21. Preserve logical agent identity across fenced Codex session generations by using validated durable handoff manifests rather than private transcripts.
+22. Persist concise defect observations, resolutions, regression evidence, and recurring lessons without storing private reasoning or unbounded logs.
 
 ## 5. Non-goals
 
@@ -303,6 +304,24 @@ The Tester runs in its own window, receives the issue and exact candidate SHA, t
 
 Failed QA returns the same issue to a Coder. A new issue is created only for a separate defect.
 
+### 11.1 Durable defect feedback
+
+A meaningful defect observation records its repository, task or issue, role,
+attempt, session generation when available, candidate SHA, QA result,
+discovery phase, severity, concise symptom, evidence, and status. A resolution
+correlates the fix commit, resolver authority, concise root cause and resolution
+summary, regression command or test, and result evidence.
+
+Defect events replay deterministically into open, resolved, per-task, and
+recurring-lesson views. Stable identities make duplicate QA delivery, retries,
+and restart reconciliation idempotent. An unresolved blocking defect—or a
+resolved blocking defect without regression evidence—prevents task completion.
+Failed QA within the assigned scope returns to the same Coder; a separately
+scoped defect becomes a linked GitHub issue through controller policy.
+
+Feedback is concise evidence, not model memory. It contains no transcript,
+prompt, chain-of-thought, secret, or unbounded command log.
+
 ## 12. Durable events
 
 ```text
@@ -315,6 +334,8 @@ AgentStarted
 AgentUsageObserved          AgentUsageFinalized     AgentUsageUnavailable
 SessionObservationRecorded SessionCompactionObserved SessionGenerationStarted
 HandoffManifestValidated   SessionReplacementRequested SessionReplacementCompleted
+DefectObserved             DefectResolutionProposed DefectResolved
+RegressionEvidenceRecorded
 PlanReceived                ArchitecturePackageReceived
 GitHubIssueCreated          GitHubIssueReady
 GitHubEffectRequested       GitHubEffectObserved    GitHubEffectReconciled
@@ -455,6 +476,7 @@ Version 1 is accepted when:
 22. Codex-reported usage replays deterministically into per-attempt, task, role, and workflow totals, with partial and final observations reconciled idempotently and unavailable usage represented explicitly.
 23. A logical agent survives fenced replacement sessions through a validated transcript-free handoff manifest; stale manifests, late-generation messages, and unresolved uncertain effects are rejected.
 24. Role-specific policy keeps a Coder session for its task attempt by default, ends Planner and Architect at approved artifacts, uses fresh Router calls, and starts every Tester fresh at the exact candidate SHA.
+25. Blocking defects prevent completion until resolved with regression evidence; replay and duplicate delivery produce deterministic concise feedback views, while separately scoped defects become linked issues.
 
 ## 16. Delivery milestones
 

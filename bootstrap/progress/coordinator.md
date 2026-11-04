@@ -2,15 +2,15 @@
 
 ## Current wave
 
-Wave 2 — Independent boundaries; reconciling newly ready tasks
+Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
 
 ## Repository state
 
 - Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
-- Active workers: `builder-MB-005-a01` (`/root/mb005_builder_a01`) and
-  `builder-MB-006-a01` (`/root/mb006_builder_a01`)
-- Pending candidates: none
+- Active workers: `builder-MB-006-a01` (`/root/mb006_builder_a01`) resuming
+- Pending candidates: MB-005 candidate
+  `6e00d03be1eb2c86aeee6d057a4a8d68c1c7d085`
 
 ## Completed
 
@@ -299,6 +299,28 @@ Wave 2 — Independent boundaries; reconciling newly ready tasks
   paths, approved spec sections, all acceptance criteria, required tests, and
   local-commit-only handoff rules. Neither worker may push, open a PR, merge,
   mutate GitHub, or launch another agent.
+- The user added a new pre-Wave-2 dependency after those workers launched.
+  MB-005 had already returned clean candidate
+  `6e00d03be1eb2c86aeee6d057a4a8d68c1c7d085` with three attributed commits,
+  16 unit tests, one real-tmux contract test, and 193 smoke tests (one skipped).
+  It is preserved but cannot be reviewed or integrated until MB-020 is done.
+- MB-006 was interrupted while active; its worktree and uncommitted adapter
+  work are preserved at `/Users/habiberton/projects/milburn-worktrees/MB-006-a01`.
+  The user then explicitly grandfathered active MB-005 and MB-006 through the
+  new gate, so issue #5 and #6 are again assigned and `milburn:in-progress`;
+  MB-006 resumes and MB-005 proceeds through normal review/integration. Issues
+  #7 through #9 remain blocked and unassigned until MB-020 is complete.
+- User-authorized issues #24 and #25 were mirrored as MB-020 and MB-021 with
+  their complete contracts. MB-020 is placed immediately after MB-004 and now
+  gates MB-005 through MB-009; MB-021 follows MB-014 and gates MB-016.
+- `PRD.md` and `ARCH.md` now specify concise durable defect observations and
+  resolutions correlated to task, attempt, session, candidate, QA, and fix
+  commits; root-cause/regression evidence; deterministic duplicate-safe replay;
+  blocking completion policy; linked issues for separate scope; and exclusion
+  of transcripts, chain-of-thought, secrets, and unbounded logs.
+- MB-020 will use its own coordinator branch and PR. Its implementation will
+  backfill only evidence already recorded for MB-001 through MB-004 and will
+  not be mixed into the already merged MB-004 history.
 
 ## Verification
 
@@ -317,6 +339,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Monitor both workers. Verify, independently review, integrate, test, and deliver
-each candidate separately through its own coordinator branch and PR; MB-017
-must remain blocked until MB-006 is fully merged and done.
+Commit the reconciled MB-017 through MB-021 planning checkpoint, resume MB-006,
+and independently review/integrate MB-005 normally. Mark issue #24 ready after
+the checkpoint; do not launch MB-007, MB-008, or MB-009 before MB-020 is done.
