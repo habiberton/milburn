@@ -726,6 +726,10 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   commits used as candidate IDs. The coordinator reconciled those proposals to
   the verified full SHAs, originating candidates, and integration commit; both
   final axes must confirm the durable record before PR publication.
+- Both final integrated MB-018 axes passed at `93865d9` with no actionable
+  findings. Feedback validation reports 11 briefs, semantic amendment preflight
+  is clear, and the branch remains at 36 focused/374 smoke tests with 3
+  protected skips and 3 subtests. It is ready for the single task PR.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
