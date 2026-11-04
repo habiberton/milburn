@@ -507,6 +507,13 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   amendment records, 7 feedback briefs, and `git diff --check`. Fresh
   Specification and Standards reviews are in progress; no integration branch
   or PR exists yet.
+- Initial MB-022 Specification review passed every issue #27 criterion. Standards
+  review blocked the candidate because bootstrap amendment validation trusted
+  loose document-wide phrases: empty scoped evidence, an unknown impact/status,
+  and a garbage-suffixed PR reference could validate and incorrectly clear the
+  dispatch preflight. The same worker is adding strict section-scoped semantics,
+  exact references, negative regressions, and a feedback proposal. Both fresh
+  review axes are required after correction.
 
 ## Verification
 
