@@ -23,12 +23,6 @@ from .states import (
     Role,
 )
 
-
-def _timestamp(value: datetime, field_name: str) -> None:
-    if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
-        raise InvalidEnvelopeError(f"{field_name} must be a timezone-aware datetime")
-
-
 def _identifiers(values: tuple[str, ...], field_name: str) -> None:
     for value in values:
         require_identifier(value, field_name)
@@ -57,7 +51,6 @@ class RequestEnvelope(VersionedModel):
         require_identifier(self.base_branch, "base_branch")
         require_text(self.objective, "objective")
         require_text(self.delivery_posture, "delivery_posture")
-        _timestamp(self.submitted_at, "submitted_at")
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,7 +123,6 @@ class UserDecision(VersionedModel):
             require_text(self.selected_option, "selected_option")
         require_text(self.answer, "answer")
         require_identifier(self.answered_by, "answered_by")
-        _timestamp(self.answered_at, "answered_at")
 
 
 @dataclass(frozen=True, slots=True)
@@ -151,7 +143,6 @@ class CoordinatorNotification(VersionedModel):
         require_non_negative(self.priority, "priority")
         require_text(self.summary, "summary")
         require_bool(self.unread, "unread")
-        _timestamp(self.created_at, "created_at")
 
 
 @dataclass(frozen=True, slots=True)
@@ -261,8 +252,6 @@ class GitHubEffect(VersionedModel):
         require_enum(self.status, GitHubEffectStatus, "status")
         if self.remote_identity is not None:
             require_identifier(self.remote_identity, "remote_identity")
-        if self.last_observation is not None:
-            _timestamp(self.last_observation, "last_observation")
 
 
 @dataclass(frozen=True, slots=True)
@@ -281,7 +270,6 @@ class SkillBinding(VersionedModel):
         require_identifier(self.root_digest, "root_digest")
         _identifiers(self.resource_digests, "resource_digests")
         require_text(self.workspace_path, "workspace_path")
-        _timestamp(self.validated_at, "validated_at")
 
 
 @dataclass(frozen=True, slots=True)

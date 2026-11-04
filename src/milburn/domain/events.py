@@ -86,8 +86,6 @@ class DomainEvent(VersionedModel):
         require_identifier(self.correlation_id, "correlation_id")
         if self.causation_id is not None:
             require_identifier(self.causation_id, "causation_id")
-        if self.occurred_at.tzinfo is None or self.occurred_at.utcoffset() is None:
-            raise InvalidEnvelopeError("occurred_at must be a timezone-aware datetime")
         names = [fact.name for fact in self.facts]
         if len(names) != len(set(names)):
             raise InvalidEnvelopeError("event fact names must be unique")

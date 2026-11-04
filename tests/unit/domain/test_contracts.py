@@ -334,6 +334,46 @@ def test_command_catalog_covers_role_requests_and_lifecycle_controls() -> None:
     } <= {command.value for command in CommandType}
 
 
+def command(**overrides: object) -> CommandEnvelope:
+    values: dict[str, object] = {
+        "command_id": "command-1",
+        "command_type": CommandType.REPORT_PROGRESS,
+        "actor_role": Role.CODER,
+        "feature_id": "feature-1",
+        "issue_number": 2,
+        "attempt_id": "attempt-1",
+        "correlation_id": "correlation-1",
+        "arguments": (CommandArgument(name="status", value="working"),),
+    }
+    values.update(overrides)
+    return CommandEnvelope(**values)  # type: ignore[arg-type]
+
+
+def test_command_rejects_invalid_actor_role() -> None:
+    with pytest.raises(InvalidEnvelopeError, match="actor_role"):
+        command(actor_role="coder")
+
+
+def test_command_rejects_negative_issue_number() -> None:
+    with pytest.raises(InvalidEnvelopeError, match="non-negative"):
+        command(issue_number=-1)
+
+
+def test_command_rejects_malformed_attempt_id() -> None:
+    with pytest.raises(InvalidIdentifierError, match="attempt_id"):
+        command(attempt_id="bad attempt")
+
+
+def test_command_rejects_duplicate_argument_names() -> None:
+    with pytest.raises(InvalidEnvelopeError, match="unique"):
+        command(
+            arguments=(
+                CommandArgument(name="status", value="working"),
+                CommandArgument(name="status", value="waiting"),
+            )
+        )
+
+
 def test_event_catalog_covers_approved_durable_facts() -> None:
     assert {
         "RequestAccepted",

@@ -102,6 +102,13 @@ def require_enum(value: Enum, enum_type: type[Enum], field_name: str) -> None:
         )
 
 
+def require_timezone_aware(value: datetime, field_name: str) -> None:
+    """Require one timezone-aware timestamp across every domain boundary."""
+
+    if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
+        raise InvalidEnvelopeError(f"{field_name} must be a timezone-aware datetime")
+
+
 def _encode(value: Any) -> Any:
     if isinstance(value, VersionedModel):
         return value.to_dict()
@@ -147,8 +154,7 @@ def _decode(value: Any, annotation: Any) -> Any:
         if not isinstance(value, str):
             raise InvalidEnvelopeError("datetime fields must be ISO-8601 strings")
         parsed = datetime.fromisoformat(value)
-        if parsed.tzinfo is None or parsed.utcoffset() is None:
-            raise InvalidEnvelopeError("datetime fields must include a timezone")
+        require_timezone_aware(parsed, "datetime field")
         return parsed
     if annotation is bool:
         if not isinstance(value, bool):
@@ -197,8 +203,7 @@ def _validate_runtime_value(value: Any, annotation: Any, field_name: str) -> Non
             raise InvalidEnvelopeError(f"{field_name} must be {annotation.__name__}")
         return
     if annotation is datetime:
-        if not isinstance(value, datetime):
-            raise InvalidEnvelopeError(f"{field_name} must be a datetime")
+        require_timezone_aware(value, field_name)
         return
     if annotation is bool:
         if not isinstance(value, bool):
