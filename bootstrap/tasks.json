@@ -126,7 +126,7 @@
       "id": "MB-002",
       "wave": 1,
       "title": "Implement domain contracts, commands, events, states, and errors",
-      "status": "assigned",
+      "status": "in_progress",
       "github": {
         "issue_number": 2,
         "issue_url": "https://github.com/habiberton/milburn/issues/2",

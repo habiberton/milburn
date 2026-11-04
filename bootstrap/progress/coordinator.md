@@ -8,7 +8,7 @@ Wave 1 — Foundation; preparing sequential task `MB-002`
 
 - Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
-- Active workers: none
+- Active workers: `builder-MB-002-a01` (`/root/mb002_builder_a01`)
 - Pending candidates: none
 
 ## Completed
@@ -75,6 +75,9 @@ Wave 1 — Foundation; preparing sequential task `MB-002`
 - The `MB-002` worker branch and worktree were created from exact base
   `b50ae6f6caffe4629e095d9dafb52b2651aba34c` and configured with identity
   `Milburn Builder [MB-002/a01]`.
+- Builder `/root/mb002_builder_a01` was launched with the bounded domain task,
+  exact owned paths, acceptance criteria, required tests, and candidate commit
+  protocol. No other implementation worker is active.
 
 ## Verification
 
@@ -93,6 +96,7 @@ None recorded.
 
 ## Resume here
 
-Launch the `MB-002` builder with exact base
-`b50ae6f6caffe4629e095d9dafb52b2651aba34c` and dispatch no other task.
-Preserve the completed `MB-001` worktree until explicitly archived or removed.
+Monitor `/root/mb002_builder_a01`. On candidate return, verify attribution from
+base `b50ae6f6caffe4629e095d9dafb52b2651aba34c`, owned-path scope, progress,
+acceptance evidence, and required tests, then run independent Spec and Standards
+review before integration. Preserve the completed `MB-001` worktree.
