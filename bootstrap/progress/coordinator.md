@@ -353,6 +353,13 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   with one attributed commit, eight focused feedback tests, and 185 smoke
   tests. It authored no coordinator-owned historical briefs; its progress
   contains exact evidence-only proposals for MB-001 through MB-004.
+- Coordinator verification passed MB-020 attribution, approved paths, eight
+  focused validator tests, 185 candidate smoke tests, and `git diff --check`.
+  Review mode is Specification + Standards because it changes shared
+  always-loaded agent policy and AMEND-002 expanded its scope after the worker
+  candidate. The coordinator will integrate first, reconcile instruction
+  conflicts, finalize evidence-only feedback briefs, then review that complete
+  branch.
 - Pending plan amendment `AMEND-001` mirrors MB-022/#27, gates MB-007, MB-008,
   MB-009, MB-017, and MB-018, and classifies already active MB-005, MB-006, and
   MB-020 as unaffected. GitHub dependency notices were added to issues #7, #8,
@@ -467,6 +474,7 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the verified MB-006/AMEND-002 result, apply `milburn:done` to issue #6,
-then proceed to MB-020's recorded two-pass review and coordinator-only backfill.
-Keep new implementation dispatch frozen.
+Create `bootstrap/coordinator/MB-020/a01-integration`, non-squash merge the
+worker candidate, reconcile AGENTS/README policy, finalize evidence-only
+feedback briefs, and run the recorded two-pass review. Keep new implementation
+dispatch frozen.
