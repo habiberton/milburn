@@ -428,7 +428,7 @@
       "id": "MB-017",
       "wave": 2,
       "title": "Persist per-agent token usage and replayable usage summaries",
-      "status": "candidate",
+      "status": "integrated",
       "github": {
         "issue_number": 21,
         "issue_url": "https://github.com/habiberton/milburn/issues/21",
@@ -445,6 +445,13 @@
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-017-a01",
       "base_sha": "425dd6e3ee42c5b7a7ee7177f4a2f86455bc2ae6",
       "candidate_sha": "cb0604a5fb615e017da14aaa67667eec1671a54d",
+      "integration_branch": "bootstrap/coordinator/MB-017/a01-integration",
+      "integration_commit_sha": "4025275fe0bfca36058a550d53788b680cb85f2f",
+      "pull_request": {
+        "number": null,
+        "url": null,
+        "merge_commit_sha": null
+      },
       "progress_path": "bootstrap/progress/tasks/MB-017.md",
       "owned_paths": [
         "src/milburn/domain/usage.py",
