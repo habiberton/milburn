@@ -31,6 +31,14 @@ dependency-ready tasks. Task completion, PR merge, issue closure, a newly ready
 task, any number of completed tasks, wave completion, a returned candidate, or
 a committed policy/progress checkpoint is never a stopping condition.
 
+Treat a user-authorized scope, policy, specification, task, dependency, wave,
+acceptance, or dispatch-rule change as a pending plan amendment. Freeze new
+worker dispatch, record authority and active-work classifications under
+bootstrap/amendments/, and run
+`python3 bootstrap/amendments/validate.py --preflight` at startup, before every
+dispatch, and before every final response. Resume dispatch only after the
+amendment PR is remotely merged and the primary checkout and record reconcile.
+
 If any task is ready, assigned, in progress, candidate, integrated, or in QA and
 no genuine blocker prevents progress, continue in the same turn. Continue into
 the next dependency-ready wave under its concurrency rules.

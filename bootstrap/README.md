@@ -117,6 +117,21 @@ remotely, and the primary checkout and amendment record are reconciled. Startup
 and continuation preflights treat an unresolved amendment as a concrete dispatch
 blocker, not as permission to stop unrelated unaffected work.
 
+The root assigns the next stable `AMEND-<number>` before changing the plan and
+uses `bootstrap/amendments/AMEND-001.md` as the complete record example. It runs
+`python3 bootstrap/amendments/validate.py --preflight` at startup, before worker
+dispatch, and before a final response. The preflight fails for an unresolved
+record or uncommitted changes in AGENTS, PRD, ARCH, ROOT_PROMPT, the bootstrap
+README, task registry, decisions, or amendment records. Smoke validation checks
+record structure without requiring a clean worktree.
+
+The durable product lifecycle is `requested → impact_assessed → approved |
+rejected → applied → dispatch_resumed`. Request freezes dispatch before impact
+assessment. Approval binds the expected planning revision plus specification,
+registry, and GitHub-effect evidence. Application requires remote merge
+evidence and primary-checkout reconciliation; replay and duplicate delivery are
+idempotent. Rejection also requires an explicit dispatch-resumption fact.
+
 ### Wave 3 — Coordination workflows
 
 Integrate the boundaries into product workflows:
