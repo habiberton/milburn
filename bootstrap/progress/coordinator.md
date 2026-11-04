@@ -605,6 +605,17 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   commits from the exact base. Coordinator verification passed 23 focused
   tests, smoke (308 passed, 3 protected skips, 3 subtests), and diff checks.
   Both fresh review axes are in progress.
+- Corrected MB-007 candidate
+  `0b33817be39c9b78442e17c273a230910c44ee0d` contains five verified attributed
+  commits. Coordinator verification passed 27 focused tests, smoke (312 passed,
+  3 protected skips, 3 subtests), and diff checks. Both fresh reviews are in
+  progress.
+- Fresh MB-017 reviews found two remaining reconciliation blockers. A source
+  known only by one session could merge with an observation known only by a
+  disjoint endpoint without positive shared identity, risking undercount; and
+  historical unavailable evidence permanently kept a compatible authoritative
+  final aggregate partial. The same worker is adding fail-closed cross-identity
+  handling plus same-source unavailable-to-final supersession regressions.
 
 ## Current verification
 

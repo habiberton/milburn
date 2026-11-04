@@ -614,7 +614,7 @@
       "branch": "bootstrap/builder/MB-007/a01-skill-catalog",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-007-a01",
       "base_sha": "425dd6e3ee42c5b7a7ee7177f4a2f86455bc2ae6",
-      "candidate_sha": "6e620981d6192111469881ace003bb0733c821ed",
+      "candidate_sha": "0b33817be39c9b78442e17c273a230910c44ee0d",
       "progress_path": "bootstrap/progress/tasks/MB-007.md",
       "owned_paths": [
         ".agents/skills/",
