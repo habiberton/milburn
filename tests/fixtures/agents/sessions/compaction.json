@@ -1,0 +1,7 @@
+{
+  "kind": "compaction",
+  "availability": "available",
+  "source_version": "codex-session-v2",
+  "finality": "partial",
+  "compaction_count": 1
+}
