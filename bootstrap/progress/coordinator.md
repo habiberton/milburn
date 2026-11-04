@@ -836,6 +836,14 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   `https://github.com/habiberton/milburn/pull/35`. The PR records full worker
   attribution, two-parent integration, acceptance/tests, every review cycle,
   F001-F011, risk, and `Closes #8`.
+- PR #35 merged through GitHub's two-parent merge method as
+  `dc81cb363a7fd89bfb6a348b56fabb00b83e78fc`. The root proved `origin/main`
+  contains PR tip `33b4dff`, integration `8167128`, and final candidate
+  `1deabba`, verified the merge parents, and fast-forwarded the primary checkout.
+- Post-merge MB-008 verification passed 39 unit tests, 1 local contract, smoke
+  with 414 passed/3 protected skips/3 subtests, amendment and feedback
+  validation, and `git diff --check`. Issue #8 is auto-closed in QA pending the
+  final done-label reconciliation.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
