@@ -132,14 +132,14 @@
       "id": "MB-002",
       "wave": 1,
       "title": "Implement domain contracts, commands, events, states, and errors",
-      "status": "qa",
+      "status": "done",
       "github": {
         "issue_number": 2,
         "issue_url": "https://github.com/habiberton/milburn/issues/2",
         "status_source": "github",
         "assignment_source": "github",
-        "last_observed_state": "open",
-        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_state": "closed",
+        "last_observed_status_label": "milburn:done",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-001"],
@@ -154,7 +154,7 @@
       "pull_request": {
         "number": 19,
         "url": "https://github.com/habiberton/milburn/pull/19",
-        "merge_commit_sha": null
+        "merge_commit_sha": "a797fb5577b024c95f3648ae6b5189a0d577680c"
       },
       "progress_path": "bootstrap/progress/tasks/MB-002.md",
       "owned_paths": [
@@ -176,23 +176,30 @@
       "id": "MB-003",
       "wave": 1,
       "title": "Implement the SQLite event store, projections, and deterministic replay",
-      "status": "blocked",
+      "status": "qa",
       "github": {
         "issue_number": 3,
         "issue_url": "https://github.com/habiberton/milburn/issues/3",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:blocked",
-        "last_observed_assignees": []
+        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-002"],
       "parallel_group": null,
-      "owner": null,
-      "branch": null,
-      "worktree": null,
-      "base_sha": null,
-      "candidate_sha": null,
+      "owner": "builder-MB-003-a01",
+      "branch": "bootstrap/builder/MB-003/a01-event-store",
+      "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-003-a01",
+      "base_sha": "f6084ba1a485d120c72d44f215f66ca499d677c2",
+      "candidate_sha": "d2498e97feb273bec083e1e287094a0eb20b0791",
+      "integration_branch": "bootstrap/coordinator/MB-003/a01-integration",
+      "integration_commit_sha": "1f1e7f1270ee34cdf753b741230b5ca498e051f2",
+      "pull_request": {
+        "number": 20,
+        "url": "https://github.com/habiberton/milburn/pull/20",
+        "merge_commit_sha": null
+      },
       "progress_path": "bootstrap/progress/tasks/MB-003.md",
       "owned_paths": [
         "src/milburn/persistence/",

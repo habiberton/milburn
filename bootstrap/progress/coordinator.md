@@ -2,7 +2,7 @@
 
 ## Current wave
 
-Wave 1 — Foundation; `MB-002` integrated on its coordinator branch
+Wave 1 — Foundation; `MB-003` integrated on its coordinator branch
 
 ## Repository state
 
@@ -145,6 +145,47 @@ Wave 1 — Foundation; `MB-002` integrated on its coordinator branch
   evidence-bearing PR #19: `https://github.com/habiberton/milburn/pull/19`.
   GitHub resolves `Closes #2` to the intended issue and reports the PR clean and
   mergeable.
+- The same branch was updated to PR tip
+  `b752a39058dcc2f046336c1329664f9a126a4f59`; PR #19 merged using GitHub's
+  merge-commit method as `a797fb5577b024c95f3648ae6b5189a0d577680c`.
+- The root fetched `origin/main`, verified that two-parent merge commit contains
+  candidate `b661baea1cb70d6eb56e35b5d303ca9aad249579` and local integration
+  `fd5cc0554aeef620927ddf444dc344e55a5d74cd`, then fast-forwarded the primary
+  checkout to the exact remote SHA.
+- Post-fast-forward verification passed again: 64 domain tests and 75 total
+  smoke tests.
+- Closed issue #2 now carries `milburn:done`. Issue #3 was reconciled against
+  `MB-003`, remains open and unassigned, and moved from `milburn:blocked` to
+  `milburn:ready` after its dependency completed.
+- Issue #3 is now assigned to `habiberton` and labeled `milburn:in-progress`
+  for builder attempt `MB-003/a01`.
+- The `MB-003` worker branch and worktree were created from exact base
+  `f6084ba1a485d120c72d44f215f66ca499d677c2` and configured with identity
+  `Milburn Builder [MB-003/a01]`.
+- Builder `/root/mb003_builder_a01` was launched with the bounded persistence
+  task, owned paths, required tests, and local-commit-only PR rules.
+- Initial candidate `5d7badbd888e7bc32af1e72b5b3066434cd97bd0`
+  passed attribution, scope, 24 persistence tests, and 99 total smoke tests, but
+  both independent review axes rejected it before integration.
+- Reviews reproduced two blocking defects: unknown future migrations were
+  accepted while `user_version` was lowered, and unconditional rollback could
+  mask a lock failure when transaction entry failed. The same worker corrected
+  both locally without remote mutations.
+- Corrected candidate `d2498e97feb273bec083e1e287094a0eb20b0791`
+  resolved both defects. Coordinator verification passed: four attributed
+  commits, approved paths, 31 persistence tests, and 106 total smoke tests.
+- Fresh Spec and Standards re-reviews both passed with no actionable findings.
+- `MB-003` owns coordinator integration branch
+  `bootstrap/coordinator/MB-003/a01-integration` and will have one PR.
+- Corrected candidate was non-squash merged as
+  `1f1e7f1270ee34cdf753b741230b5ca498e051f2`; the only conflict was the task
+  progress record and the resolution retained all worker evidence.
+- Integrated-branch verification passed: 31 persistence tests, 106 total smoke
+  tests, and `git diff --check` against `origin/main`.
+- The root pushed the coordinator branch at
+  `9530d4bd09542a4e341dccdd98a37db5fa43b388` and opened evidence-bearing PR
+  #20: `https://github.com/habiberton/milburn/pull/20`. GitHub resolves
+  `Closes #3` correctly and reports the PR clean and mergeable.
 
 ## Verification
 
@@ -163,7 +204,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the PR record, update that same coordinator branch, recheck mergeability,
-then merge PR #19 only with a merge commit. Fetch and verify `origin/main`,
-fast-forward the primary checkout, and reconcile issue/task state before
-starting `MB-003`.
+Commit the PR record, update that same branch, retest, and merge PR #20 only
+with a merge commit. Verify `origin/main`, fast-forward the primary checkout,
+and reconcile issue/task state before `MB-004`.
