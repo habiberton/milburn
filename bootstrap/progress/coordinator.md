@@ -8,7 +8,7 @@ Wave 1 — Foundation; `MB-001` remotely complete and resuming `MB-002`
 
 - Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
-- Active workers: `builder-MB-002-a01` (`/root/mb002_builder_a01`)
+- Active workers: none
 - Pending candidates: none
 
 ## Completed
@@ -122,8 +122,17 @@ Wave 1 — Foundation; `MB-001` remotely complete and resuming `MB-002`
 - Spec findings: unapproved feature/issue transition edges and public transition
   guards accepting raw strings. Standards findings: missing negative command
   validation tests and duplicated timezone-aware datetime validation.
-- The same worker is correcting those findings locally. No `MB-002` coordinator
-  integration branch or PR exists yet.
+- The same worker corrected those findings locally without remote mutations.
+- Corrected candidate `b661baea1cb70d6eb56e35b5d303ca9aad249579`
+  resolved every blocking finding. Coordinator checks passed: three attributed
+  commits, approved paths only, exact-range whitespace check, 64 domain tests,
+  and 75 total smoke tests.
+- Fresh Spec re-review passed all four acceptance criteria. Fresh Standards
+  re-review passed with one accepted low judgement call: `CommandArgument` and
+  `EventFact` retain similar validation while remaining distinct public domain
+  types.
+- `MB-002` owns coordinator integration branch
+  `bootstrap/coordinator/MB-002/a01-integration` and will have exactly one PR.
 
 ## Verification
 
@@ -142,6 +151,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Monitor `/root/mb002_builder_a01` for a corrected candidate. Re-run attribution,
-tests, and both independent review axes before creating the single coordinator
-integration branch or PR for `MB-002`.
+Commit the accepted candidate record, create the `MB-002` coordinator branch,
+non-squash merge the verified worker branch, run all required tests on the
+integrated branch, then push and open its evidence-bearing PR with `Closes #2`.
