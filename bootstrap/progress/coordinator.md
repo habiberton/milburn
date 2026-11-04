@@ -532,6 +532,11 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   amendment preflight (2 records valid and clear), required suite (42 passed, 3
   subtests), smoke (285 passed, 3 protected skips, 3 subtests), and diff checks.
   Both second fresh reviews are in progress.
+- Both second fresh MB-022 reviews passed with no actionable findings. The root
+  non-squash merged all ten worker commits on the coordinator branch as
+  two-parent integration `09e0544dc82dcc3ac6f779a4abad064212fbbd98` and
+  finalized MB-022-F001/F002 from retained evidence. Integrated verification
+  and the one-ticket PR remain.
 
 ## Verification
 
