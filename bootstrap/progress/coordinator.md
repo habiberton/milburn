@@ -394,6 +394,12 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   contract, 203 smoke tests (one protected skip), and 22 valid task records.
   AMEND-001 is effective and reconciled; new implementation dispatch remains
   frozen until MB-020 and MB-022 are complete.
+- Pending AMEND-002 replaces blanket two-pass review with recorded risk-based
+  selection. Every candidate retains coordinator verification, acceptance/path
+  checks, required and smoke tests, and PR evidence. MB-006 stays in
+  Specification-plus-Standards mode because it is a Codex adapter with prior
+  blocking findings; MB-020 will also receive both passes because this policy
+  expands its shared agent-instruction scope. Completed history is unchanged.
 - Corrected MB-006 candidate
   `8e1fa8aaf21e7b08e613b668780ca30656bc5c42` addresses semantic Codex JSONL
   extraction, typed role/result/payload enforcement, exact skill/resource
@@ -421,6 +427,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the verified MB-005/AMEND-001 result, apply `milburn:done` to issue #5,
-then verify and freshly review corrected MB-006. Keep all new implementation
-dispatch frozen.
+Commit AMEND-002 with coordinator attribution and carry it through the MB-006
+coordinator PR. Continue MB-006 correction and two-pass re-review; preserve
+MB-020 for later two-pass review. Keep all new implementation dispatch frozen.

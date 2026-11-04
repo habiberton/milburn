@@ -202,12 +202,31 @@ centrally. One ticket has one coordinator-owned branch named
 Later attempts update the same branch and PR. Workers and reviewers return local
 commits and evidence only; they never push, open or update PRs, or merge.
 
-The root integrates verified worker commits without squashing, runs independent
-review and all required tests, then pushes the task branch. Its evidence-bearing
+The root integrates verified worker commits without squashing, runs the selected
+risk-based independent review mode and all required tests, then pushes the task branch. Its evidence-bearing
 PR records issue links, commit SHAs, attribution, acceptance evidence, test
-results, review findings, risks, and `Closes #<issue-number>`. The root never
+results, selected review mode and reason, review findings, risks, and
+`Closes #<issue-number>`. The root never
 pushes directly to `main` and merges the PR only with a merge commit—never a
 squash or rebase merge.
+
+### Risk-based review
+
+All candidates receive coordinator attribution, owned-path and acceptance
+checks, required tests, smoke tests, and PR evidence. Select and record two
+independent passes—Specification and Standards—for contracts/state, persistence
+or replay, process/tmux lifecycle, Codex or external adapters, GitHub/MCP
+effects, recovery/session/amendment policy, security, shared interfaces, prior
+blocking review findings, expanded scope, changed authority/dependencies, or
+uncertain risk. MB-005 and MB-006 remain in this mode.
+
+Select one Focused independent pass only for documentation, fixtures,
+mechanical refactors, isolated tests, or comparably small changes without a
+public interface, state transition, persistence, recovery, or external side
+effect. It still covers applicable acceptance criteria, implementation quality,
+tests, and risks. A blocking focused finding escalates the corrected candidate
+to fresh Specification and Standards passes. Apply this policy prospectively;
+do not rewrite completed task history.
 
 After merging, the root fetches `origin/main`, verifies it contains the GitHub
 PR merge commit, fast-forwards the primary checkout, and updates task records.
