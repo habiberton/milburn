@@ -62,7 +62,14 @@ def validate_skill_package(skills_root: Path, skill_name: str) -> ValidatedSkill
         raise SkillValidationError(
             SkillFailureCode.MALFORMED, skill_name, "invalid skill name"
         )
-    root = skills_root.resolve()
+    lexical_root = skills_root.absolute()
+    if lexical_root.is_symlink():
+        raise SkillValidationError(
+            SkillFailureCode.MALFORMED,
+            skill_name,
+            "skills root must not be a symlink",
+        )
+    root = lexical_root.resolve()
     skill_path = root / skill_name
     if not skill_path.is_dir():
         raise SkillValidationError(
@@ -73,9 +80,15 @@ def validate_skill_package(skills_root: Path, skill_name: str) -> ValidatedSkill
             SkillFailureCode.MALFORMED, skill_name, "skill directory must not be a symlink"
         )
     manifest_path = skill_path / "SKILL.md"
-    if not manifest_path.is_file() or manifest_path.is_symlink():
+    if not manifest_path.is_file():
         raise SkillValidationError(
             SkillFailureCode.MISSING, skill_name, "SKILL.md is missing"
+        )
+    if _has_symlink_component(skill_path, manifest_path):
+        raise SkillValidationError(
+            SkillFailureCode.MALFORMED,
+            skill_name,
+            "SKILL.md or one of its ancestors is a symlink",
         )
     manifest = parse_skill_manifest(manifest_path.read_text(encoding="utf-8"), skill_name)
     if manifest.name != skill_name:
@@ -88,16 +101,16 @@ def validate_skill_package(skills_root: Path, skill_name: str) -> ValidatedSkill
     expected = {"SKILL.md", *manifest.referenced_paths}
     observed: set[str] = set()
     for path in skill_path.rglob("*"):
-        if path.is_dir():
-            continue
         relative = path.relative_to(skill_path).as_posix()
-        observed.add(relative)
         if path.is_symlink():
             raise SkillValidationError(
                 SkillFailureCode.MALFORMED,
                 skill_name,
-                f"referenced package file {relative!r} must not be a symlink",
+                f"package path {relative!r} must not be a symlink",
             )
+        if path.is_dir():
+            continue
+        observed.add(relative)
     missing = sorted(expected - observed)
     extra = sorted(observed - expected)
     if missing:
@@ -116,6 +129,20 @@ def validate_skill_package(skills_root: Path, skill_name: str) -> ValidatedSkill
     file_bytes: dict[str, bytes] = {}
     for relative in sorted(expected):
         path = skill_path / relative
+        if _has_symlink_component(skill_path, path):
+            raise SkillValidationError(
+                SkillFailureCode.MALFORMED,
+                skill_name,
+                f"package path {relative!r} has a symlinked ancestor",
+            )
+        try:
+            path.resolve(strict=True).relative_to(skill_path.resolve(strict=True))
+        except (OSError, ValueError) as error:
+            raise SkillValidationError(
+                SkillFailureCode.MALFORMED,
+                skill_name,
+                f"package path {relative!r} escapes the approved skill root",
+            ) from error
         data = path.read_bytes()
         file_bytes[relative] = data
         try:
@@ -269,3 +296,17 @@ def _root_digest(files: dict[str, bytes]) -> str:
         digest.update(b"\0")
         digest.update(sha256(files[relative]).digest())
     return digest.hexdigest()
+
+
+def _has_symlink_component(root: Path, path: Path) -> bool:
+    """Check every lexical component at and below the approved package root."""
+
+    relative = path.relative_to(root)
+    current = root
+    if current.is_symlink():
+        return True
+    for part in relative.parts:
+        current = current / part
+        if current.is_symlink():
+            return True
+    return False

@@ -100,3 +100,34 @@ def test_symlink_cannot_escape_package(tmp_path: Path) -> None:
 
     with pytest.raises(SkillValidationError, match="must not be a symlink"):
         validate_skill_package(root, "milburn-fixture")
+
+
+def test_undeclared_symlinked_directory_is_rejected_before_directory_skip(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "skills"
+    shutil.copytree(FIXTURES / "valid", root)
+    external = tmp_path / "external"
+    external.mkdir()
+    (root / "milburn-fixture/external-link").symlink_to(
+        external, target_is_directory=True
+    )
+
+    with pytest.raises(SkillValidationError, match="must not be a symlink"):
+        validate_skill_package(root, "milburn-fixture")
+
+
+def test_declared_resource_cannot_cross_symlinked_parent_directory(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "skills"
+    shutil.copytree(FIXTURES / "valid", root)
+    references = root / "milburn-fixture/references"
+    shutil.rmtree(references)
+    external = tmp_path / "external-references"
+    external.mkdir()
+    (external / "guide.md").write_text("external content", encoding="utf-8")
+    references.symlink_to(external, target_is_directory=True)
+
+    with pytest.raises(SkillValidationError, match="must not be a symlink"):
+        validate_skill_package(root, "milburn-fixture")

@@ -122,3 +122,15 @@ def test_missing_mandatory_role_limit_is_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(RoleRuleError, match="omit mandatory limits"):
         rules.load(Role.COORDINATOR)
+
+
+def test_role_rule_parent_directory_cannot_be_a_symlink(tmp_path: Path) -> None:
+    shutil.copytree(ROOT / "src/milburn/agents/role_rules", tmp_path / "rules")
+    external = tmp_path / "external-coder-rules"
+    shutil.copytree(tmp_path / "rules/coder", external)
+    shutil.rmtree(tmp_path / "rules/coder")
+    (tmp_path / "rules/coder").symlink_to(external, target_is_directory=True)
+    rules = RoleRuleCatalog(tmp_path / "rules", ROOT / "config/policies.yaml")
+
+    with pytest.raises(RoleRuleError, match="symlinked component"):
+        rules.load(Role.CODER)

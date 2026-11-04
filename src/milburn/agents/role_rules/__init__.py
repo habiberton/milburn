@@ -24,7 +24,9 @@ class RoleRules:
 
 class RoleRuleCatalog:
     def __init__(self, rules_root: Path, policies_path: Path) -> None:
-        self._rules_root = rules_root.resolve()
+        self._rules_root = rules_root.absolute()
+        if self._rules_root.is_symlink() or not self._rules_root.is_dir():
+            raise RoleRuleError("role rules root must be a real directory")
         self._policies = _load_policies(policies_path)
 
     def load(self, role: Role) -> RoleRules:
@@ -33,9 +35,7 @@ class RoleRuleCatalog:
         policy = self._policies[role]
         sections: list[str] = []
         for relative in policy["rule_files"]:
-            path = self._rules_root / relative
-            if not path.is_file() or path.is_symlink():
-                raise RoleRuleError(f"role rule file is missing for {role.value}: {relative}")
+            path = _contained_rule_path(self._rules_root, relative, role)
             sections.append(path.read_text(encoding="utf-8").strip())
         content = "\n\n".join(sections) + "\n"
         if not content.strip():
@@ -93,3 +93,27 @@ def _load_policies(path: Path) -> dict[Role, dict[str, object]]:
             raise RoleRuleError(f"duplicate role rule files for {role.value}")
         policies[role] = entry
     return policies
+
+
+def _contained_rule_path(root: Path, relative: str, role: Role) -> Path:
+    """Reject rule files whose lexical path crosses any symlink boundary."""
+
+    path = root / relative
+    current = root
+    for part in Path(relative).parts:
+        current = current / part
+        if current.is_symlink():
+            raise RoleRuleError(
+                f"role rule path has a symlinked component for {role.value}: {relative}"
+            )
+    try:
+        resolved_root = root.resolve(strict=True)
+        resolved_path = path.resolve(strict=True)
+        resolved_path.relative_to(resolved_root)
+    except (OSError, ValueError) as error:
+        raise RoleRuleError(
+            f"role rule path escapes the approved root for {role.value}: {relative}"
+        ) from error
+    if not resolved_path.is_file():
+        raise RoleRuleError(f"role rule file is missing for {role.value}: {relative}")
+    return resolved_path
