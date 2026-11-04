@@ -598,14 +598,14 @@
       "id": "MB-007",
       "wave": 2,
       "title": "Implement the skill catalog, role rules, skill packages, and digest validation",
-      "status": "integrated",
+      "status": "done",
       "github": {
         "issue_number": 7,
         "issue_url": "https://github.com/habiberton/milburn/issues/7",
         "status_source": "github",
         "assignment_source": "github",
-        "last_observed_state": "open",
-        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_state": "closed",
+        "last_observed_status_label": "milburn:qa",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-004", "MB-020", "MB-022"],
@@ -620,7 +620,7 @@
       "pull_request": {
         "number": 32,
         "url": "https://github.com/habiberton/milburn/pull/32",
-        "merge_commit_sha": null
+        "merge_commit_sha": "e8f2d925afd99c82c87b0e726fb70214acd62133"
       },
       "progress_path": "bootstrap/progress/tasks/MB-007.md",
       "owned_paths": [
