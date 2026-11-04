@@ -844,6 +844,17 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   with 414 passed/3 protected skips/3 subtests, amendment and feedback
   validation, and `git diff --check`. Issue #8 is auto-closed in QA pending the
   final done-label reconciliation.
+- Issue #8 transitioned from `milburn:qa` to `milburn:done` only after remote
+  ancestry, primary fast-forward, post-merge tests, and local completion records;
+  registry and GitHub now agree MB-008 is complete.
+- Corrected MB-009 candidate
+  `2e7cdda8b031b3d20613efb48613548ead5132f7` contains five verified builder
+  commits. Fix `576b74b` adds fenced later-attempt reuse of a preserved branch,
+  restartable retired evidence, and real/fake parity for simultaneous ownership,
+  fabricated bases, later attempts, and idempotent retirement. Root verification
+  passed 29 focused tests, all 55 runtime tests, smoke with 403 passed/3
+  protected skips/3 subtests, attribution, owned paths, and diff checks. Issue
+  #9 returned to `milburn:in-progress`; both fresh review axes must restart.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
