@@ -58,9 +58,15 @@ class TokenUsageSummary:
 
 @dataclass(slots=True)
 class _SourceState:
+    task_id: str
+    role: str
+    attempt_id: str
+    session_id: str | None
+    endpoint: str | None
     counts: dict[str, int | None] = field(
         default_factory=lambda: {field_name: None for field_name in TOKEN_FIELDS}
     )
+    versions: dict[str, tuple[object, ...]] = field(default_factory=dict)
     available: bool = False
     unavailable_seen: bool = False
     final: bool = False
@@ -72,10 +78,7 @@ def project_usage_events(
     """Replay usage facts; exact duplicate delivery never changes totals."""
 
     seen_ids: dict[str, TokenUsageObservation] = {}
-    seen_versions: dict[
-        tuple[tuple[str, str, str, str, str], str], TokenUsageObservation
-    ] = {}
-    sources: dict[tuple[str, str, str, str, str], _SourceState] = {}
+    sources: list[_SourceState] = []
     attempt_correlations: dict[str, tuple[str, str]] = {}
 
     for observation in observations:
@@ -91,19 +94,6 @@ def project_usage_events(
             continue
         seen_ids[observation.observation_id] = observation
 
-        version_key = (observation.source_key, observation.source_version)
-        previous_version = seen_versions.get(version_key)
-        if previous_version is not None:
-            if _semantic_signature(previous_version) != _semantic_signature(
-                observation
-            ):
-                raise UsageProjectionError(
-                    f"source version {observation.source_version} has "
-                    "conflicting content"
-                )
-            continue
-        seen_versions[version_key] = observation
-
         correlation = (observation.task_id, observation.role.value)
         previous_correlation = attempt_correlations.setdefault(
             observation.attempt_id, correlation
@@ -113,7 +103,18 @@ def project_usage_events(
                 f"attempt {observation.attempt_id} changed task or role correlation"
             )
 
-        state = sources.setdefault(observation.source_key, _SourceState())
+        state = _resolve_source(sources, observation)
+        signature = _semantic_signature(observation)
+        previous_version = state.versions.get(observation.source_version)
+        if previous_version is not None:
+            if previous_version != signature:
+                raise UsageProjectionError(
+                    f"source version {observation.source_version} has "
+                    "conflicting content"
+                )
+            continue
+        state.versions[observation.source_version] = signature
+
         if state.final:
             raise UsageProjectionError(
                 "usage observation arrived after the source's final total"
@@ -145,11 +146,10 @@ def project_usage_events(
     task_sources: dict[str, list[_SourceState]] = {}
     role_sources: dict[str, list[_SourceState]] = {}
     all_sources: list[_SourceState] = []
-    for source_key, state in sources.items():
-        task_id, role, attempt_id, _session_id, _endpoint = source_key
-        attempt_sources.setdefault(attempt_id, []).append(state)
-        task_sources.setdefault(task_id, []).append(state)
-        role_sources.setdefault(role, []).append(state)
+    for state in sources:
+        attempt_sources.setdefault(state.attempt_id, []).append(state)
+        task_sources.setdefault(state.task_id, []).append(state)
+        role_sources.setdefault(state.role, []).append(state)
         all_sources.append(state)
 
     return TokenUsageSummary(
@@ -163,17 +163,80 @@ def project_usage_events(
 
 
 def _semantic_signature(observation: TokenUsageObservation) -> tuple[object, ...]:
+    """Exclude delivery identity/time and late optional correlation metadata."""
+
     return (
         observation.task_id,
         observation.role,
         observation.attempt_id,
-        observation.endpoint,
-        observation.session_id,
-        observation.model,
         observation.kind,
         observation.counts,
         observation.cumulative,
-        observation.observed_at,
+    )
+
+
+def _resolve_source(
+    sources: list[_SourceState], observation: TokenUsageObservation
+) -> _SourceState:
+    candidates = [source for source in sources if _compatible(source, observation)]
+    if not candidates:
+        source = _SourceState(
+            task_id=observation.task_id,
+            role=observation.role.value,
+            attempt_id=observation.attempt_id,
+            session_id=observation.session_id,
+            endpoint=observation.endpoint,
+        )
+        sources.append(source)
+        return source
+    if len(candidates) > 1:
+        scores = [(_match_score(source, observation), source) for source in candidates]
+        best_score = max(score for score, _source in scores)
+        best = [source for score, source in scores if score == best_score]
+        if best_score == 0 or len(best) != 1:
+            raise UsageProjectionError(
+                "usage source is ambiguous without stable session or endpoint evidence"
+            )
+        source = best[0]
+    else:
+        source = candidates[0]
+    if source.session_id is None:
+        source.session_id = observation.session_id
+    if source.endpoint is None:
+        source.endpoint = observation.endpoint
+    return source
+
+
+def _compatible(source: _SourceState, observation: TokenUsageObservation) -> bool:
+    if (
+        source.task_id,
+        source.role,
+        source.attempt_id,
+    ) != (
+        observation.task_id,
+        observation.role.value,
+        observation.attempt_id,
+    ):
+        return False
+    return not (
+        source.session_id is not None
+        and observation.session_id is not None
+        and source.session_id != observation.session_id
+    ) and not (
+        source.endpoint is not None
+        and observation.endpoint is not None
+        and source.endpoint != observation.endpoint
+    )
+
+
+def _match_score(source: _SourceState, observation: TokenUsageObservation) -> int:
+    return sum(
+        (
+            observation.session_id is not None
+            and source.session_id == observation.session_id,
+            observation.endpoint is not None
+            and source.endpoint == observation.endpoint,
+        )
     )
 
 

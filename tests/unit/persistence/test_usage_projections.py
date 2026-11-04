@@ -1,6 +1,6 @@
 """Replayable token-usage summary tests."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -33,6 +33,7 @@ def usage(
     kind: UsageObservationKind = UsageObservationKind.PARTIAL,
     counts: TokenCounts | None = None,
     cumulative: bool = True,
+    observed_at: datetime = NOW,
 ) -> TokenUsageObservation:
     if counts is None and kind is not UsageObservationKind.UNAVAILABLE:
         counts = TokenCounts(input_tokens=10, output_tokens=2)
@@ -48,7 +49,7 @@ def usage(
         kind=kind,
         counts=counts,
         cumulative=cumulative,
-        observed_at=NOW,
+        observed_at=observed_at,
     )
 
 
@@ -92,13 +93,39 @@ def test_cumulative_partials_and_final_reconcile_without_double_counting() -> No
 
 def test_exact_duplicate_and_same_source_version_delivery_are_idempotent() -> None:
     first = usage("usage-1", "source-1")
-    duplicate_version = usage("delivery-copy", "source-1")
+    duplicate_version = usage(
+        "delivery-copy", "source-1", observed_at=NOW + timedelta(minutes=5)
+    )
 
     expected = project_usage_events((first,))
 
     assert project_usage_events((first, first, duplicate_version)) == expected
     serialized = TokenUsageObservation.from_dict(first.to_dict())
     assert project_usage_events((serialized,)) == expected
+
+
+def test_delayed_unavailable_source_version_delivery_is_idempotent() -> None:
+    first = usage(
+        "missing-1",
+        "missing-source-1",
+        endpoint=None,
+        session_id=None,
+        kind=UsageObservationKind.UNAVAILABLE,
+        counts=None,
+        cumulative=False,
+    )
+    redelivery = usage(
+        "missing-redelivery",
+        "missing-source-1",
+        endpoint=None,
+        session_id=None,
+        kind=UsageObservationKind.UNAVAILABLE,
+        counts=None,
+        cumulative=False,
+        observed_at=NOW + timedelta(hours=1),
+    )
+
+    assert project_usage_events((first, redelivery)) == project_usage_events((first,))
 
 
 def test_incremental_partial_is_replaced_by_authoritative_final_total() -> None:
@@ -181,6 +208,111 @@ def test_attempt_task_role_and_workflow_aggregates_sum_distinct_sources() -> Non
         summary.attempt_totals["other"] = summary.attempt_totals[  # type: ignore[index]
             "a01"
         ]
+
+
+@pytest.mark.parametrize(
+    ("final_session", "final_endpoint"),
+    (("session-late", None), (None, "endpoint-late")),
+)
+def test_authoritative_final_reconciles_late_source_identity_enrichment(
+    final_session: str | None, final_endpoint: str | None
+) -> None:
+    partial = usage(
+        "partial",
+        "source-1",
+        endpoint=None,
+        session_id=None,
+        counts=TokenCounts(input_tokens=10),
+    )
+    final = usage(
+        "final",
+        "source-2",
+        endpoint=final_endpoint,
+        session_id=final_session,
+        kind=UsageObservationKind.FINAL,
+        counts=TokenCounts(input_tokens=15),
+    )
+
+    aggregate = project_usage_events((partial, final)).attempt_totals["a01"]
+
+    assert aggregate.reported_tokens.input_tokens == 15
+    assert aggregate.finality is UsageFinality.FINAL
+
+
+def test_final_can_add_session_to_an_endpoint_correlated_partial() -> None:
+    partial = usage(
+        "partial",
+        "source-1",
+        endpoint="endpoint-1",
+        session_id=None,
+        counts=TokenCounts(input_tokens=10),
+    )
+    final = usage(
+        "final",
+        "source-2",
+        endpoint="endpoint-1",
+        session_id="session-late",
+        kind=UsageObservationKind.FINAL,
+        counts=TokenCounts(input_tokens=15),
+    )
+
+    assert (
+        project_usage_events((partial, final))
+        .attempt_totals["a01"]
+        .reported_tokens.input_tokens
+        == 15
+    )
+
+
+def test_distinct_session_and_endpoint_sources_are_aggregated_separately() -> None:
+    first = usage(
+        "first-final",
+        "source-1",
+        endpoint="endpoint-1",
+        session_id="session-1",
+        kind=UsageObservationKind.FINAL,
+        counts=TokenCounts(input_tokens=10),
+    )
+    second = usage(
+        "second-final",
+        "source-1",
+        endpoint="endpoint-2",
+        session_id="session-2",
+        kind=UsageObservationKind.FINAL,
+        counts=TokenCounts(input_tokens=7),
+    )
+
+    aggregate = project_usage_events((first, second)).attempt_totals["a01"]
+
+    assert aggregate.reported_tokens.input_tokens == 17
+    assert aggregate.finality is UsageFinality.FINAL
+
+
+def test_missing_identity_is_rejected_when_multiple_sources_are_compatible() -> None:
+    first = usage(
+        "first",
+        "source-1",
+        endpoint=None,
+        session_id="session-1",
+        counts=TokenCounts(input_tokens=10),
+    )
+    second = usage(
+        "second",
+        "source-1",
+        endpoint=None,
+        session_id="session-2",
+        counts=TokenCounts(input_tokens=7),
+    )
+    ambiguous = usage(
+        "ambiguous",
+        "source-2",
+        endpoint=None,
+        session_id=None,
+        counts=TokenCounts(input_tokens=12),
+    )
+
+    with pytest.raises(UsageProjectionError, match="ambiguous"):
+        project_usage_events((first, second, ambiguous))
 
 
 def test_conflicts_regressions_post_final_and_correlation_reuse_are_rejected() -> None:
