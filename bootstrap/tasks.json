@@ -191,7 +191,7 @@
       "owner": "builder-MB-003-a01",
       "branch": "bootstrap/builder/MB-003/a01-event-store",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-003-a01",
-      "base_sha": "f28da66637393c1e46c67c649f6e49c6f0ba7479",
+      "base_sha": "f6084ba1a485d120c72d44f215f66ca499d677c2",
       "candidate_sha": null,
       "progress_path": "bootstrap/progress/tasks/MB-003.md",
       "owned_paths": [
