@@ -2,14 +2,14 @@
 
 ## Current wave
 
-Wave 1 — Foundation; preparing sequential task `MB-001`
+Wave 1 — Foundation; `MB-001` done and `MB-002` ready
 
 ## Repository state
 
 - Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
 - Active workers: none
-- Pending candidates: `MB-001` at `79bf6e4153d0fbc99a90dd62fbb651d122114b4d`
+- Pending candidates: none
 
 ## Completed
 
@@ -62,6 +62,14 @@ Wave 1 — Foundation; preparing sequential task `MB-001`
 - Independent Standards review found no hard violations and one accepted low
   judgement call: version `0.1.0` is duplicated in `pyproject.toml` and
   `src/milburn/__init__.py`.
+- Candidate `79bf6e4153d0fbc99a90dd62fbb651d122114b4d` was integrated with
+  non-squash merge `90ad110db3b0b7cc5e491c3946f0cf37af294b5d`. The only merge
+  conflict was the task progress record; the resolution retained the completed
+  worker evidence and the coordinator's worktree-identity fact.
+- The post-integration app unit tests and complete smoke test passed: 11 tests.
+- GitHub issue #1 was labeled `milburn:done` and closed as completed. Issue #2
+  was reconciled, remains open and unassigned, and was moved from
+  `milburn:blocked` to `milburn:ready` after its dependency completed.
 
 ## Verification
 
@@ -80,6 +88,7 @@ None recorded.
 
 ## Resume here
 
-Integrate candidate `79bf6e4153d0fbc99a90dd62fbb651d122114b4d` with a
-non-squash merge, run the combined smoke test, reconcile GitHub issue #1, and
-only then mark `MB-001` done and make `MB-002` ready. Wave 1 remains sequential.
+Prepare and launch sequential builder attempt `MB-002/a01`: create its progress
+record, record assignment metadata, commit the coordination checkpoint, create
+and identify its isolated worktree, and dispatch only that task. Preserve the
+completed `MB-001` worktree until it is explicitly archived or removed.
