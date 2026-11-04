@@ -499,6 +499,14 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   `tests/unit/orchestration/__init__.py` package markers. This resolves a test
   harness detail without changing approved product behavior, dependencies, or
   authority boundaries; the task remains in two-pass review mode.
+- MB-022/a01 returned candidate
+  `ee86245b8efbd76e8e0efb457e4251d92fa8b1af` with four verified attributed
+  worker commits from exact base `0b6613d`. The diff stays within recorded
+  paths plus the approved package marker. Coordinator verification passed the
+  exact six-path suite (33 tests), smoke (276 passed, 3 protected skips), 2
+  amendment records, 7 feedback briefs, and `git diff --check`. Fresh
+  Specification and Standards reviews are in progress; no integration branch
+  or PR exists yet.
 
 ## Verification
 

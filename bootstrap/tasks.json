@@ -524,7 +524,7 @@
       "id": "MB-022",
       "wave": 2,
       "title": "Add a durable plan-amendment gate before worker dispatch",
-      "status": "assigned",
+      "status": "candidate",
       "github": {
         "issue_number": 27,
         "issue_url": "https://github.com/habiberton/milburn/issues/27",
@@ -540,7 +540,7 @@
       "branch": "bootstrap/builder/MB-022/a01-plan-amendment-gate",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-022-a01",
       "base_sha": "0b6613d8199c70d6d43d8e3acfb7cdf79a39243a",
-      "candidate_sha": null,
+      "candidate_sha": "ee86245b8efbd76e8e0efb457e4251d92fa8b1af",
       "progress_path": "bootstrap/progress/tasks/MB-022.md",
       "owned_paths": [
         "AGENTS.md",
