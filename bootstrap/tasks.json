@@ -237,7 +237,7 @@
       "owner": "builder-MB-004-a01",
       "branch": "bootstrap/builder/MB-004/a01-workflow-controller",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-004-a01",
-      "base_sha": "5f3c1ed84f542e5715196bff7ecd01baabec6488",
+      "base_sha": "86c11c23f603bc2a8f5b5463d5f8c1807f0644ad",
       "candidate_sha": null,
       "progress_path": "bootstrap/progress/tasks/MB-004.md",
       "owned_paths": [

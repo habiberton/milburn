@@ -198,6 +198,9 @@ Wave 1 — Foundation; preparing sequential task `MB-004`
   `milburn:ready`.
 - Issue #4 is now assigned to `habiberton` and labeled `milburn:in-progress`
   for builder attempt `MB-004/a01`.
+- The `MB-004` worker branch and worktree were created from exact base
+  `86c11c23f603bc2a8f5b5463d5f8c1807f0644ad` and configured with identity
+  `Milburn Builder [MB-004/a01]`.
 
 ## Verification
 
@@ -216,5 +219,5 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the `MB-004` coordination checkpoint, create and identify its isolated
-worktree, record the exact base, and launch the sequential builder.
+Launch the `MB-004` builder with exact base
+`86c11c23f603bc2a8f5b5463d5f8c1807f0644ad` and dispatch no other task.
