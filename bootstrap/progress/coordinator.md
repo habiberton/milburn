@@ -822,6 +822,11 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   merged all seven worker commits as two-parent integration
   `8167128673163277dd8e23e6fac847de51bfa5d9` and finalized the eleven durable
   feedback findings. Integrated verification and final integrated review remain.
+- Final integrated MB-008 Standards passed at `152108e`. Specification found
+  one evidence-only mismatch: F004 attributed `required` multiplicity to
+  `da40e15`, although F010 and `9c90851` own that later correction. The brief
+  now scopes F004 to required-set validation and leaves uniqueness with F010;
+  no implementation or test changed. Both axes must confirm the corrected tip.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
