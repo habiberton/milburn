@@ -12,7 +12,10 @@ from pathlib import Path
 
 AMENDMENT_FILE = re.compile(r"^AMEND-\d{3}\.md$")
 COMMIT = re.compile(r"^[0-9a-f]{7,40}$")
-PR = re.compile(r"^(?:#\d+|https://github\.com/[^/]+/[^/]+/pull/\d+)")
+PR = re.compile(
+    r"^(?:#\d+(?: \(https://github\.com/[^/]+/[^/]+/pull/\d+\))?"
+    r"|https://github\.com/[^/]+/[^/]+/pull/\d+)$"
+)
 REQUIRED_HEADINGS = (
     "## Authority",
     "## Requested change",
@@ -28,6 +31,18 @@ EFFECTIVENESS_FIELDS = (
     "Dispatch status",
     "Resolution status",
 )
+IMPACT_CLASSIFICATIONS = {
+    "unaffected",
+    "needs_steering",
+    "must_pause",
+    "must_stop",
+}
+DISPATCH_STATES = {"frozen", "resumed", "unchanged"}
+RESOLUTION_STATES = {
+    "pending",
+    "effective and reconciled",
+    "rejected and reconciled",
+}
 PLANNING_PATHS = (
     "AGENTS.md",
     "PRD.md",
@@ -54,39 +69,15 @@ def validate_records(repo_root: Path) -> list[str]:
             continue
         text = path.read_text(encoding="utf-8")
         lines = text.splitlines()
-        expected_title = f"# {path.stem} — "
-        if not lines or not lines[0].startswith(expected_title):
-            errors.append(f"{source}: title must begin {expected_title!r}")
-        indexes = []
-        for heading in REQUIRED_HEADINGS:
-            try:
-                indexes.append(lines.index(heading))
-            except ValueError:
-                errors.append(f"{source}: missing required heading {heading}")
-        if len(indexes) == len(REQUIRED_HEADINGS) and indexes != sorted(indexes):
-            errors.append(f"{source}: required headings are out of order")
-        values = _bullet_values(lines)
-        for field in EFFECTIVENESS_FIELDS:
-            if field not in values:
-                errors.append(f"{source}: missing effectiveness field {field}")
-        planning_commit = values.get("Planning commit", "").strip("`")
-        merge_commit = values.get("Effective merge commit", "").strip("`")
-        if planning_commit and not COMMIT.fullmatch(planning_commit):
-            errors.append(f"{source}: Planning commit must be a commit SHA")
-        if merge_commit and not COMMIT.fullmatch(merge_commit):
-            errors.append(f"{source}: Effective merge commit must be a commit SHA")
-        remote_pr = values.get("Effective remote PR", "")
-        if remote_pr and not PR.match(remote_pr):
-            errors.append(f"{source}: Effective remote PR must identify a pull request")
-        for required_phrase in (
-            "Source:",
-            "Authorized task:",
-            "Registry",
-            "specification",
-            "GitHub",
+        if not lines or not re.fullmatch(
+            rf"# {re.escape(path.stem)} — \S.*", lines[0]
         ):
-            if required_phrase.casefold() not in text.casefold():
-                errors.append(f"{source}: missing {required_phrase.rstrip(':')} evidence")
+            errors.append(f"{source}: title must identify {path.stem}")
+        sections, section_errors = _parse_sections(lines, source)
+        errors.extend(section_errors)
+        if section_errors:
+            continue
+        errors.extend(_validate_sections(sections, source))
     if not amendment_paths:
         errors.append("bootstrap/amendments: no amendment records found")
     return sorted(errors)
@@ -100,14 +91,29 @@ def preflight_errors(
     repo_root = repo_root.resolve()
     errors = validate_records(repo_root)
     for path in sorted((repo_root / "bootstrap" / "amendments").glob("AMEND-*.md")):
-        values = _bullet_values(path.read_text(encoding="utf-8").splitlines())
-        status = values.get("Resolution status", "").casefold()
-        if not (
-            status.startswith("effective and reconciled")
-            or status.startswith("rejected and reconciled")
-        ):
+        sections, section_errors = _parse_sections(
+            path.read_text(encoding="utf-8").splitlines(),
+            str(path.relative_to(repo_root)),
+        )
+        if section_errors:
+            continue
+        values, _ = _section_values(
+            sections["## Effectiveness"],
+            str(path.relative_to(repo_root)),
+            "Effectiveness",
+        )
+        resolution = values.get("Resolution status", "").casefold()
+        dispatch = values.get("Dispatch status", "").casefold()
+        if resolution not in {
+            "effective and reconciled",
+            "rejected and reconciled",
+        }:
             errors.append(
                 f"{path.relative_to(repo_root)}: unresolved amendment blocks dispatch"
+            )
+        elif dispatch == "frozen":
+            errors.append(
+                f"{path.relative_to(repo_root)}: amendment record still freezes dispatch"
             )
     observed_dirty = dirty_paths
     if observed_dirty is None:
@@ -120,13 +126,157 @@ def preflight_errors(
     return sorted(errors)
 
 
-def _bullet_values(lines: list[str]) -> dict[str, str]:
+def _parse_sections(
+    lines: list[str], source: str
+) -> tuple[dict[str, list[str]], list[str]]:
+    errors: list[str] = []
+    heading_positions: list[tuple[str, int]] = []
+    for heading in REQUIRED_HEADINGS:
+        positions = [index for index, line in enumerate(lines) if line == heading]
+        if not positions:
+            errors.append(f"{source}: missing required heading {heading}")
+        elif len(positions) > 1:
+            errors.append(f"{source}: duplicate required heading {heading}")
+        else:
+            heading_positions.append((heading, positions[0]))
+    if errors:
+        return {}, errors
+    if [position for _, position in heading_positions] != sorted(
+        position for _, position in heading_positions
+    ):
+        return {}, [f"{source}: required headings are out of order"]
+    sections: dict[str, list[str]] = {}
+    for index, (heading, start) in enumerate(heading_positions):
+        end = (
+            heading_positions[index + 1][1]
+            if index + 1 < len(heading_positions)
+            else len(lines)
+        )
+        sections[heading] = lines[start + 1 : end]
+    return sections, []
+
+
+def _validate_sections(sections: dict[str, list[str]], source: str) -> list[str]:
+    errors: list[str] = []
+    for heading in ("## Requested change", "## Affected tasks"):
+        if not _has_content(sections[heading]):
+            errors.append(f"{source}: {heading[3:]} section must be nonempty")
+
+    authority, authority_errors = _section_values(
+        sections["## Authority"], source, "Authority"
+    )
+    errors.extend(authority_errors)
+    for field in ("Source", "Authorized task"):
+        if field not in authority:
+            errors.append(f"{source}: Authority section missing {field}")
+
+    errors.extend(_validate_active_work(sections["## Active-work impact"], source))
+
+    changes, change_errors = _section_values(
+        sections["## Registry and specification changes"],
+        source,
+        "Registry and specification changes",
+    )
+    errors.extend(change_errors)
+    for field in ("Registry changes", "Specification changes", "GitHub changes"):
+        if field not in changes:
+            errors.append(f"{source}: change section missing {field}")
+
+    effectiveness, effectiveness_errors = _section_values(
+        sections["## Effectiveness"], source, "Effectiveness"
+    )
+    errors.extend(effectiveness_errors)
+    for field in EFFECTIVENESS_FIELDS:
+        if field not in effectiveness:
+            errors.append(f"{source}: missing effectiveness field {field}")
+    if all(field in effectiveness for field in EFFECTIVENESS_FIELDS):
+        errors.extend(_validate_effectiveness(effectiveness, source))
+    return errors
+
+
+def _validate_active_work(lines: list[str], source: str) -> list[str]:
+    nonblank = [line.strip() for line in lines if line.strip()]
+    if nonblank == ["- No active work."]:
+        return []
+    table_rows = [line for line in nonblank if line.startswith("|")]
+    data_rows = [
+        row
+        for row in table_rows
+        if not re.fullmatch(r"\|[-| ]+\|", row)
+        and "| Work | Classification |" not in row
+    ]
+    if not data_rows:
+        return [
+            f"{source}: Active-work impact requires classified rows or "
+            "'- No active work.'"
+        ]
+    errors: list[str] = []
+    for row in data_rows:
+        cells = [cell.strip() for cell in row.strip("|").split("|")]
+        if len(cells) != 3 or not cells[0] or not cells[2]:
+            errors.append(f"{source}: malformed active-work impact row {row!r}")
+            continue
+        if cells[1] not in IMPACT_CLASSIFICATIONS:
+            errors.append(
+                f"{source}: unknown active-work classification {cells[1]!r}"
+            )
+    return errors
+
+
+def _validate_effectiveness(values: dict[str, str], source: str) -> list[str]:
+    errors: list[str] = []
+    resolution = values["Resolution status"].casefold()
+    dispatch = values["Dispatch status"].casefold()
+    if resolution not in RESOLUTION_STATES:
+        errors.append(f"{source}: invalid Resolution status {resolution!r}")
+    if dispatch not in DISPATCH_STATES:
+        errors.append(f"{source}: invalid Dispatch status {dispatch!r}")
+    if resolution == "pending":
+        if dispatch != "frozen":
+            errors.append(f"{source}: pending amendment must freeze dispatch")
+        for field in (
+            "Planning commit",
+            "Effective remote PR",
+            "Effective merge commit",
+        ):
+            if values[field].casefold() != "pending":
+                errors.append(f"{source}: pending amendment requires pending {field}")
+        return errors
+    if resolution in {"effective and reconciled", "rejected and reconciled"}:
+        planning_commit = values["Planning commit"].strip("`")
+        merge_commit = values["Effective merge commit"].strip("`")
+        if not COMMIT.fullmatch(planning_commit):
+            errors.append(f"{source}: Planning commit must be a commit SHA")
+        if not COMMIT.fullmatch(merge_commit):
+            errors.append(f"{source}: Effective merge commit must be a commit SHA")
+        if not PR.fullmatch(values["Effective remote PR"]):
+            errors.append(
+                f"{source}: Effective remote PR must exactly identify a pull request"
+            )
+    return errors
+
+
+def _section_values(
+    lines: list[str], source: str, section_name: str
+) -> tuple[dict[str, str], list[str]]:
     values: dict[str, str] = {}
+    errors: list[str] = []
     for line in lines:
-        match = re.fullmatch(r"- ([^:]+): (.+)", line)
-        if match:
-            values[match.group(1)] = match.group(2)
-    return values
+        match = re.fullmatch(r"- ([^:]+): (\S.*)", line)
+        if not match:
+            continue
+        field, value = match.groups()
+        if field in values:
+            errors.append(f"{source}: duplicate {section_name} field {field}")
+        values[field] = value
+    return values, errors
+
+
+def _has_content(lines: list[str]) -> bool:
+    return any(
+        re.search(r"[A-Za-z0-9]", line) and not line.strip().startswith("<!--")
+        for line in lines
+    )
 
 
 def _git_dirty_planning_paths(repo_root: Path) -> tuple[str, ...]:

@@ -125,6 +125,15 @@ record or uncommitted changes in AGENTS, PRD, ARCH, ROOT_PROMPT, the bootstrap
 README, task registry, decisions, or amendment records. Smoke validation checks
 record structure without requiring a clean worktree.
 
+Every required record section contains section-scoped evidence. Active-work
+rows use exactly `unaffected`, `needs_steering`, `must_pause`, or `must_stop`;
+when no attempts are active, record `- No active work.` instead. Effectiveness
+uses dispatch state `frozen`, `resumed`, or `unchanged` and resolution state
+`pending`, `effective and reconciled`, or `rejected and reconciled`. A pending
+record uses `pending` for commit/PR/merge evidence and must remain frozen.
+Effective records use exact commit and PR references; an effective record whose
+dispatch state is still `frozen` continues blocking preflight.
+
 The durable product lifecycle is `requested → impact_assessed → approved |
 rejected → applied → dispatch_resumed`. Request freezes dispatch before impact
 assessment. Approval binds the expected planning revision plus specification,
