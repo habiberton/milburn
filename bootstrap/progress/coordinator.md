@@ -415,6 +415,12 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   successful scripted result unlike the live boundary. The same unaffected
   worker is preserving an explicit interrupted outcome and adding regression
   evidence; no integration branch or PR exists.
+- Third-round MB-006 candidate `4a354aca` fixed interrupt-to-collect parity and
+  passed fresh Specification review. Standards review found one remaining
+  fake/live mismatch: fake retirement could delete a still-running endpoint
+  that the live boundary rejects. The same worker is adding terminal-state
+  preconditions and a non-invalidation regression before another fresh
+  two-pass review.
 - MB-020 will use its own coordinator branch and PR. Its implementation will
   backfill only evidence already recorded for MB-001 through MB-004 and will
   not be mixed into the already merged MB-004 history.
