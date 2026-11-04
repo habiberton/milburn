@@ -2,7 +2,7 @@
 
 ## Current wave
 
-Wave 1 — Foundation; `MB-003` done and `MB-004` ready
+Wave 1 — Foundation; preparing sequential task `MB-004`
 
 ## Repository state
 
@@ -196,6 +196,8 @@ Wave 1 — Foundation; `MB-003` done and `MB-004` ready
 - Closed issue #3 now carries `milburn:done`. Issue #4 was reconciled against
   `MB-004`, remains open and unassigned, and moved from `milburn:blocked` to
   `milburn:ready`.
+- Issue #4 is now assigned to `habiberton` and labeled `milburn:in-progress`
+  for builder attempt `MB-004/a01`.
 
 ## Verification
 
@@ -214,5 +216,5 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Prepare sequential task `MB-004/a01` using the same one-ticket coordinator PR
-strategy. Its dependencies are done and its GitHub issue is ready.
+Commit the `MB-004` coordination checkpoint, create and identify its isolated
+worktree, record the exact base, and launch the sequential builder.
