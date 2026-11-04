@@ -96,6 +96,33 @@ def test_controller_records_intent_before_requesting_external_effect() -> None:
     assert receipt.intent.facts[-1] == EventFact(name="head_sha", value="abc123")
 
 
+@pytest.mark.parametrize(
+    ("command_type", "role", "intent_type"),
+    [
+        (
+            CommandType.PROPOSE_ROLE_ROUTE,
+            Role.CLASSIFIER_ROUTER,
+            EventType.ROLE_ROUTE_PROPOSED,
+        ),
+        (CommandType.REQUEST_DECISION, Role.CODER, EventType.DECISION_REQUESTED),
+        (CommandType.SUBMIT_QA_REPORT, Role.TESTER, EventType.TEST_RESULT_RECEIVED),
+    ],
+)
+def test_legal_command_intents_are_recorded(
+    command_type: CommandType, role: Role, intent_type: EventType
+) -> None:
+    store = MemoryStore()
+
+    receipt = controller(store).handle(
+        command(command_type=command_type, role=role),
+        intent_type=intent_type,
+        expected_sequence=-1,
+    )
+
+    assert receipt.intent.event_type is intent_type
+    assert store.events["feature:feature-1"] == (receipt.intent,)
+
+
 def test_effect_failure_does_not_erase_recorded_intent() -> None:
     store = MemoryStore()
 
@@ -185,3 +212,42 @@ def test_wrong_agent_role_cannot_submit_another_roles_result() -> None:
             intent_type=EventType.CODER_RESULT_RECEIVED,
             expected_sequence=-1,
         )
+
+
+@pytest.mark.parametrize(
+    "forbidden_type",
+    [
+        EventType.FEATURE_COMPLETED,
+        EventType.ISSUE_APPROVED,
+        EventType.AGENT_STARTED,
+        EventType.GITHUB_EFFECT_OBSERVED,
+    ],
+)
+def test_command_cannot_append_observed_or_completion_fact(
+    forbidden_type: EventType,
+) -> None:
+    store = MemoryStore()
+
+    with pytest.raises(InvalidTransitionError, match="cannot record intent"):
+        controller(store).handle(
+            command(),
+            intent_type=forbidden_type,
+            expected_sequence=-1,
+            request_effect=lambda: pytest.fail("effect must not run"),
+        )
+
+    assert store.events == {}
+
+
+def test_command_cannot_append_another_commands_request_event() -> None:
+    store = MemoryStore()
+
+    with pytest.raises(InvalidTransitionError, match="cannot record intent"):
+        controller(store).handle(
+            command(),
+            intent_type=EventType.AGENT_LAUNCH_REQUESTED,
+            expected_sequence=-1,
+            request_effect=lambda: pytest.fail("effect must not run"),
+        )
+
+    assert store.events == {}

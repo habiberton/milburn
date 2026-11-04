@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable, Protocol, TypeVar
+from typing import Callable, Protocol
 
 from milburn.domain import (
     CommandEnvelope,
@@ -12,7 +12,10 @@ from milburn.domain import (
     EventFact,
     EventType,
 )
-from milburn.domain.policies import ensure_command_allowed
+from milburn.domain.policies import (
+    ensure_command_allowed,
+    ensure_command_intent_allowed,
+)
 
 
 class EventStore(Protocol):
@@ -34,9 +37,6 @@ class DuplicateCommandError(ValueError):
 
 class StaleCommandError(ValueError):
     """Raised when a command was based on an old stream sequence."""
-
-
-Result = TypeVar("Result")
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,13 +65,14 @@ class Controller:
         *,
         intent_type: EventType,
         expected_sequence: int,
-        request_effect: Callable[[], Result] | None = None,
+        request_effect: Callable[[], object] | None = None,
         stream: str | None = None,
         facts: tuple[EventFact, ...] = (),
     ) -> CommandReceipt:
         """Record one authorized command before crossing an external boundary."""
 
         ensure_command_allowed(command)
+        ensure_command_intent_allowed(command, intent_type)
         target_stream = stream or f"feature:{command.feature_id}"
         history = self._event_store.read_stream(target_stream)
         if any(event.causation_id == command.command_id for event in history):
