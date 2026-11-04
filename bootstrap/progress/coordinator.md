@@ -8,7 +8,8 @@ Wave 2 — Independent boundaries; reconciling newly ready tasks
 
 - Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
-- Active workers: none
+- Active workers: `builder-MB-005-a01` (`/root/mb005_builder_a01`) and
+  `builder-MB-006-a01` (`/root/mb006_builder_a01`)
 - Pending candidates: none
 
 ## Completed
@@ -294,6 +295,10 @@ Wave 2 — Independent boundaries; reconciling newly ready tasks
   `/Users/habiberton/projects/milburn-worktrees/MB-006-a01`. Their worktree
   identities are configured as `Milburn Builder [MB-005/a01]` and
   `Milburn Builder [MB-006/a01]`.
+- Both bounded workers were launched with exact bases, owned and prohibited
+  paths, approved spec sections, all acceptance criteria, required tests, and
+  local-commit-only handoff rules. Neither worker may push, open a PR, merge,
+  mutate GitHub, or launch another agent.
 
 ## Verification
 
@@ -312,6 +317,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the resolved Wave 2 bases, then dispatch MB-005/a01 and MB-006/a01 with
-their bounded owned paths, acceptance criteria, tests, and local-commit-only
-handoff rules.
+Monitor both workers. Verify, independently review, integrate, test, and deliver
+each candidate separately through its own coordinator branch and PR; MB-017
+must remain blocked until MB-006 is fully merged and done.

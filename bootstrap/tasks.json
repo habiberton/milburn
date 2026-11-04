@@ -272,7 +272,7 @@
       "id": "MB-005",
       "wave": 2,
       "title": "Implement the tmux runtime and fake runtime",
-      "status": "assigned",
+      "status": "in_progress",
       "github": {
         "issue_number": 5,
         "issue_url": "https://github.com/habiberton/milburn/issues/5",
@@ -314,7 +314,7 @@
       "id": "MB-006",
       "wave": 2,
       "title": "Implement the Codex adapter, launch briefs, and result parsing",
-      "status": "assigned",
+      "status": "in_progress",
       "github": {
         "issue_number": 6,
         "issue_url": "https://github.com/habiberton/milburn/issues/6",
