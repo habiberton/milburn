@@ -456,6 +456,20 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
 - MB-020 will use its own coordinator branch and PR. Its implementation will
   backfill only evidence already recorded for MB-001 through MB-004 and will
   not be mixed into the already merged MB-004 history.
+- MB-020 corrected candidate `266b403f1a123645f4eed90ee008880096dbc40c`
+  passed attribution for three worker commits and was integrated without
+  squashing through two-parent commits `cb2c85d` and `b6a24a5`. Coordinator
+  backfill finalized seven validated task briefs from retained evidence only.
+- Recorded review mode is Specification + Standards because MB-020 changes
+  shared bootstrap authority/process policy and AMEND-002 expanded its scope.
+  Initial reviews found a non-contiguous-ID validation gap and non-replayable
+  abbreviated MB-006 regression evidence. Worker fix `0194510` and coordinator
+  evidence correction `c7b501e` resolved both findings.
+- Both second fresh reviews passed at `c7b501e` with no actionable findings.
+  Integrated verification passed 10 focused feedback tests, 243 smoke tests
+  with 3 protected skips, 7 feedback briefs, and `git diff --check`. The single
+  MB-020 coordinator PR is the next action; no later implementation dispatch
+  is permitted before MB-020 and then MB-022 complete remotely.
 
 ## Verification
 
@@ -474,7 +488,7 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Create `bootstrap/coordinator/MB-020/a01-integration`, non-squash merge the
-worker candidate, reconcile AGENTS/README policy, finalize evidence-only
-feedback briefs, and run the recorded two-pass review. Keep new implementation
-dispatch frozen.
+Push `bootstrap/coordinator/MB-020/a01-integration`, open its evidence-bearing
+PR with `Closes #24`, merge by merge commit, verify and fast-forward
+`origin/main`, then begin MB-022. Keep all other implementation dispatch
+frozen.
