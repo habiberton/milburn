@@ -745,6 +745,10 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   passed/3 protected skips/3 subtests, amendment and feedback validation, and
   `git diff --check`. MB-018 is locally complete pending only the final GitHub
   done/closed reconciliation.
+- GitHub issue #22 was automatically closed by PR #34 and, only after remote
+  verification and the local completion record, transitioned from
+  `milburn:qa` to `milburn:done`. Registry and GitHub now agree that MB-018 is
+  complete.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and

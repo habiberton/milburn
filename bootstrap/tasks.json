@@ -491,8 +491,8 @@
         "issue_url": "https://github.com/habiberton/milburn/issues/22",
         "status_source": "github",
         "assignment_source": "github",
-        "last_observed_state": "open",
-        "last_observed_status_label": "milburn:qa",
+        "last_observed_state": "closed",
+        "last_observed_status_label": "milburn:done",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-002", "MB-003", "MB-006", "MB-017", "MB-022"],
