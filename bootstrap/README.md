@@ -61,16 +61,25 @@ Build shared foundations in order:
 2. `MB-002` — domain contracts, commands, events, states, and errors.
 3. `MB-003` — SQLite event store, expected sequence, projections, and replay.
 4. `MB-004` — workflow controller shell and deterministic transition guard.
+5. `MB-020` — temporary bootstrap defect-feedback briefs, validation, and
+   backfill for MB-001 through MB-004.
 
 These tasks are sequential because every later worker depends on their
-interfaces and test conventions.
+interfaces, test conventions, and feedback process. `MB-020` uses its own
+one-ticket coordinator branch and PR after MB-004; its implementation must not
+be mixed into the MB-004 PR.
 
 ### Wave 2 — Independent boundaries, parallel
 
-After Wave 1 is integrated, dispatch independent boundary implementations:
+After Wave 1 including `MB-020` is integrated, dispatch independent boundary
+implementations. `MB-005` through `MB-009` all depend on `MB-020`, so Wave 2
+cannot begin before the feedback process exists:
 
 - `MB-005` — tmux runtime and fake runtime.
 - `MB-006` — Codex adapter, briefs, and result parsing.
+- `MB-022` — durable bootstrap and product plan-amendment gates. It follows
+  `MB-020` and must complete before any new MB-007, MB-008, MB-009, MB-017, or
+  MB-018 worker dispatch.
 - `MB-017` — observability-only Codex token usage events and replayable usage
   summaries. It depends on `MB-006` and must not run concurrently with
   unfinished `MB-006` work because it extends the adapter contract.
@@ -84,6 +93,27 @@ After Wave 1 is integrated, dispatch independent boundary implementations:
 
 Run no more than three workers concurrently. Begin with two. Each worker owns a
 separate package surface and must use the shared Wave 1 contracts.
+
+MB-005 and MB-006 were already active when MB-022 was authorized and are the
+recorded unaffected exception: they continue through review and PR integration.
+No other Wave 2 implementation worker launches while the first amendment is
+pending, while coordinator planning files are uncommitted, or before MB-020 and
+MB-022 are remotely merged and reconciled.
+
+### Plan-amendment gate
+
+A user-authorized change to scope, policy, specifications, tasks, dependencies,
+waves, acceptance criteria, or dispatch rules is a pending plan amendment. The
+coordinator records its authority, requested change, affected tasks, active-work
+classification, registry/spec/GitHub changes, effective commit and PR, and
+resolution. Active work is classified as `unaffected`, `needs steering`,
+`must pause`, or `must stop`; unaffected attempts retain ownership and continue.
+
+New worker dispatch remains frozen until planning files are clean, the amended
+registry and specifications agree, the amendment commit is reviewed and merged
+remotely, and the primary checkout and amendment record are reconciled. Startup
+and continuation preflights treat an unresolved amendment as a concrete dispatch
+blocker, not as permission to stop unrelated unaffected work.
 
 ### Wave 3 — Coordination workflows
 
@@ -105,6 +135,9 @@ session-lifecycle telemetry.
 After a complete Coder candidate path exists:
 
 - `MB-014` — independent Tester and QA state transitions.
+- `MB-021` — durable defect observations, resolutions, regression evidence,
+  replayable feedback projections, and completion gates. It follows `MB-003`
+  and `MB-014`.
 - `MB-019` — role-specific session continuation, rotation, and replacement
   policy. It follows `MB-010`, `MB-013`, `MB-017`, and `MB-018`.
 - `MB-015` — supervision, reconciliation, crash recovery, and fault handling.
@@ -117,7 +150,8 @@ Other Wave 4 work may run in parallel only if its owned paths remain separate.
 
 `MB-016` connects the complete workflow, runs scripted end-to-end scenarios,
 adds protected live evaluations, completes operational documentation, and
-proves the acceptance criteria in `PRD.md`.
+proves the acceptance criteria in `PRD.md`. It depends on `MB-021` so final
+operator views and acceptance evidence include defect feedback.
 
 ## Task lifecycle
 

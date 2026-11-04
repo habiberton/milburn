@@ -2,14 +2,16 @@
 
 ## Current wave
 
-Wave 1 — Foundation; preparing sequential task `MB-004`
+Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
 
 ## Repository state
 
-- Integration branch: `bootstrap/coordinator/MB-004/a01-integration`
+- Integration branch: `bootstrap/coordinator/MB-005/a01-integration`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
 - Active workers: none
-- Pending candidates: none
+- Pending candidates: corrected MB-006 candidate
+  `8e1fa8aaf21e7b08e613b668780ca30656bc5c42` and MB-020 candidate
+  `cde56a19d7a9009c840c0bcde964d35369c0f790`
 
 ## Completed
 
@@ -267,6 +269,129 @@ Wave 1 — Foundation; preparing sequential task `MB-004`
   evidence-bearing PR #26: `https://github.com/habiberton/milburn/pull/26`.
   GitHub resolves `Closes #4` to the intended issue and reports the PR clean
   and mergeable.
+- PR #26 merged using GitHub's two-parent merge-commit method as
+  `0994a9ac5918ccc54ca3d91c39976e294d83506d`. The root fetched and verified
+  `origin/main` contains candidate
+  `d69b8627d780d03d0c421e19dbd1bfa743074b00`, integration commit
+  `bd0e306c7b4d47ce817da7744d9bab1bc895011b`, and PR tip
+  `64522a0a86dd79062e4ad3c826e19b7a87259eb1`, then fast-forwarded the primary
+  checkout to the exact merge SHA.
+- Post-fast-forward verification passed again: 71 orchestration tests, 177
+  total smoke tests, and 19 valid task records.
+- Closed issue #4 now carries `milburn:done`. Issues #5 through #9 were
+  reconciled from `milburn:blocked` to `milburn:ready` after MB-004 completed;
+  MB-017, MB-018, and MB-019 correctly remain blocked by unfinished
+  dependencies.
+- The Wave 2 parallelization gate passed for MB-005 and MB-006: both depend
+  only on completed MB-004, their runtime and adapter path sets do not overlap,
+  neither requires the other's unfinished implementation, and each has
+  independent acceptance tests. The coordinator is beginning with two workers.
+- Issues #5 and #6 are assigned to `habiberton` and labeled
+  `milburn:in-progress`. Builder assignments `MB-005/a01` and `MB-006/a01`
+  are prepared; their progress records will be included in the exact branch
+  base checkpoint before worktrees are created.
+- Both worker branches and worktrees were created from exact base
+  `61c453848c1364a7b77695c1ecb9477908b80784`: MB-005 at
+  `/Users/habiberton/projects/milburn-worktrees/MB-005-a01` and MB-006 at
+  `/Users/habiberton/projects/milburn-worktrees/MB-006-a01`. Their worktree
+  identities are configured as `Milburn Builder [MB-005/a01]` and
+  `Milburn Builder [MB-006/a01]`.
+- Both bounded workers were launched with exact bases, owned and prohibited
+  paths, approved spec sections, all acceptance criteria, required tests, and
+  local-commit-only handoff rules. Neither worker may push, open a PR, merge,
+  mutate GitHub, or launch another agent.
+- The user added a new pre-Wave-2 dependency after those workers launched.
+  MB-005 had already returned clean candidate
+  `6e00d03be1eb2c86aeee6d057a4a8d68c1c7d085` with three attributed commits,
+  16 unit tests, one real-tmux contract test, and 193 smoke tests (one skipped).
+  It is preserved but cannot be reviewed or integrated until MB-020 is done.
+- MB-006 was interrupted while active; its worktree and uncommitted adapter
+  work are preserved at `/Users/habiberton/projects/milburn-worktrees/MB-006-a01`.
+  The user then explicitly grandfathered active MB-005 and MB-006 through the
+  new gate, so issue #5 and #6 are again assigned and `milburn:in-progress`;
+  MB-006 resumes and MB-005 proceeds through normal review/integration. Issues
+  #7 through #9 remain blocked and unassigned until MB-020 is complete.
+- User-authorized issues #24 and #25 were mirrored as MB-020 and MB-021 with
+  their complete contracts. MB-020 is placed immediately after MB-004 and now
+  gates MB-005 through MB-009; MB-021 follows MB-014 and gates MB-016.
+- `PRD.md` and `ARCH.md` now specify concise durable defect observations and
+  resolutions correlated to task, attempt, session, candidate, QA, and fix
+  commits; root-cause/regression evidence; deterministic duplicate-safe replay;
+  blocking completion policy; linked issues for separate scope; and exclusion
+  of transcripts, chain-of-thought, secrets, and unbounded logs.
+- MB-006 returned clean candidate
+  `7d6636b2548f7354936b6631ab811b0eaa5ed1bc` with two attributed commits, 19
+  focused tests, and 196 smoke tests (one protected live-Codex contract
+  skipped). Coordinator verification and review remain.
+- Coordinator verification rejected initial MB-005 candidate `6e00d03b` before
+  independent review: its 16 unit tests passed, but the real tmux contract
+  observed a process-identity stabilization race during `create_window()`.
+  The same worker is correcting it locally with regression evidence.
+- Corrected MB-005 candidate
+  `a8d4de3f3652b18fd927ca4624b1165cea1cdc6b` now matches process identity by
+  PID plus kernel start time, adds bounded injectable observation retries, and
+  reports 18 unit tests, ten consecutive real-tmux contract passes, and 195
+  smoke tests (one skipped). Coordinator re-verification and review remain.
+- MB-006 Spec review rejected candidate `7d6636b2` before integration: live
+  Codex JSONL output was treated as one JSON document; expected role/result and
+  payload schemas were not enforced; validated skill digests were not carried
+  through launch; and the live contract covered only CLI version output. The
+  same unaffected worker will receive these findings after the amendment
+  planning commit is cleanly recorded.
+- Issue #24 is assigned and `milburn:in-progress`; MB-020/a01 is prepared on
+  its own branch/worktree path from planning checkpoint
+  `09636fd9f0993493091c515ee9e29c58d5d0f81f`. The worktree is
+  `/Users/habiberton/projects/milburn-worktrees/MB-020-a01` with identity
+  `Milburn Builder [MB-020/a01]`.
+- MB-020/a01 was launched with the writing-for-agents guidance: one concise
+  source of truth, context pointers from always-loaded instructions, and
+  checkable gates. Because only the root may finalize feedback briefs, the
+  worker will implement the process and validator and propose evidence-only
+  MB-001 through MB-004 backfill entries in its own progress; the coordinator
+  will write those historical briefs on the integration branch.
+- MB-020 returned candidate `cde56a19d7a9009c840c0bcde964d35369c0f790`
+  with one attributed commit, eight focused feedback tests, and 185 smoke
+  tests. It authored no coordinator-owned historical briefs; its progress
+  contains exact evidence-only proposals for MB-001 through MB-004.
+- Pending plan amendment `AMEND-001` mirrors MB-022/#27, gates MB-007, MB-008,
+  MB-009, MB-017, and MB-018, and classifies already active MB-005, MB-006, and
+  MB-020 as unaffected. GitHub dependency notices were added to issues #7, #8,
+  #9, #21, and #22. No additional implementation worker may launch until the
+  amendment is committed, remotely merged, reconciled, and the MB-020/MB-022
+  sequence completes.
+- AMEND-001 planning is committed as
+  `4c6f773a1612fc431c26919b0c28e8272fb7f78e`; its remote PR and merge revision
+  remain pending, so new implementation dispatch stays frozen. The unaffected
+  MB-006 worker is correcting all Spec-review findings in its existing attempt.
+- Corrected MB-005 candidate `a8d4de3f` passed Spec review, but Standards review
+  found the fake runtime could issue interrupt/terminate against non-running or
+  process-mismatched endpoints even though the real runtime refuses. The same
+  unaffected worker is adding parity guards and regression tests; no integration
+  branch or PR exists.
+- Final MB-005 candidate `b9bab642d97075302e9c79949eab68c2f5502296`
+  corrected fake/real lifecycle parity. Coordinator verification passed seven
+  attributed commits, approved paths, 26 runtime tests, a real tmux contract,
+  and 203 smoke tests (one protected live-Codex skip). Fresh Spec and Standards
+  re-reviews both passed with no actionable findings. It will use coordinator
+  branch `bootstrap/coordinator/MB-005/a01-integration` and one PR.
+- MB-005 was non-squash merged on its coordinator branch as two-parent commit
+  `c21a1aaf748625b70b0235cc3af552c3cca89b68`. Integrated verification passed
+  26 unit tests, the real tmux contract, 203 smoke tests (one protected skip),
+  22 valid task records, and `git diff --check` against `origin/main`.
+- The root pushed `bootstrap/coordinator/MB-005/a01-integration` at
+  `ea84420240490b1315eca0bf31b314f5b21f8e5a` and opened clean, mergeable,
+  evidence-bearing PR #28: `https://github.com/habiberton/milburn/pull/28`.
+  GitHub resolves `Closes #5`; the PR carries AMEND-001 and is recorded as its
+  effective remote review.
+- Corrected MB-006 candidate
+  `8e1fa8aaf21e7b08e613b668780ca30656bc5c42` addresses semantic Codex JSONL
+  extraction, typed role/result/payload enforcement, exact skill/resource
+  binding retention, and expanded opt-in live lifecycle coverage. It reports
+  four attributed commits, 28 focused tests, and 205 smoke tests (one protected
+  live skip); coordinator verification and fresh reviews remain.
+- MB-020 will use its own coordinator branch and PR. Its implementation will
+  backfill only evidence already recorded for MB-001 through MB-004 and will
+  not be mixed into the already merged MB-004 history.
 
 ## Verification
 
@@ -285,5 +410,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Push the PR-record update, merge PR #26 only with a merge commit, verify
-`origin/main`, and fast-forward the primary checkout before advancing Wave 2.
+Push the PR/amendment record update, merge PR #28 with a merge commit, verify
+and reconcile `origin/main`, then verify and freshly review corrected MB-006.
+Keep all new implementation dispatch frozen.

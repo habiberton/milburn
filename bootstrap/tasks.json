@@ -222,14 +222,14 @@
       "id": "MB-004",
       "wave": 1,
       "title": "Implement the workflow controller shell and transition guard",
-      "status": "integrated",
+      "status": "done",
       "github": {
         "issue_number": 4,
         "issue_url": "https://github.com/habiberton/milburn/issues/4",
         "status_source": "github",
         "assignment_source": "github",
-        "last_observed_state": "open",
-        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_state": "closed",
+        "last_observed_status_label": "milburn:done",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-003"],
@@ -244,7 +244,7 @@
       "pull_request": {
         "number": 26,
         "url": "https://github.com/habiberton/milburn/pull/26",
-        "merge_commit_sha": null
+        "merge_commit_sha": "0994a9ac5918ccc54ca3d91c39976e294d83506d"
       },
       "progress_path": "bootstrap/progress/tasks/MB-004.md",
       "owned_paths": [
@@ -269,26 +269,82 @@
       ]
     },
     {
+      "id": "MB-020",
+      "wave": 1,
+      "title": "Add concise defect feedback briefs to the bootstrap workflow",
+      "status": "candidate",
+      "github": {
+        "issue_number": 24,
+        "issue_url": "https://github.com/habiberton/milburn/issues/24",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_assignees": ["habiberton"]
+      },
+      "dependencies": ["MB-004"],
+      "parallel_group": null,
+      "owner": "builder-MB-020-a01",
+      "branch": "bootstrap/builder/MB-020/a01-feedback-briefs",
+      "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-020-a01",
+      "base_sha": "09636fd9f0993493091c515ee9e29c58d5d0f81f",
+      "candidate_sha": "cde56a19d7a9009c840c0bcde964d35369c0f790",
+      "progress_path": "bootstrap/progress/tasks/MB-020.md",
+      "owned_paths": [
+        "AGENTS.md",
+        "bootstrap/README.md",
+        "bootstrap/feedback/",
+        "bootstrap/progress/tasks/TEMPLATE.md",
+        "scripts/smoke-test.sh",
+        "tests/bootstrap/"
+      ],
+      "acceptance_criteria": [
+        "Add bootstrap/feedback/README.md defining the feedback purpose, entry format, identifier convention, and retention policy.",
+        "Keep one compact Markdown feedback file per task at bootstrap/feedback/<task-id>.md.",
+        "Every blocking or meaningful review, test, integration, recovery, or production defect records: feedback ID, discovery phase, severity, symptom, root cause, resolution, fix commit, regression evidence, lesson, and status.",
+        "Minor formatting-only corrections may be omitted.",
+        "Findings remain linked to the originating task, attempt, worker candidate, coordinator integration, and GitHub PR when available.",
+        "A task cannot be marked done until every resolved meaningful finding has fix and regression evidence, while unresolved or separately scoped findings become linked GitHub issues.",
+        "PR descriptions include a feedback-summary section and link to the task feedback brief.",
+        "Workers may propose entries in their task progress record, but only the coordinator writes or finalizes bootstrap/feedback files.",
+        "Feedback briefs do not copy private transcripts, model reasoning, secrets, or large command logs.",
+        "Update AGENTS.md, bootstrap/README.md, bootstrap/progress/tasks/TEMPLATE.md, and scripts/smoke-test.sh to enforce the workflow.",
+        "Backfill concise briefs for MB-001 through MB-004 using already recorded findings; do not invent missing root causes or evidence.",
+        "The smoke test validates naming, required headings, known task IDs, unique feedback IDs, and that resolved entries contain fix and regression evidence."
+      ],
+      "required_tests": [
+        "scripts/smoke-test.sh",
+        "Any focused bootstrap feedback-validation tests added by the task"
+      ]
+    },
+    {
       "id": "MB-005",
       "wave": 2,
       "title": "Implement the tmux runtime and fake runtime",
-      "status": "blocked",
+      "status": "integrated",
       "github": {
         "issue_number": 5,
         "issue_url": "https://github.com/habiberton/milburn/issues/5",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:blocked",
-        "last_observed_assignees": []
+        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_assignees": ["habiberton"]
       },
-      "dependencies": ["MB-004"],
+      "dependencies": ["MB-004", "MB-020"],
       "parallel_group": "wave-2-boundaries",
-      "owner": null,
-      "branch": null,
-      "worktree": null,
-      "base_sha": null,
-      "candidate_sha": null,
+      "owner": "builder-MB-005-a01",
+      "branch": "bootstrap/builder/MB-005/a01-tmux-runtime",
+      "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-005-a01",
+      "base_sha": "61c453848c1364a7b77695c1ecb9477908b80784",
+      "candidate_sha": "b9bab642d97075302e9c79949eab68c2f5502296",
+      "integration_branch": "bootstrap/coordinator/MB-005/a01-integration",
+      "integration_commit_sha": "c21a1aaf748625b70b0235cc3af552c3cca89b68",
+      "pull_request": {
+        "number": 28,
+        "url": "https://github.com/habiberton/milburn/pull/28",
+        "merge_commit_sha": null
+      },
       "progress_path": "bootstrap/progress/tasks/MB-005.md",
       "owned_paths": [
         "src/milburn/runtime/tmux.py",
@@ -314,23 +370,23 @@
       "id": "MB-006",
       "wave": 2,
       "title": "Implement the Codex adapter, launch briefs, and result parsing",
-      "status": "blocked",
+      "status": "candidate",
       "github": {
         "issue_number": 6,
         "issue_url": "https://github.com/habiberton/milburn/issues/6",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:blocked",
-        "last_observed_assignees": []
+        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_assignees": ["habiberton"]
       },
-      "dependencies": ["MB-004"],
+      "dependencies": ["MB-004", "MB-020"],
       "parallel_group": "wave-2-boundaries",
-      "owner": null,
-      "branch": null,
-      "worktree": null,
-      "base_sha": null,
-      "candidate_sha": null,
+      "owner": "builder-MB-006-a01",
+      "branch": "bootstrap/builder/MB-006/a01-codex-adapter",
+      "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-006-a01",
+      "base_sha": "61c453848c1364a7b77695c1ecb9477908b80784",
+      "candidate_sha": "8e1fa8aaf21e7b08e613b668780ca30656bc5c42",
       "progress_path": "bootstrap/progress/tasks/MB-006.md",
       "owned_paths": [
         "src/milburn/agents/codex_adapter.py",
@@ -368,7 +424,7 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-002", "MB-003", "MB-006"],
+      "dependencies": ["MB-002", "MB-003", "MB-006", "MB-022"],
       "parallel_group": null,
       "owner": null,
       "branch": null,
@@ -415,7 +471,7 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-002", "MB-003", "MB-006", "MB-017"],
+      "dependencies": ["MB-002", "MB-003", "MB-006", "MB-017", "MB-022"],
       "parallel_group": null,
       "owner": null,
       "branch": null,
@@ -451,6 +507,68 @@
       ]
     },
     {
+      "id": "MB-022",
+      "wave": 2,
+      "title": "Add a durable plan-amendment gate before worker dispatch",
+      "status": "blocked",
+      "github": {
+        "issue_number": 27,
+        "issue_url": "https://github.com/habiberton/milburn/issues/27",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
+      "dependencies": ["MB-004", "MB-020"],
+      "parallel_group": null,
+      "owner": null,
+      "branch": null,
+      "worktree": null,
+      "base_sha": null,
+      "candidate_sha": null,
+      "progress_path": "bootstrap/progress/tasks/MB-022.md",
+      "owned_paths": [
+        "AGENTS.md",
+        "bootstrap/ROOT_PROMPT.md",
+        "bootstrap/README.md",
+        "bootstrap/amendments/",
+        "scripts/smoke-test.sh",
+        "src/milburn/domain/amendments.py",
+        "src/milburn/orchestration/plan_amendments.py",
+        "src/milburn/validation/amendment_policy.py",
+        "src/milburn/persistence/amendment_projections.py",
+        "tests/bootstrap/test_plan_amendments.py",
+        "tests/unit/orchestration/test_plan_amendments.py",
+        "tests/unit/validation/test_amendment_policy.py",
+        "tests/unit/persistence/test_amendment_projections.py",
+        "tests/integration/workflows/test_midrun_plan_amendment.py",
+        "tests/recovery/test_pending_amendment.py"
+      ],
+      "acceptance_criteria": [
+        "A user instruction that changes scope, policy, specifications, tasks, dependencies, waves, acceptance criteria, or dispatch rules becomes a pending plan amendment.",
+        "New worker dispatch freezes while any plan amendment is pending or coordinator-owned planning files have uncommitted changes.",
+        "Existing active work is explicitly classified as unaffected, needs steering, must pause, or must stop.",
+        "Unaffected workers may continue; the coordinator must not cancel or restart them merely because an amendment exists.",
+        "Every amendment records source/authority, requested change, affected tasks, active-work classification, specification changes, registry changes, GitHub changes, effective commit, and resolution status.",
+        "PRD.md, ARCH.md, bootstrap/tasks.json, bootstrap/README.md, and GitHub issue dependencies are reconciled as one reviewed amendment before dispatch resumes.",
+        "The coordinator verifies the committed amendment and remote PR merge before declaring it effective.",
+        "AGENTS.md, bootstrap/ROOT_PROMPT.md, bootstrap/README.md, and smoke validation enforce the amendment gate.",
+        "Startup and final-response preflights detect unresolved amendments.",
+        "Define versioned commands/events for amendment request, impact assessment, approval or rejection, application, and dispatch resumption.",
+        "Controller policy prevents new AgentLaunchRequested effects while an amendment is pending.",
+        "Active attempts retain their generation and ownership until an explicit impact decision changes them.",
+        "Applying an amendment uses expected-version concurrency and is replayable and idempotent.",
+        "Restart reconciliation preserves pending amendments and never silently applies or drops them.",
+        "Operator views explain the amendment, authority, affected work, decision, effective revision, and whether dispatch is frozen.",
+        "Tests reproduce the original failure mode: an amendment arrives while workers are active, unaffected workers continue, and no additional worker launches before the amendment is committed and applied."
+      ],
+      "required_tests": [
+        "python3 -m pytest tests/bootstrap/test_plan_amendments.py tests/unit/orchestration/test_plan_amendments.py tests/unit/validation/test_amendment_policy.py tests/unit/persistence/test_amendment_projections.py tests/integration/workflows/test_midrun_plan_amendment.py tests/recovery/test_pending_amendment.py -q",
+        "scripts/smoke-test.sh"
+      ]
+    },
+    {
       "id": "MB-007",
       "wave": 2,
       "title": "Implement the skill catalog, role rules, skill packages, and digest validation",
@@ -464,7 +582,7 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-004"],
+      "dependencies": ["MB-004", "MB-020", "MB-022"],
       "parallel_group": "wave-2-boundaries",
       "owner": null,
       "branch": null,
@@ -510,7 +628,7 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-004"],
+      "dependencies": ["MB-004", "MB-020", "MB-022"],
       "parallel_group": "wave-2-boundaries",
       "owner": null,
       "branch": null,
@@ -554,7 +672,7 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-004"],
+      "dependencies": ["MB-004", "MB-020", "MB-022"],
       "parallel_group": "wave-2-boundaries",
       "owner": null,
       "branch": null,
@@ -792,6 +910,59 @@
       ]
     },
     {
+      "id": "MB-021",
+      "wave": 4,
+      "title": "Persist defect resolutions and regression feedback in Milburn",
+      "status": "blocked",
+      "github": {
+        "issue_number": 25,
+        "issue_url": "https://github.com/habiberton/milburn/issues/25",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
+      "dependencies": ["MB-003", "MB-014"],
+      "parallel_group": null,
+      "owner": null,
+      "branch": null,
+      "worktree": null,
+      "base_sha": null,
+      "candidate_sha": null,
+      "progress_path": "bootstrap/progress/tasks/MB-021.md",
+      "owned_paths": [
+        "src/milburn/domain/defects.py",
+        "src/milburn/orchestration/feedback.py",
+        "src/milburn/persistence/defect_projections.py",
+        "src/milburn/validation/defect_policy.py",
+        "src/milburn/observability/feedback_views.py",
+        "tests/unit/domain/test_defects.py",
+        "tests/unit/orchestration/test_feedback.py",
+        "tests/unit/persistence/test_defect_projections.py",
+        "tests/unit/validation/test_defect_policy.py",
+        "tests/integration/workflows/test_defect_feedback.py",
+        "tests/recovery/test_defect_replay.py",
+        "tests/fixtures/workflows/defects/"
+      ],
+      "acceptance_criteria": [
+        "Define versioned contracts and events for DefectObserved, DefectResolutionProposed, DefectResolved, and RegressionEvidenceRecorded, or equivalent approved names.",
+        "Every defect links repository, issue/task, role, attempt, session generation when available, candidate SHA, discovery phase, severity, symptom, evidence, and status.",
+        "Resolution records link the fix commit, concise root cause, resolution summary, regression command/test, result evidence, and resolver authority.",
+        "Replay produces deterministic open-defect, resolved-defect, per-task feedback, and recurring-lesson projections.",
+        "Duplicate QA reports, retries, and restart reconciliation do not duplicate defects or regression evidence.",
+        "A task cannot reach done while a blocking defect is unresolved or a resolved blocking defect lacks regression evidence.",
+        "Failed QA for the same task returns evidence to the Coder; separately scoped defects create linked GitHub issues through controller policy.",
+        "Operator APIs/views can show concise defect briefs and links without exposing private transcripts, prompts, secrets, or raw reasoning.",
+        "Feedback is evidence, not model memory: a replacement agent reads the concise projection and repository state rather than a previous transcript.",
+        "Fixtures and tests cover discovery, correction, re-review, duplicate delivery, restart replay, unresolved blocking defects, and separately scoped follow-up issues."
+      ],
+      "required_tests": [
+        "python3 -m pytest tests/unit/domain/test_defects.py tests/unit/orchestration/test_feedback.py tests/unit/persistence/test_defect_projections.py tests/unit/validation/test_defect_policy.py tests/integration/workflows/test_defect_feedback.py tests/recovery/test_defect_replay.py -q",
+        "scripts/smoke-test.sh"
+      ]
+    },
+    {
       "id": "MB-019",
       "wave": 4,
       "title": "Implement role-specific session rotation and replacement policy",
@@ -898,7 +1069,7 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-014", "MB-015"],
+      "dependencies": ["MB-014", "MB-015", "MB-021"],
       "parallel_group": null,
       "owner": null,
       "branch": null,
