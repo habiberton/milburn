@@ -792,6 +792,13 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   smoke with 393 passed/3 protected skips/3 subtests, attribution, and diff
   checks. MB-009-F001 records the base-existence/ancestry recovery correction;
   both independent review axes remain required before integration.
+- MB-008 candidate `47365f0` passed fresh Specification review across F001-F010,
+  but Standards found F011: after successful initial reconciliation, a definite
+  pre-mutation preparation-read failure leaves the effect `RECONCILED`, and a
+  same-ID retry attempts an invalid self-transition instead of safely
+  continuing. Issue #8 returned to `milburn:changes-requested`; the same worker
+  is adding a retry regression and narrow journal/gateway correction. Both
+  review axes restart after the next candidate.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
