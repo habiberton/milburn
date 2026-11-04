@@ -2,7 +2,7 @@
 
 ## Current wave
 
-Wave 0 — Bootstrap verification complete locally; GitHub reconciliation blocked
+Wave 1 — Foundation; preparing sequential task `MB-001`
 
 ## Repository state
 
@@ -36,6 +36,11 @@ Wave 0 — Bootstrap verification complete locally; GitHub reconciliation blocke
   primary checkout as `Milburn Coordinator [BOOTSTRAP/root]`.
 - Local reconciliation confirms `MB-001` is the only dependency-ready Wave 1
   task. Wave 1 remains sequential and no implementation worker was launched.
+- GitHub CLI authentication was restored and issue #1 was reconciled against
+  `MB-001`: the marker, title, acceptance criteria, owned paths, dependencies,
+  and required tests match the local registry.
+- Issue #1 is open, assigned to `habiberton`, and moved from `milburn:ready` to
+  `milburn:in-progress` for builder attempt `a01`.
 
 ## Verification
 
@@ -50,22 +55,12 @@ Wave 0 — Bootstrap verification complete locally; GitHub reconciliation blocke
 
 ## Blockers
 
-- GitHub issue reconciliation is blocked. The GitHub MCP calls `get_me` and
-  `issue_read` both failed with `github authorization failed: context canceled`.
-  The local `gh` fallback reports that no GitHub host is authenticated.
-- Because GitHub issue assignees and lifecycle labels are authoritative, do not
-  assign or dispatch `MB-001`, and do not change its mirrored task status, until
-  issue #1 can be read and updated successfully.
+None recorded.
 
 ## Resume here
 
-Restore GitHub MCP authorization (preferred) or authenticate `gh`, then read
-`habiberton/milburn` issue #1 and verify that it is open, unassigned, marked
-`milburn:task` and `milburn:ready`, and contains `milburn:task-id=MB-001`.
-Assign the first builder attempt in GitHub and move the issue to
-`milburn:in-progress`; mirror the observed state and attempt metadata in
-`bootstrap/tasks.json`, create `bootstrap/progress/tasks/MB-001.md`, commit the
-coordination checkpoint, create branch
+Commit the `MB-001` coordination checkpoint, use that exact commit as the
+worker base, update the task and progress records with the base, create branch
 `bootstrap/builder/MB-001/a01-package-foundation` and worktree
 `/Users/habiberton/projects/milburn-worktrees/MB-001-a01`, configure its
-identity, and only then launch the worker. Wave 1 must remain sequential.
+identity, and launch the builder. Wave 1 remains sequential.
