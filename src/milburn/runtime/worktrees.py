@@ -199,6 +199,9 @@ class WorktreeInspection:
 class WorktreeManagerProtocol(Protocol):
     def prepare(self, request: WorktreeRequest) -> WorktreeLease: ...
     def register(self, lease: WorktreeLease) -> WorktreeInspection: ...
+    def register_retired(
+        self, lease: WorktreeLease, prior_process: PriorProcessState
+    ) -> WorktreeInspection: ...
     def inspect(self, lease: WorktreeLease) -> WorktreeInspection: ...
     def resume(
         self, lease: WorktreeLease, prior_process: PriorProcessState
@@ -238,15 +241,26 @@ class GitWorktreeManager:
         branch_ref = f"refs/heads/{request.branch}"
         branch = self._git(request.repository, "show-ref", "--verify", "--quiet", branch_ref)
         if branch.returncode == 0:
-            raise WorktreeConflictError("issue branch already exists; recover it instead")
-        if branch.returncode != 1:
+            self._authorize_retired_branch_reuse(lease)
+            branch_head = self._git(
+                request.repository, "rev-parse", "--verify", f"{branch_ref}^{{commit}}"
+            )
+            if branch_head.returncode or branch_head.stdout.strip() != request.base_sha:
+                raise WorktreeConflictError(
+                    "next attempt base must equal the preserved issue branch head"
+                )
+            add_arguments = (
+                "worktree", "add", str(request.worktree), request.branch,
+            )
+        elif branch.returncode == 1:
+            add_arguments = (
+                "worktree", "add", "-b", request.branch,
+                str(request.worktree), request.base_sha,
+            )
+        else:
             raise WorktreeCommandError(branch.stderr.strip() or "could not inspect issue branch")
 
-        created = self._git(
-            request.repository,
-            "worktree", "add", "-b", request.branch,
-            str(request.worktree), request.base_sha,
-        )
+        created = self._git(request.repository, *add_arguments)
         if created.returncode:
             raise WorktreeCommandError(created.stderr.strip() or "git worktree add failed")
 
@@ -273,6 +287,26 @@ class GitWorktreeManager:
             raise WorktreeOwnershipError("durable lease does not match Git worktree identity")
         self._validate_base_ancestry(lease, inspection)
         self._leases[lease.worktree] = lease
+        return inspection
+
+    def register_retired(
+        self, lease: WorktreeLease, prior_process: PriorProcessState
+    ) -> WorktreeInspection:
+        """Restore durable proof that a prior attempt was safely retired."""
+
+        self._require_stopped(prior_process)
+        self._validate_lease_filesystem(lease)
+        self._ensure_no_ownership_conflict(lease)
+        inspection = self._inspect_lease(lease)
+        if inspection.registered or inspection.path_exists:
+            raise WorktreeOwnershipError("retired worktree path is still present")
+        if any(
+            entry.branch == lease.branch for entry in self._list_worktrees(lease.repository)
+        ):
+            raise WorktreeOwnershipError("retired issue branch is still attached")
+        branch_head = self._branch_head(lease)
+        self._validate_commit_ancestry(lease, branch_head)
+        self._retired[lease.worktree] = lease
         return inspection
 
     def inspect(self, lease: WorktreeLease) -> WorktreeInspection:
@@ -351,11 +385,38 @@ class GitWorktreeManager:
             if active.repository == lease.repository and active.branch == lease.branch:
                 raise WorktreeConflictError("issue branch already has mutating ownership")
 
+    def _authorize_retired_branch_reuse(self, lease: WorktreeLease) -> None:
+        retired = [
+            prior
+            for prior in self._retired.values()
+            if prior.repository == lease.repository and prior.branch == lease.branch
+        ]
+        if not retired:
+            raise WorktreeConflictError("issue branch already exists; recover it instead")
+        entries = self._list_worktrees(lease.repository)
+        if any(entry.branch == lease.branch for entry in entries):
+            raise WorktreeConflictError("issue branch is still attached to another worktree")
+        for prior in retired:
+            if prior.worktree.exists() or prior.worktree.is_symlink():
+                raise WorktreeConflictError("retired worktree path unexpectedly reappeared")
+
+    def _branch_head(self, lease: WorktreeLease) -> str:
+        branch = self._git(
+            lease.repository,
+            "rev-parse", "--verify", f"refs/heads/{lease.branch}^{{commit}}",
+        )
+        if branch.returncode or not _SHA.fullmatch(branch.stdout.strip()):
+            raise WorktreeOwnershipError("preserved issue branch is unavailable")
+        return branch.stdout.strip()
+
     def _validate_base_ancestry(
         self, lease: WorktreeLease, inspection: WorktreeInspection
     ) -> None:
         if inspection.head_sha is None:
             raise WorktreeOwnershipError("worktree has no observable head commit")
+        self._validate_commit_ancestry(lease, inspection.head_sha)
+
+    def _validate_commit_ancestry(self, lease: WorktreeLease, head_sha: str) -> None:
         base = self._git(
             lease.repository, "rev-parse", "--verify", f"{lease.base_sha}^{{commit}}"
         )
@@ -363,7 +424,7 @@ class GitWorktreeManager:
             raise WorktreeOwnershipError("recorded base is not an exact repository commit")
         ancestor = self._git(
             lease.repository,
-            "merge-base", "--is-ancestor", lease.base_sha, inspection.head_sha,
+            "merge-base", "--is-ancestor", lease.base_sha, head_sha,
         )
         if ancestor.returncode == 1:
             raise WorktreeOwnershipError("worktree head no longer descends from recorded base")
