@@ -11,6 +11,7 @@ import pytest
 from milburn.runtime.worktrees import (
     GitWorktreeManager,
     PriorProcessState,
+    RetiredWorktreeEvidence,
     WorktreeConflictError,
     WorktreeDirtyError,
     WorktreeLease,
@@ -236,7 +237,8 @@ def test_clean_retirement_removes_only_registered_path_and_preserves_branch(
 
     retired = manager.retire(lease, PriorProcessState.STOPPED)
 
-    assert not retired.registered
+    assert retired.lease == lease
+    assert retired.head_sha == lease.base_sha
     assert not lease.worktree.exists()
     assert (sibling / "keep.txt").read_text() == "safe\n"
     assert git(repository[0], "show-ref", "--verify", f"refs/heads/{lease.branch}")
@@ -281,10 +283,10 @@ def test_retired_lease_can_be_recovered_before_next_attempt(
 ) -> None:
     original = GitWorktreeManager()
     first = original.prepare(request(repository))
-    original.retire(first, PriorProcessState.STOPPED)
+    evidence = original.retire(first, PriorProcessState.STOPPED)
     recovered = GitWorktreeManager()
 
-    observation = recovered.register_retired(first, PriorProcessState.STOPPED)
+    observation = recovered.register_retired(evidence, PriorProcessState.STOPPED)
     second = recovered.prepare(request(repository, attempt="a02"))
 
     assert not observation.registered
@@ -301,6 +303,36 @@ def test_duplicate_clean_retirement_is_idempotent(
     duplicate = manager.retire(lease, PriorProcessState.STOPPED)
 
     assert first == duplicate
+
+
+def test_retired_evidence_is_strictly_serializable(
+    repository: tuple[Path, Path, str],
+) -> None:
+    lease = WorktreeLease.from_request(request(repository))
+    evidence = RetiredWorktreeEvidence(lease, lease.base_sha)
+
+    assert RetiredWorktreeEvidence.from_dict(evidence.to_dict()) == evidence
+    with pytest.raises(ValueError, match="fields"):
+        RetiredWorktreeEvidence.from_dict({**evidence.to_dict(), "extra": True})
+
+
+def test_force_moved_preserved_branch_cannot_authorize_later_attempt(
+    repository: tuple[Path, Path, str],
+) -> None:
+    manager = GitWorktreeManager()
+    first = manager.prepare(request(repository))
+    evidence = manager.retire(first, PriorProcessState.STOPPED)
+    tree = git(repository[0], "rev-parse", f"{first.base_sha}^{{tree}}")
+    unrelated = git(repository[0], "commit-tree", tree, "-m", "unrelated")
+    git(repository[0], "branch", "-f", first.branch, unrelated)
+    second_request = request(repository, attempt="a02", base=unrelated)
+
+    with pytest.raises(WorktreeOwnershipError, match="retired worktree head"):
+        manager.prepare(second_request)
+    with pytest.raises(WorktreeOwnershipError, match="retired worktree head"):
+        GitWorktreeManager().register_retired(evidence, PriorProcessState.STOPPED)
+
+    assert not second_request.worktree.exists()
 
 
 def test_forged_lease_path_is_rejected_before_any_operation(
@@ -406,7 +438,27 @@ def test_fake_can_restore_retired_evidence_before_later_attempt(
     fake = FakeWorktreeManager()
     fake.seed_preserved_branch(first)
 
-    fake.register_retired(first, PriorProcessState.STOPPED)
+    evidence = RetiredWorktreeEvidence(first, first.base_sha)
+    fake.register_retired(evidence, PriorProcessState.STOPPED)
     second = fake.prepare(request(repository, attempt="a02"))
 
     assert fake.inspect(second).matched
+
+
+def test_fake_rejects_force_moved_preserved_branch_like_real_manager(
+    repository: tuple[Path, Path, str],
+) -> None:
+    fake = FakeWorktreeManager()
+    first = fake.prepare(request(repository))
+    evidence = fake.retire(first, PriorProcessState.STOPPED)
+    unrelated = "e" * 40
+    fake.seed_preserved_branch(first, head_sha=unrelated, ancestors=())
+    second_request = request(repository, attempt="a02", base=unrelated)
+
+    with pytest.raises(WorktreeOwnershipError, match="retired worktree head"):
+        fake.prepare(second_request)
+
+    recovered = FakeWorktreeManager()
+    recovered.seed_preserved_branch(first, head_sha=unrelated, ancestors=())
+    with pytest.raises(WorktreeOwnershipError, match="retired worktree head"):
+        recovered.register_retired(evidence, PriorProcessState.STOPPED)

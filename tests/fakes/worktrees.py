@@ -7,6 +7,7 @@ from pathlib import Path
 
 from milburn.runtime.worktrees import (
     PriorProcessState,
+    RetiredWorktreeEvidence,
     WorktreeConflictError,
     WorktreeDirtyError,
     WorktreeInspection,
@@ -27,7 +28,10 @@ class _FakeWorkspace:
 class FakeWorktreeManager:
     def __init__(self) -> None:
         self._active: dict[Path, WorktreeLease] = {}
-        self._retired: dict[Path, WorktreeLease] = {}
+        self._retired: dict[Path, RetiredWorktreeEvidence] = {}
+        self._retired_branches: dict[
+            tuple[Path, str], RetiredWorktreeEvidence
+        ] = {}
         self._workspaces: dict[Path, _FakeWorkspace] = {}
         self._branches: dict[tuple[Path, str], _FakeWorkspace] = {}
         self._dirty: set[Path] = set()
@@ -45,18 +49,18 @@ class FakeWorktreeManager:
                 lease.branch, lease.base_sha, frozenset({lease.base_sha})
             )
         else:
-            retired = [
-                prior
-                for prior in self._retired.values()
-                if prior.repository == lease.repository and prior.branch == lease.branch
-            ]
-            if not retired:
+            evidence = self._retired_branches.get((lease.repository, lease.branch))
+            if evidence is None:
                 raise WorktreeConflictError("issue branch already exists; recover it instead")
             if any(item.branch == lease.branch for item in self._workspaces.values()):
                 raise WorktreeConflictError("issue branch is still attached to another worktree")
             if branch.head_sha != lease.base_sha:
                 raise WorktreeConflictError(
                     "next attempt base must equal the preserved issue branch head"
+                )
+            if evidence.head_sha not in branch.ancestors:
+                raise WorktreeOwnershipError(
+                    "preserved branch no longer descends from retired worktree head"
                 )
             workspace = branch
         self._workspaces[lease.worktree] = workspace
@@ -76,8 +80,9 @@ class FakeWorktreeManager:
         return inspection
 
     def register_retired(
-        self, lease: WorktreeLease, prior_process: PriorProcessState
+        self, evidence: RetiredWorktreeEvidence, prior_process: PriorProcessState
     ) -> WorktreeInspection:
+        lease = evidence.lease
         self._require_stopped(prior_process)
         self._ensure_no_ownership_conflict(lease)
         inspection = self._inspect_raw(lease)
@@ -86,9 +91,16 @@ class FakeWorktreeManager:
         if any(item.branch == lease.branch for item in self._workspaces.values()):
             raise WorktreeOwnershipError("retired issue branch is still attached")
         branch = self._branches.get((lease.repository, lease.branch))
-        if branch is None or lease.base_sha not in branch.ancestors:
+        if branch is None:
+            raise WorktreeOwnershipError("preserved issue branch is unavailable")
+        if evidence.head_sha not in branch.ancestors:
+            raise WorktreeOwnershipError(
+                "preserved branch no longer descends from retired worktree head"
+            )
+        if lease.base_sha not in branch.ancestors:
             raise WorktreeOwnershipError("recorded base is not an exact repository commit")
-        self._retired[lease.worktree] = lease
+        self._retired[lease.worktree] = evidence
+        self._retired_branches[(lease.repository, lease.branch)] = evidence
         self.actions.append(("register_retired", lease.attempt_id))
         return inspection
 
@@ -109,20 +121,23 @@ class FakeWorktreeManager:
 
     def retire(
         self, lease: WorktreeLease, prior_process: PriorProcessState
-    ) -> WorktreeInspection:
+    ) -> RetiredWorktreeEvidence:
         self._require_stopped(prior_process)
-        if self._retired.get(lease.worktree) == lease:
-            return self._inspect_raw(lease)
+        retired = self._retired.get(lease.worktree)
+        if retired is not None and retired.lease == lease:
+            return retired
         inspection = self.inspect(lease)
         self._validate_base_ancestry(lease, inspection)
         if inspection.clean is not True:
             raise WorktreeDirtyError("dirty worktree evidence must be preserved")
         workspace = self._workspaces.pop(lease.worktree)
+        evidence = RetiredWorktreeEvidence(lease, workspace.head_sha)
         self._branches[(lease.repository, lease.branch)] = workspace
         self._active.pop(lease.worktree)
-        self._retired[lease.worktree] = lease
+        self._retired[lease.worktree] = evidence
+        self._retired_branches[(lease.repository, lease.branch)] = evidence
         self.actions.append(("retire", lease.attempt_id))
-        return WorktreeInspection(lease, False, False, None, None, None)
+        return evidence
 
     def set_dirty(self, lease: WorktreeLease, dirty: bool = True) -> None:
         self._require_owned(lease)
@@ -140,7 +155,7 @@ class FakeWorktreeManager:
         lease: WorktreeLease,
         *,
         head_sha: str | None = None,
-        ancestors: tuple[str, ...] = (),
+        ancestors: tuple[str, ...] | None = None,
     ) -> None:
         """Seed external Git state without granting controller ownership."""
 
@@ -148,7 +163,7 @@ class FakeWorktreeManager:
         workspace = _FakeWorkspace(
             lease.branch,
             head,
-            frozenset({head, lease.base_sha, *ancestors}),
+            frozenset({head, *(ancestors if ancestors is not None else (lease.base_sha,))}),
         )
         self._workspaces[lease.worktree] = workspace
         self._branches[(lease.repository, lease.branch)] = workspace
@@ -158,7 +173,7 @@ class FakeWorktreeManager:
         lease: WorktreeLease,
         *,
         head_sha: str | None = None,
-        ancestors: tuple[str, ...] = (),
+        ancestors: tuple[str, ...] | None = None,
     ) -> None:
         """Seed a branch whose prior controller-created path is absent."""
 
@@ -166,7 +181,7 @@ class FakeWorktreeManager:
         self._branches[(lease.repository, lease.branch)] = _FakeWorkspace(
             lease.branch,
             head,
-            frozenset({head, lease.base_sha, *ancestors}),
+            frozenset({head, *(ancestors if ancestors is not None else (lease.base_sha,))}),
         )
 
     def _inspect_raw(self, lease: WorktreeLease) -> WorktreeInspection:
