@@ -709,7 +709,7 @@
       "id": "MB-009",
       "wave": 2,
       "title": "Implement the Git worktree manager and fake workspace manager",
-      "status": "assigned",
+      "status": "candidate",
       "github": {
         "issue_number": 9,
         "issue_url": "https://github.com/habiberton/milburn/issues/9",
@@ -725,7 +725,7 @@
       "branch": "bootstrap/builder/MB-009/a01-worktree-manager",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-009-a01",
       "base_sha": "5a243407f5c099ce088d188590b7b36052860941",
-      "candidate_sha": null,
+      "candidate_sha": "139a9e31e91799ae6177e6c488794e3c0cd392ee",
       "progress_path": "bootstrap/progress/tasks/MB-009.md",
       "owned_paths": [
         "src/milburn/runtime/worktrees.py",

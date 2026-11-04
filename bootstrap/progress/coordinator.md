@@ -784,6 +784,14 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   1 local contract, smoke with 376 passed/3 protected skips/3 subtests,
   attribution, owned paths, and diff checks. Issue #8 returned to
   `milburn:in-progress`; both fresh review axes are restarting.
+- MB-009/a01 returned candidate
+  `139a9e31e91799ae6177e6c488794e3c0cd392ee` with three verified builder
+  commits from exact base `5a243407f5c099ce088d188590b7b36052860941`.
+  Its diff is confined to the worktree manager, fake, unit test, and task
+  progress. Root verification passed 19 required tests, all 45 runtime tests,
+  smoke with 393 passed/3 protected skips/3 subtests, attribution, and diff
+  checks. MB-009-F001 records the base-existence/ancestry recovery correction;
+  both independent review axes remain required before integration.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
