@@ -8,10 +8,10 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
 
 - Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
-- Active workers: `builder-MB-006-a01` (`/root/mb006_builder_a01`) correcting
-  final fake interrupt/collect parity
+- Active workers: none
 - Pending candidates: MB-020 candidate
-  `cde56a19d7a9009c840c0bcde964d35369c0f790`
+  `cde56a19d7a9009c840c0bcde964d35369c0f790`; accepted MB-006 candidate
+  `38b28545a6fb409d62fa1145e083109df649d308` is entering integration
 
 ## Completed
 
@@ -421,6 +421,13 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   that the live boundary rejects. The same worker is adding terminal-state
   preconditions and a non-invalidation regression before another fresh
   two-pass review.
+- Final MB-006 candidate `38b28545a6fb409d62fa1145e083109df649d308`
+  corrected running-retirement parity. Coordinator verification passed ten
+  attributed commits, approved paths, 30 focused tests, and 207 smoke tests
+  (two protected live skips). Recorded review mode is Specification + Standards
+  because this is a Codex/external adapter with prior blocking findings; both
+  final fresh reviews passed with no actionable findings. It will use
+  `bootstrap/coordinator/MB-006/a01-integration` and one PR carrying AMEND-002.
 - MB-020 will use its own coordinator branch and PR. Its implementation will
   backfill only evidence already recorded for MB-001 through MB-004 and will
   not be mixed into the already merged MB-004 history.
@@ -442,6 +449,7 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Carry AMEND-002 through the eventual MB-006 coordinator PR. Continue MB-006
-correction and two-pass re-review; preserve
-MB-020 for later two-pass review. Keep all new implementation dispatch frozen.
+Commit the accepted MB-006 record, non-squash merge its worker chain, verify the
+coordinator branch, and carry AMEND-002 through its evidence-bearing PR.
+Preserve MB-020 for later two-pass review; keep new implementation dispatch
+frozen.
