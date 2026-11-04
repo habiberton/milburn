@@ -8,12 +8,11 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
 
 - Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
-- Active workers: `builder-MB-005-a01` (`/root/mb005_builder_a01`) correcting
-  fake/real lifecycle parity and `builder-MB-006-a01`
-  (`/root/mb006_builder_a01`) correcting Spec-review findings
-- Pending candidates: MB-020 candidate
-  `cde56a19d7a9009c840c0bcde964d35369c0f790`, held until MB-005 and MB-006
-  reach safe completion
+- Active workers: `builder-MB-006-a01` (`/root/mb006_builder_a01`) correcting
+  Spec-review findings
+- Pending candidates: accepted MB-005 candidate
+  `b9bab642d97075302e9c79949eab68c2f5502296` and MB-020 candidate
+  `cde56a19d7a9009c840c0bcde964d35369c0f790`
 
 ## Completed
 
@@ -370,6 +369,12 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   process-mismatched endpoints even though the real runtime refuses. The same
   unaffected worker is adding parity guards and regression tests; no integration
   branch or PR exists.
+- Final MB-005 candidate `b9bab642d97075302e9c79949eab68c2f5502296`
+  corrected fake/real lifecycle parity. Coordinator verification passed seven
+  attributed commits, approved paths, 26 runtime tests, a real tmux contract,
+  and 203 smoke tests (one protected live-Codex skip). Fresh Spec and Standards
+  re-reviews both passed with no actionable findings. It will use coordinator
+  branch `bootstrap/coordinator/MB-005/a01-integration` and one PR.
 - MB-020 will use its own coordinator branch and PR. Its implementation will
   backfill only evidence already recorded for MB-001 through MB-004 and will
   not be mixed into the already merged MB-004 history.
@@ -391,6 +396,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit and verify AMEND-001 with the MB-022 registry/spec changes. Continue the
-unaffected MB-005 and MB-006 correction/review/PR paths and monitor MB-020; do
-not launch any additional implementation worker while the amendment is pending.
+Integrate accepted MB-005 with a non-squash merge, verify its coordinator
+branch, and open its evidence-bearing PR carrying AMEND-001. Continue unaffected
+MB-006 correction; keep all new implementation dispatch frozen.
