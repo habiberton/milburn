@@ -96,6 +96,10 @@ Wave 1 — Foundation; repairing `MB-001` through its coordinator PR
 - The one-ticket coordinator PR strategy was committed as
   `9be13421143e146a721e692a3c2e2680c0c59335`. `MB-001` owns integration branch
   `bootstrap/coordinator/MB-001/a01-integration`; it will have exactly one PR.
+- The root pushed that branch at `37022feeb2a917bbe6265c4e60ee3c59e37da454`
+  and opened evidence-bearing PR #18:
+  `https://github.com/habiberton/milburn/pull/18`. GitHub reports it clean and
+  mergeable, and `Closes #1` resolves to the intended task issue.
 
 ## Verification
 
@@ -114,8 +118,7 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Push the recorded `MB-001` integration branch, open its evidence-bearing PR
-with `Closes #1`, record the PR, update that same branch, and merge with a merge
-commit. Fetch and verify `origin/main`, fast-forward the primary checkout,
+Commit the PR record, update the same `MB-001` branch, and merge PR #18 with a
+merge commit. Fetch and verify `origin/main`, fast-forward the primary checkout,
 restore issue #1 to `milburn:done`, then unblock and resume the preserved
 `MB-002/a01` attempt.
