@@ -593,6 +593,13 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   correcting stable semantic equality and source reconciliation, adding
   delayed-duplicate/enrichment/distinct-source regressions and feedback
   proposals. Both fresh review axes are required afterward.
+- Initial MB-007 reviews both blocked the candidate on approved-root security.
+  Package validation skipped directory symlinks before checking them, leaving
+  undeclared external directory links valid and outside the digest. Role-rule
+  loading checked only final files, allowing a symlinked parent directory to
+  source mandatory authority rules externally. The same worker is adding
+  ancestor containment/symlink rejection, regressions, and feedback proposals;
+  both fresh review axes are required afterward.
 
 ## Current verification
 
