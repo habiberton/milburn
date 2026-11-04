@@ -537,6 +537,10 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   two-parent integration `09e0544dc82dcc3ac6f779a4abad064212fbbd98` and
   finalized MB-022-F001/F002 from retained evidence. Integrated verification
   and the one-ticket PR remain.
+- Final integrated reviews initially found only a stale coordinator recovery
+  tail. Commit `33c899e` replaced it with current verification and the exact
+  PR/remote-read-back next action; both final review axes then passed with no
+  actionable findings. MB-022 is ready for its single coordinator PR.
 
 ## Current verification
 
