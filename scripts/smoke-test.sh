@@ -14,6 +14,8 @@ for path in \
   PRD.md \
   ARCH.md \
   bootstrap/README.md \
+  bootstrap/feedback/README.md \
+  bootstrap/feedback/validate.py \
   bootstrap/tasks.json \
   scripts/configure-worktree-identity.sh \
   scripts/agent-commit.sh \
@@ -54,6 +56,9 @@ path = Path("scripts/verify-candidate-commits.py")
 compile(path.read_text(), str(path), "exec")
 print("Commit-attribution verifier: syntax valid")
 PY
+
+python3 bootstrap/feedback/validate.py
+python3 -m unittest discover -s tests/bootstrap -p 'test_feedback_validator.py'
 
 if [[ -f pyproject.toml ]]; then
   if [[ -f uv.lock ]] && command -v uv >/dev/null 2>&1; then
