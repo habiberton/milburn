@@ -763,6 +763,10 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   worktree manager, fake, fixtures, unit test, and task-progress paths. Review
   mode is Specification + Standards because the task controls Git mutation,
   ownership/reuse, process-state reconciliation, and safe retirement.
+- MB-009/a01 worktree `/Users/habiberton/projects/milburn-worktrees/MB-009-a01`
+  was created from exact base `5a243407f5c099ce088d188590b7b36052860941`
+  on `bootstrap/builder/MB-009/a01-worktree-manager` and configured with the
+  approved `Milburn Builder [MB-009/a01]` identity before dispatch.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
