@@ -2,7 +2,7 @@
 
 ## Current wave
 
-Wave 1 — Foundation; `MB-002` done and `MB-003` ready
+Wave 1 — Foundation; preparing sequential task `MB-003`
 
 ## Repository state
 
@@ -157,6 +157,8 @@ Wave 1 — Foundation; `MB-002` done and `MB-003` ready
 - Closed issue #2 now carries `milburn:done`. Issue #3 was reconciled against
   `MB-003`, remains open and unassigned, and moved from `milburn:blocked` to
   `milburn:ready` after its dependency completed.
+- Issue #3 is now assigned to `habiberton` and labeled `milburn:in-progress`
+  for builder attempt `MB-003/a01`.
 
 ## Verification
 
@@ -175,6 +177,5 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the reconciled `MB-002` completion and `MB-003` readiness. Prepare the
-sequential `MB-003/a01` worker, preserving the completed `MB-001` and `MB-002`
-worktrees until explicitly archived or removed.
+Commit the `MB-003` coordination checkpoint, create and identify its isolated
+worktree, record the exact base, and launch only that sequential worker.
