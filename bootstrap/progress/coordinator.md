@@ -8,12 +8,11 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
 
 - Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
-- Active workers: `builder-MB-005-a01` (`/root/mb005_builder_a01`) correcting
-  independent tmux-contract failure and `builder-MB-020-a01`
-  (`/root/mb020_builder_a01`) implementing the feedback process
-- Pending candidates: MB-005 candidate
-  `6e00d03be1eb2c86aeee6d057a4a8d68c1c7d085` rejected before review, and
-  MB-006 candidate `7d6636b2548f7354936b6631ab811b0eaa5ed1bc`
+- Active workers: `builder-MB-006-a01` (`/root/mb006_builder_a01`) correcting
+  Spec-review findings and `builder-MB-020-a01` (`/root/mb020_builder_a01`)
+  implementing the feedback process
+- Pending candidates: corrected MB-005 candidate
+  `a8d4de3f3652b18fd927ca4624b1165cea1cdc6b`
 
 ## Completed
 
@@ -357,6 +356,10 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   #9, #21, and #22. No additional implementation worker may launch until the
   amendment is committed, remotely merged, reconciled, and the MB-020/MB-022
   sequence completes.
+- AMEND-001 planning is committed as
+  `4c6f773a1612fc431c26919b0c28e8272fb7f78e`; its remote PR and merge revision
+  remain pending, so new implementation dispatch stays frozen. The unaffected
+  MB-006 worker is correcting all Spec-review findings in its existing attempt.
 - MB-020 will use its own coordinator branch and PR. Its implementation will
   backfill only evidence already recorded for MB-001 through MB-004 and will
   not be mixed into the already merged MB-004 history.

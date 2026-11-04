@@ -363,7 +363,7 @@
       "id": "MB-006",
       "wave": 2,
       "title": "Implement the Codex adapter, launch briefs, and result parsing",
-      "status": "candidate",
+      "status": "in_progress",
       "github": {
         "issue_number": 6,
         "issue_url": "https://github.com/habiberton/milburn/issues/6",
@@ -379,7 +379,7 @@
       "branch": "bootstrap/builder/MB-006/a01-codex-adapter",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-006-a01",
       "base_sha": "61c453848c1364a7b77695c1ecb9477908b80784",
-      "candidate_sha": "7d6636b2548f7354936b6631ab811b0eaa5ed1bc",
+      "candidate_sha": null,
       "progress_path": "bootstrap/progress/tasks/MB-006.md",
       "owned_paths": [
         "src/milburn/agents/codex_adapter.py",

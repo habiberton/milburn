@@ -47,11 +47,11 @@ this amendment.
 
 ## Effectiveness
 
-- Planning commit: pending
+- Planning commit: `4c6f773a1612fc431c26919b0c28e8272fb7f78e`
 - Effective remote PR: pending
 - Effective merge commit: pending
 - Dispatch status: frozen for new implementation workers
-- Resolution status: pending remote merge and reconciliation
+- Resolution status: committed; pending remote PR merge and reconciliation
 
 The coordinator may continue already active unaffected work. It may not launch
 another implementation worker until this record names the effective commit and
