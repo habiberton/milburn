@@ -272,7 +272,7 @@
       "id": "MB-020",
       "wave": 1,
       "title": "Add concise defect feedback briefs to the bootstrap workflow",
-      "status": "candidate",
+      "status": "integrated",
       "github": {
         "issue_number": 24,
         "issue_url": "https://github.com/habiberton/milburn/issues/24",
@@ -288,7 +288,14 @@
       "branch": "bootstrap/builder/MB-020/a01-feedback-briefs",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-020-a01",
       "base_sha": "09636fd9f0993493091c515ee9e29c58d5d0f81f",
-      "candidate_sha": "cde56a19d7a9009c840c0bcde964d35369c0f790",
+      "candidate_sha": "266b403f1a123645f4eed90ee008880096dbc40c",
+      "integration_branch": "bootstrap/coordinator/MB-020/a01-integration",
+      "integration_commit_sha": "b6a24a51ab43b9292abed2c8de9159280d53e588",
+      "pull_request": {
+        "number": 30,
+        "url": "https://github.com/habiberton/milburn/pull/30",
+        "merge_commit_sha": null
+      },
       "progress_path": "bootstrap/progress/tasks/MB-020.md",
       "owned_paths": [
         "AGENTS.md",
@@ -370,14 +377,14 @@
       "id": "MB-006",
       "wave": 2,
       "title": "Implement the Codex adapter, launch briefs, and result parsing",
-      "status": "integrated",
+      "status": "done",
       "github": {
         "issue_number": 6,
         "issue_url": "https://github.com/habiberton/milburn/issues/6",
         "status_source": "github",
         "assignment_source": "github",
-        "last_observed_state": "open",
-        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_state": "closed",
+        "last_observed_status_label": "milburn:done",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-004", "MB-020"],
@@ -392,7 +399,7 @@
       "pull_request": {
         "number": 29,
         "url": "https://github.com/habiberton/milburn/pull/29",
-        "merge_commit_sha": null
+        "merge_commit_sha": "d276cc255088c9ac91eb04da319719eb66c64abe"
       },
       "progress_path": "bootstrap/progress/tasks/MB-006.md",
       "owned_paths": [

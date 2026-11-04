@@ -31,6 +31,12 @@
 
 - None recorded.
 
+## Feedback proposals
+
+- None recorded. For a blocking or meaningful finding, copy one complete entry
+  block from `bootstrap/feedback/README.md` here with context pointers and
+  checkable completion criteria. The coordinator finalizes the task brief.
+
 ## Remaining
 
 - Begin with the task's first acceptance criterion.

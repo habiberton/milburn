@@ -6,7 +6,7 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
 
 ## Repository state
 
-- Integration branch: `bootstrap/coordinator/MB-006/a01-integration`
+- Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
 - Active workers: none
 - Pending candidates: MB-020 candidate
@@ -353,6 +353,13 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   with one attributed commit, eight focused feedback tests, and 185 smoke
   tests. It authored no coordinator-owned historical briefs; its progress
   contains exact evidence-only proposals for MB-001 through MB-004.
+- Coordinator verification passed MB-020 attribution, approved paths, eight
+  focused validator tests, 185 candidate smoke tests, and `git diff --check`.
+  Review mode is Specification + Standards because it changes shared
+  always-loaded agent policy and AMEND-002 expanded its scope after the worker
+  candidate. The coordinator will integrate first, reconcile instruction
+  conflicts, finalize evidence-only feedback briefs, then review that complete
+  branch.
 - Pending plan amendment `AMEND-001` mirrors MB-022/#27, gates MB-007, MB-008,
   MB-009, MB-017, and MB-018, and classifies already active MB-005, MB-006, and
   MB-020 as unaffected. GitHub dependency notices were added to issues #7, #8,
@@ -437,9 +444,38 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   evidence-bearing PR #29: `https://github.com/habiberton/milburn/pull/29`.
   GitHub resolves `Closes #6`; the PR records Specification + Standards mode
   and is AMEND-002's effective remote review.
+- PR #29 merged using GitHub's two-parent merge-commit method as
+  `d276cc255088c9ac91eb04da319719eb66c64abe`. The root verified `origin/main`
+  contains candidate `38b28545a6fb409d62fa1145e083109df649d308`, integration
+  `b5c28003e62e4c45ec4d41e588152f2173585f43`, PR tip
+  `f5a081687107c37322339c56897ce86913892dda`, and AMEND-002 planning commit
+  `0398b0e3d0a11f88b9728ea48a8935b1b2eb1840`, then fast-forwarded primary.
+- Post-fast-forward verification passed: 30 focused tests, 233 smoke tests
+  (three protected skips), and 22 task records. AMEND-002 is effective and
+  reconciled.
 - MB-020 will use its own coordinator branch and PR. Its implementation will
   backfill only evidence already recorded for MB-001 through MB-004 and will
   not be mixed into the already merged MB-004 history.
+- MB-020 corrected candidate `266b403f1a123645f4eed90ee008880096dbc40c`
+  passed attribution for three worker commits and was integrated without
+  squashing through two-parent commits `cb2c85d` and `b6a24a5`. Coordinator
+  backfill finalized seven validated task briefs from retained evidence only.
+- Recorded review mode is Specification + Standards because MB-020 changes
+  shared bootstrap authority/process policy and AMEND-002 expanded its scope.
+  Initial reviews found a non-contiguous-ID validation gap and non-replayable
+  abbreviated MB-006 regression evidence. Worker fix `0194510` and coordinator
+  evidence correction `c7b501e` resolved both findings.
+- Both second fresh reviews passed at `c7b501e` with no actionable findings.
+  Integrated verification passed 10 focused feedback tests, 243 smoke tests
+  with 3 protected skips, 7 feedback briefs, and `git diff --check`. The single
+  MB-020 coordinator PR is the next action; no later implementation dispatch
+  is permitted before MB-020 and then MB-022 complete remotely.
+- The root pushed `bootstrap/coordinator/MB-020/a01-integration` at `f9b32f7`
+  and opened evidence-bearing PR #30:
+  `https://github.com/habiberton/milburn/pull/30`. It includes `Closes #24`,
+  Specification + Standards mode and rationale, worker/coordinator SHAs,
+  acceptance and test evidence, review findings, risks, and the task feedback
+  summary.
 
 ## Verification
 
@@ -458,6 +494,7 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Push the PR/amendment record update, merge PR #29 with a merge commit, verify
-and reconcile `origin/main`, then proceed to MB-020 two-pass review. Keep new
-implementation dispatch frozen.
+Push `bootstrap/coordinator/MB-020/a01-integration`, open its evidence-bearing
+PR with `Closes #24`, merge by merge commit, verify and fast-forward
+`origin/main`, then begin MB-022. Keep all other implementation dispatch
+frozen.
