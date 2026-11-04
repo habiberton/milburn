@@ -757,6 +757,12 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   fences. Root verification passed 29 unit tests, 1 local contract, smoke with
   368 passed/3 protected skips/3 subtests, attribution, and owned-path checks.
   Both fresh independent review axes are required before integration.
+- With MB-018 remotely complete and the amendment gate clear, MB-009 became
+  the next disjoint Wave 2 implementation task. Issue #9 is assigned and moved
+  to `milburn:in-progress`; builder-MB-009-a01 owns only the recorded runtime
+  worktree manager, fake, fixtures, unit test, and task-progress paths. Review
+  mode is Specification + Standards because the task controls Git mutation,
+  ownership/reuse, process-state reconciliation, and safe retirement.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
