@@ -541,6 +541,11 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   tail. Commit `33c899e` replaced it with current verification and the exact
   PR/remote-read-back next action; both final review axes then passed with no
   actionable findings. MB-022 is ready for its single coordinator PR.
+- The root pushed `bootstrap/coordinator/MB-022/a01-integration` at `06b4a7d`
+  and opened evidence-bearing PR #31:
+  `https://github.com/habiberton/milburn/pull/31`. It contains `Closes #27`,
+  worker/integration SHAs, acceptance and test evidence, both review histories,
+  risks, and MB-022-F001/F002 summaries.
 
 ## Current verification
 
