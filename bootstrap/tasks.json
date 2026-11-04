@@ -4,6 +4,33 @@
   "integration_branch": "main",
   "maximum_concurrent_workers": 3,
   "preferred_initial_workers": 2,
+  "github_registry": {
+    "repository": "habiberton/milburn",
+    "repository_url": "https://github.com/habiberton/milburn",
+    "authority": {
+      "assignment": "github_issue_assignees",
+      "status": "github_issue_state_and_milburn_labels"
+    },
+    "local_mirror": [
+      "dependency_graph",
+      "owned_paths",
+      "required_tests",
+      "progress_paths",
+      "branch_worktree_and_commit_recovery_metadata",
+      "last_observed_github_assignment_and_status"
+    ],
+    "required_labels": [
+      "milburn:task",
+      "milburn:ready",
+      "milburn:in-progress",
+      "milburn:blocked",
+      "milburn:qa",
+      "milburn:changes-requested",
+      "milburn:done",
+      "milburn:decision-needed"
+    ],
+    "last_reconciled": "2026-11-03"
+  },
   "statuses": [
     "blocked",
     "ready",
@@ -58,6 +85,15 @@
       "wave": 1,
       "title": "Create the package, CLI, configuration, and test foundation",
       "status": "ready",
+      "github": {
+        "issue_number": 1,
+        "issue_url": "https://github.com/habiberton/milburn/issues/1",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:ready",
+        "last_observed_assignees": []
+      },
       "dependencies": [],
       "parallel_group": null,
       "owner": null,
@@ -91,6 +127,15 @@
       "wave": 1,
       "title": "Implement domain contracts, commands, events, states, and errors",
       "status": "blocked",
+      "github": {
+        "issue_number": 2,
+        "issue_url": "https://github.com/habiberton/milburn/issues/2",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
       "dependencies": ["MB-001"],
       "parallel_group": null,
       "owner": null,
@@ -119,6 +164,15 @@
       "wave": 1,
       "title": "Implement the SQLite event store, projections, and deterministic replay",
       "status": "blocked",
+      "github": {
+        "issue_number": 3,
+        "issue_url": "https://github.com/habiberton/milburn/issues/3",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
       "dependencies": ["MB-002"],
       "parallel_group": null,
       "owner": null,
@@ -149,6 +203,15 @@
       "wave": 1,
       "title": "Implement the workflow controller shell and transition guard",
       "status": "blocked",
+      "github": {
+        "issue_number": 4,
+        "issue_url": "https://github.com/habiberton/milburn/issues/4",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
       "dependencies": ["MB-003"],
       "parallel_group": null,
       "owner": null,
@@ -183,6 +246,15 @@
       "wave": 2,
       "title": "Implement the tmux runtime and fake runtime",
       "status": "blocked",
+      "github": {
+        "issue_number": 5,
+        "issue_url": "https://github.com/habiberton/milburn/issues/5",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
       "dependencies": ["MB-004"],
       "parallel_group": "wave-2-boundaries",
       "owner": null,
@@ -216,6 +288,15 @@
       "wave": 2,
       "title": "Implement the Codex adapter, launch briefs, and result parsing",
       "status": "blocked",
+      "github": {
+        "issue_number": 6,
+        "issue_url": "https://github.com/habiberton/milburn/issues/6",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
       "dependencies": ["MB-004"],
       "parallel_group": "wave-2-boundaries",
       "owner": null,
@@ -251,6 +332,15 @@
       "wave": 2,
       "title": "Implement the skill catalog, role rules, skill packages, and digest validation",
       "status": "blocked",
+      "github": {
+        "issue_number": 7,
+        "issue_url": "https://github.com/habiberton/milburn/issues/7",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
       "dependencies": ["MB-004"],
       "parallel_group": "wave-2-boundaries",
       "owner": null,
@@ -288,6 +378,15 @@
       "wave": 2,
       "title": "Implement the GitHub gateway, MCP effect journal, and local fakes",
       "status": "blocked",
+      "github": {
+        "issue_number": 8,
+        "issue_url": "https://github.com/habiberton/milburn/issues/8",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
       "dependencies": ["MB-004"],
       "parallel_group": "wave-2-boundaries",
       "owner": null,
@@ -323,6 +422,15 @@
       "wave": 2,
       "title": "Implement the Git worktree manager and fake workspace manager",
       "status": "blocked",
+      "github": {
+        "issue_number": 9,
+        "issue_url": "https://github.com/habiberton/milburn/issues/9",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
       "dependencies": ["MB-004"],
       "parallel_group": "wave-2-boundaries",
       "owner": null,
@@ -354,6 +462,15 @@
       "wave": 3,
       "title": "Implement the persistent Coordinator session, notifications, and user decisions",
       "status": "blocked",
+      "github": {
+        "issue_number": 10,
+        "issue_url": "https://github.com/habiberton/milburn/issues/10",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
       "dependencies": ["MB-005", "MB-006", "MB-007"],
       "parallel_group": "wave-3-coordination",
       "owner": null,
@@ -386,6 +503,15 @@
       "wave": 3,
       "title": "Implement Planner, Classifier/Router, and Architect coordination",
       "status": "blocked",
+      "github": {
+        "issue_number": 11,
+        "issue_url": "https://github.com/habiberton/milburn/issues/11",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
       "dependencies": ["MB-006", "MB-007"],
       "parallel_group": "wave-3-coordination",
       "owner": null,
@@ -422,6 +548,15 @@
       "wave": 3,
       "title": "Implement the GitHub issue registry and idempotent issue creation",
       "status": "blocked",
+      "github": {
+        "issue_number": 12,
+        "issue_url": "https://github.com/habiberton/milburn/issues/12",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
       "dependencies": ["MB-008", "MB-011"],
       "parallel_group": null,
       "owner": null,
@@ -455,6 +590,15 @@
       "wave": 3,
       "title": "Implement the long-running Coder workflow and protocol guard",
       "status": "blocked",
+      "github": {
+        "issue_number": 13,
+        "issue_url": "https://github.com/habiberton/milburn/issues/13",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
       "dependencies": ["MB-005", "MB-006", "MB-007", "MB-009", "MB-012"],
       "parallel_group": null,
       "owner": null,
@@ -488,6 +632,15 @@
       "wave": 4,
       "title": "Implement independent Tester execution and QA policy",
       "status": "blocked",
+      "github": {
+        "issue_number": 14,
+        "issue_url": "https://github.com/habiberton/milburn/issues/14",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
       "dependencies": ["MB-013"],
       "parallel_group": "wave-4-assurance",
       "owner": null,
@@ -520,6 +673,15 @@
       "wave": 4,
       "title": "Implement supervision, reconciliation, crash recovery, and fault handling",
       "status": "blocked",
+      "github": {
+        "issue_number": 15,
+        "issue_url": "https://github.com/habiberton/milburn/issues/15",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
       "dependencies": ["MB-010", "MB-012", "MB-013"],
       "parallel_group": "wave-4-assurance",
       "owner": null,
@@ -553,6 +715,15 @@
       "wave": 5,
       "title": "Complete the reference workflow, operational documentation, and acceptance proof",
       "status": "blocked",
+      "github": {
+        "issue_number": 16,
+        "issue_url": "https://github.com/habiberton/milburn/issues/16",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
       "dependencies": ["MB-014", "MB-015"],
       "parallel_group": null,
       "owner": null,

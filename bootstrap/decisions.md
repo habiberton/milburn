@@ -36,3 +36,12 @@ worktree-local names for Coordinator and worker attempts. Commits include
 Milburn role, worker, task, and attempt trailers. The root verifies candidate
 metadata before integration. Workers do not receive separate GitHub push
 credentials.
+
+## 2026-11-03 — GitHub is the task assignment and status registry
+
+The 16 tasks in `bootstrap/tasks.json` are mirrored to `habiberton/milburn`
+issues #1 through #16. GitHub issue assignees are authoritative for assignment;
+issue state and the approved `milburn:*` labels are authoritative for lifecycle
+status. `bootstrap/tasks.json` retains the dependency graph and recovery
+metadata, including the last observed GitHub mapping. No implementation agents
+are launched as part of registry initialization.

@@ -19,11 +19,26 @@ implementation choices remain within the approved design.
 
 ## Durable records
 
-- `tasks.json`: root-owned task registry and dependency graph.
+- `tasks.json`: root-owned dependency and recovery mirror. GitHub issues are the
+  authoritative assignment and lifecycle-status registry after issue
+  initialization; this file retains the dependency graph, owned paths, test
+  commands, progress paths, and last-observed remote metadata.
 - `progress/coordinator.md`: root-owned integration and recovery record.
 - `progress/tasks/<task-id>.md`: one worker-owned record per active task.
 - `decisions.md`: bootstrap implementation decisions that do not change the
   approved product or architecture.
+
+## GitHub task registry
+
+Every task in `tasks.json` is mirrored to one open `Task` issue in
+`habiberton/milburn`. The issue's assignees are authoritative for assignment;
+its open/closed state and Milburn lifecycle label are authoritative for status.
+The stable marker `milburn:task-id=<task-id>` prevents duplicate creation.
+
+The required labels are `milburn:task`, `milburn:ready`,
+`milburn:in-progress`, `milburn:blocked`, `milburn:qa`,
+`milburn:changes-requested`, `milburn:done`, and `milburn:decision-needed`.
+Creating or reconciling issues does not launch implementation agents.
 
 Git attribution is also durable. The bootstrap script configures the primary
 checkout as `Milburn Coordinator [BOOTSTRAP/root]`. Every worker worktree gets
