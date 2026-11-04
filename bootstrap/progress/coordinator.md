@@ -514,6 +514,12 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   dispatch preflight. The same worker is adding strict section-scoped semantics,
   exact references, negative regressions, and a feedback proposal. Both fresh
   review axes are required after correction.
+- Corrected MB-022 candidate
+  `6c365f17874b22f7d39dde03b9473e475b106e8b` contains eight verified attributed
+  commits from the exact base. Coordinator verification passed the expanded
+  six-path suite (41 passed, 3 subtests), smoke (284 passed, 3 protected skips,
+  3 subtests), strict validation of 2 amendment records, and `git diff --check`.
+  Both fresh reviews are in progress.
 
 ## Verification
 
