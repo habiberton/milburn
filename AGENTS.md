@@ -178,7 +178,22 @@ A worker must not:
 - Mark its own task complete.
 - Launch another agent.
 - Integrate into the primary branch.
-- Push any branch or commit to a remote.
+- Push any branch or commit, open or update a pull request, or merge a pull
+  request.
+
+## Coordinator pull-request strategy
+
+Every ticket maps to exactly one coordinator-owned integration branch and one
+pull request. Use branch
+`bootstrap/coordinator/<task-id>/<attempt-id>-integration`; later worker
+attempts for the same ticket update that branch and PR rather than creating a
+second PR. Record the integration branch, PR number, and PR URL in coordinator
+state.
+
+Workers and reviewers return local commits and evidence only. The root
+coordinator alone integrates verified worker commits, pushes task branches,
+opens or updates pull requests, and merges them. The root never pushes directly
+to `main`.
 
 ## Root integration procedure
 
@@ -198,19 +213,29 @@ When a worker returns a candidate:
 6. Check every acceptance criterion against evidence.
 7. Run the task tests independently.
 8. Review compatibility with approved shared interfaces.
-9. Integrate one candidate at a time with a non-squash merge so worker commit
-   attribution remains intact.
-10. Run `scripts/smoke-test.sh` after every integration.
-11. Record the integrated commit and result in the task registry and
-    coordinator progress.
-12. Confirm the independent review passed and every required test is green.
-13. The root coordinator pushes `main` to `origin`; no worker or reviewer may
-    push.
-14. Fetch or query `origin/main` and verify that it contains the recorded task
-    completion commit. A successful push command without this read-back is not
-    completion evidence.
-15. Only after remote verification may the root apply `milburn:done` and close
-    the GitHub issue.
+9. Create or resume the ticket's coordinator integration branch and integrate
+   one candidate at a time with a non-squash merge so worker attribution remains
+   intact.
+10. Run the independent review and every required test, including
+    `scripts/smoke-test.sh`, against the integrated task branch.
+11. Record candidate SHAs, integration commits, review findings, test evidence,
+    and known risks in the task registry and coordinator progress.
+12. Push the coordinator task branch and open or update its single pull request.
+    The PR body must include issue links, candidate and integration commit SHAs,
+    worker attribution, acceptance-criterion evidence, test commands and
+    results, independent-review findings, known risks, and
+    `Closes #<issue-number>`.
+13. Merge the PR with a merge commit. Never squash or rebase-merge, and never
+    push directly to `main`.
+14. Fetch `origin/main` and verify that it contains the GitHub PR merge commit.
+    A successful merge command without this read-back is not completion
+    evidence.
+15. Fast-forward the primary checkout to the verified `origin/main`, then update
+    task records with the PR, remote merge commit, tests, and review result.
+16. Only after remote verification may the root apply `milburn:done` and close
+    an issue that was not already closed by `Closes #<issue-number>`.
+17. Begin the next task only after the completed task's remote and local records
+    agree.
 
 Do not delete a worktree until its candidate is integrated, rejected, or
 explicitly archived.
@@ -227,12 +252,12 @@ integrated commit. It reviews two questions separately:
 2. Does the change preserve repository conventions, public interfaces,
    maintainability, and test quality?
 
-The reviewer does not modify the candidate branch or push any branch or commit.
-It returns findings with file locations and evidence. The coordinator either
-records a pass or returns the same task to a worker with the findings. When
-subagent tools are unavailable, the root performs a distinct review pass after
-clearing the implementation context as much as practical and records that
-limitation.
+The reviewer does not modify the candidate branch, push commits, open or update
+pull requests, or merge. It returns findings with file locations and evidence.
+The coordinator either records a pass or returns the same task to a worker with
+the findings. When subagent tools are unavailable, the root performs a distinct
+review pass after clearing the implementation context as much as practical and
+records that limitation.
 
 ## Conflict procedure
 
@@ -251,9 +276,10 @@ Do not allow workers to create competing shared interfaces.
 
 Workers produce candidate commits. The root coordinator integrates candidates.
 A separate review pass supplies QA evidence. Only the root coordinator may
-push. Only after integration, independent review, required tests, a successful
-push of `main`, and verification that `origin/main` contains the completion
-commit may the coordinator mark a task `done` and close its GitHub issue.
+push task branches, manage pull requests, and merge. Only after the task PR
+merges with a merge commit, `origin/main` contains that remote merge commit, the
+primary checkout is fast-forwarded, and records agree may the coordinator mark
+the task `done` and begin the next task.
 
 Before ending any session, record completed work, exact commits, test commands
 and results, remaining work, blockers, and the first action for the next agent.

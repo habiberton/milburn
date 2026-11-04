@@ -151,14 +151,22 @@ scripts/verify-candidate-commits.py \
 ## Integration rule
 
 Decompose centrally, implement independent leaves in parallel, and integrate
-centrally. Integrate one candidate at a time and run the combined smoke test
-after each integration. Workers and reviewers never push; only the root
-coordinator may push.
+centrally. One ticket has one coordinator-owned branch named
+`bootstrap/coordinator/<task-id>/<attempt-id>-integration` and one pull request.
+Later attempts update the same branch and PR. Workers and reviewers return local
+commits and evidence only; they never push, open or update PRs, or merge.
 
-After integration, independent review, and every required test pass, the root
-pushes `main` to `origin` and reads `origin/main` back to verify that it contains
-the recorded task completion commit. Only after that remote verification may
-the root apply `milburn:done` and close the task's GitHub issue.
+The root integrates verified worker commits without squashing, runs independent
+review and all required tests, then pushes the task branch. Its evidence-bearing
+PR records issue links, commit SHAs, attribution, acceptance evidence, test
+results, review findings, risks, and `Closes #<issue-number>`. The root never
+pushes directly to `main` and merges the PR only with a merge commit—never a
+squash or rebase merge.
+
+After merging, the root fetches `origin/main`, verifies it contains the GitHub
+PR merge commit, fast-forwards the primary checkout, and updates task records.
+Only then may it apply `milburn:done`, close an issue not already closed by the
+PR, and begin the next task.
 
 ## Retirement gate
 
