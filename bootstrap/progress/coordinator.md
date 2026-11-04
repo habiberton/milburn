@@ -8,7 +8,7 @@ Wave 1 — Foundation; `MB-001` remotely complete and resuming `MB-002`
 
 - Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
-- Active workers: none; `/root/mb002_builder_a01` interrupted with its worktree preserved
+- Active workers: `builder-MB-002-a01` (`/root/mb002_builder_a01`)
 - Pending candidates: none
 
 ## Completed
@@ -114,6 +114,8 @@ Wave 1 — Foundation; `MB-001` remotely complete and resuming `MB-002`
 - The clean preserved `MB-002/a01` worker branch was fast-forwarded to verified
   baseline `b2df26c73f0cd9c39cd19ec07b5b5d2c24fa872e`, which includes the merged
   `MB-001` history and the durable coordinator PR strategy.
+- The same `/root/mb002_builder_a01` worker was resumed with that exact base and
+  explicit instructions to return local commits only under the new PR rules.
 
 ## Verification
 
@@ -132,6 +134,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the new `MB-002` base, resume `/root/mb002_builder_a01` with exact base
-`b2df26c73f0cd9c39cd19ec07b5b5d2c24fa872e`, and continue the sequential
-domain-contract implementation under the coordinator PR strategy.
+Monitor `/root/mb002_builder_a01`. On candidate return, verify attribution from
+base `b2df26c73f0cd9c39cd19ec07b5b5d2c24fa872e`, owned paths, tests, and
+progress, then integrate through one coordinator-owned `MB-002` branch and PR.
