@@ -222,7 +222,7 @@
       "id": "MB-004",
       "wave": 1,
       "title": "Implement the workflow controller shell and transition guard",
-      "status": "assigned",
+      "status": "in_progress",
       "github": {
         "issue_number": 4,
         "issue_url": "https://github.com/habiberton/milburn/issues/4",

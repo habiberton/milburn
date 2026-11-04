@@ -8,7 +8,7 @@ Wave 1 — Foundation; preparing sequential task `MB-004`
 
 - Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
-- Active workers: none
+- Active workers: `builder-MB-004-a01` (`/root/mb004_builder_a01`)
 - Pending candidates: none
 
 ## Completed
@@ -201,6 +201,8 @@ Wave 1 — Foundation; preparing sequential task `MB-004`
 - The `MB-004` worker branch and worktree were created from exact base
   `86c11c23f603bc2a8f5b5463d5f8c1807f0644ad` and configured with identity
   `Milburn Builder [MB-004/a01]`.
+- Builder `/root/mb004_builder_a01` was launched with bounded workflow paths,
+  acceptance criteria, required tests, and local-commit-only PR rules.
 
 ## Verification
 
@@ -219,5 +221,5 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Launch the `MB-004` builder with exact base
-`86c11c23f603bc2a8f5b5463d5f8c1807f0644ad` and dispatch no other task.
+Monitor `/root/mb004_builder_a01`; on candidate return, verify attribution,
+scope, tests, and both review axes before creating its coordinator branch/PR.
