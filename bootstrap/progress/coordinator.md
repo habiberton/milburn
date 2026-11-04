@@ -41,6 +41,9 @@ Wave 1 — Foundation; preparing sequential task `MB-001`
   and required tests match the local registry.
 - Issue #1 is open, assigned to `habiberton`, and moved from `milburn:ready` to
   `milburn:in-progress` for builder attempt `a01`.
+- The `MB-001` worker branch and worktree were created from exact base
+  `a8220daf6cdee16414210b4653f8f1fffdfc6216`, and the worktree identity is
+  `Milburn Builder [MB-001/a01]`.
 
 ## Verification
 
@@ -59,8 +62,6 @@ None recorded.
 
 ## Resume here
 
-Commit the `MB-001` coordination checkpoint, use that exact commit as the
-worker base, update the task and progress records with the base, create branch
-`bootstrap/builder/MB-001/a01-package-foundation` and worktree
-`/Users/habiberton/projects/milburn-worktrees/MB-001-a01`, configure its
-identity, and launch the builder. Wave 1 remains sequential.
+Launch the `MB-001` builder with exact base
+`a8220daf6cdee16414210b4653f8f1fffdfc6216`, then record the active worker.
+Wave 1 remains sequential.
