@@ -799,6 +799,15 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   continuing. Issue #8 returned to `milburn:changes-requested`; the same worker
   is adding a retry regression and narrow journal/gateway correction. Both
   review axes restart after the next candidate.
+- Final corrected MB-008 candidate
+  `1deabba047043570ce05881db7e979202c71ca93` contains seven verified builder
+  commits. F011 fix `e50eb65` preserves `RECONCILED` after a definite
+  pre-mutation preparation failure and makes the same-effect retry continue
+  without an invalid self-transition; label and close regressions prove zero
+  first-attempt updates and exactly one eventual mutation. Root verification
+  passed 39 unit tests, 1 local contract, smoke with 378 passed/3 protected
+  skips/3 subtests, attribution, owned paths, and diff checks. Issue #8 returned
+  to `milburn:in-progress`; both review axes must restart on this exact SHA.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
