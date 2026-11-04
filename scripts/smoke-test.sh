@@ -16,6 +16,7 @@ for path in \
   bootstrap/README.md \
   bootstrap/feedback/README.md \
   bootstrap/feedback/validate.py \
+  bootstrap/amendments/validate.py \
   bootstrap/tasks.json \
   scripts/configure-worktree-identity.sh \
   scripts/agent-commit.sh \
@@ -58,7 +59,9 @@ print("Commit-attribution verifier: syntax valid")
 PY
 
 python3 bootstrap/feedback/validate.py
+python3 bootstrap/amendments/validate.py
 python3 -m unittest discover -s tests/bootstrap -p 'test_feedback_validator.py'
+python3 -m unittest discover -s tests/bootstrap -p 'test_plan_amendments.py'
 
 if [[ -f pyproject.toml ]]; then
   if [[ -f uv.lock ]] && command -v uv >/dev/null 2>&1; then

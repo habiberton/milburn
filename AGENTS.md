@@ -41,6 +41,7 @@ Only the root coordinator may update:
 - `bootstrap/tasks.json`
 - `bootstrap/progress/coordinator.md`
 - shared specifications or shared interface decisions
+- durable records under `bootstrap/amendments/`
 - the primary integration checkout
 
 Each worker updates only its assigned task progress file under
@@ -58,7 +59,9 @@ At the beginning of every new or resumed root session:
 5. Run `scripts/smoke-test.sh`.
 6. Reconcile task records with branches, worktrees, commits, progress files,
    and tests.
-7. Continue the active wave from `bootstrap/tasks.json`.
+7. Run `python3 bootstrap/amendments/validate.py --preflight`; do not dispatch
+   while it reports an unresolved amendment or dirty coordinator planning file.
+8. Continue the active wave from `bootstrap/tasks.json`.
 
 Do not spend a startup turn reassessing the approved product or architecture.
 The executable task graph and work waves have already been provided.
@@ -96,9 +99,30 @@ Tasks may run concurrently only when all of the following are true:
 
 If these conditions are not met, run the tasks sequentially.
 
+## Plan-amendment gate
+
+Treat every user-authorized change to scope, policy, specifications, tasks,
+dependencies, waves, acceptance criteria, or dispatch rules as a pending plan
+amendment before mutating the task graph. Create one stable
+`bootstrap/amendments/AMEND-<number>.md` record containing authority, requested
+change, affected tasks, active-work impacts, registry/specification/GitHub
+changes, and effectiveness evidence.
+
+Freeze new worker dispatch immediately. Classify every active attempt as
+`unaffected`, `needs_steering`, `must_pause`, or `must_stop`; an unaffected
+attempt continues with the same ownership and generation. Reconcile PRD, ARCH,
+the registry, README, amendment record, and GitHub dependencies as one change.
+Dispatch resumes only after independent review, a remotely merged PR, remote
+read-back, primary-checkout reconciliation, and a clean
+`bootstrap/amendments/validate.py --preflight` result. Never silently apply,
+drop, or infer authority for an amendment.
+
 ## Worktree preparation
 
 The root coordinator creates every worker worktree before launching its worker.
+Immediately before preparing a new worker, run
+`python3 bootstrap/amendments/validate.py --preflight`; any error freezes new
+dispatch while already classified unaffected work may continue.
 Use:
 
 - Branch: `bootstrap/<role>/<task-id>/<attempt-id>-<short-name>`
@@ -318,6 +342,8 @@ Before every final response or handoff, the root coordinator must reconcile:
 - Pending candidates and coordinator pull requests against local and remote Git
   state.
 - Dependency-ready tasks across the current and next work wave.
+- Durable amendment records and coordinator planning cleanliness by running
+  `python3 bootstrap/amendments/validate.py --preflight`.
 
 A completed task, merged PR, closed issue, newly ready task, arbitrary task
 count, completed wave, returned candidate, or committed policy/progress

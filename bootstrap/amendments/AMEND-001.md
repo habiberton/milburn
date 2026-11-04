@@ -27,34 +27,31 @@ MB-020 and MB-022 before dispatching additional Wave 2 workers.
 | MB-005/a01 | unaffected | Continue correction, independent review, and its coordinator PR. |
 | MB-006/a01 | unaffected | Continue correction, independent review, and its coordinator PR. |
 | MB-020/a01 | unaffected | Continue its already-started feedback-process implementation; integrate after MB-005 and MB-006 reach safe completion. |
-| MB-007, MB-008, MB-009 | must pause before launch | Remain blocked; no worker exists. |
-| MB-017, MB-018 | must pause before launch | Remain blocked; no worker exists. |
 
 No active attempt changes generation, ownership, branch, or worktree because of
-this amendment.
+this amendment. Nonstarted MB-007, MB-008, MB-009, MB-017, and MB-018 remain
+affected tasks but are not active-work rows.
 
 ## Registry and specification changes
 
-- `bootstrap/tasks.json`: mirror MB-022 and add it to the five affected task
-  dependency lists.
-- `bootstrap/README.md`: document the amendment gate, the active-work exception,
-  and dispatch-resumption criteria.
-- `PRD.md`: add the user-authorized amendment lifecycle and acceptance behavior.
-- `ARCH.md`: add versioned amendment contracts, expected-version application,
-  replay, reconciliation, operator evidence, and launch fencing.
-- GitHub: retain issue #27 as blocked on MB-020 and add dependency notices to
-  issues #7, #8, #9, #21, and #22.
+- Registry changes: `bootstrap/tasks.json` mirrors MB-022 and adds it to the five
+  affected task dependency lists.
+- Specification changes: `bootstrap/README.md`, `PRD.md`, and `ARCH.md` record
+  the gate, lifecycle, expected-version replay, reconciliation, and launch
+  fencing.
+- GitHub changes: issue #27 remains blocked on MB-020 and dependency notices are
+  recorded on issues #7, #8, #9, #21, and #22.
 
 ## Effectiveness
 
 - Planning commit: `4c6f773a1612fc431c26919b0c28e8272fb7f78e`
-- Effective remote PR: #28 (`https://github.com/habiberton/milburn/pull/28`)
+- Effective remote PR: #28
 - Effective merge commit: `182b414ad33540730dec5896a64e3e60024cf78c`
-- Dispatch status: frozen for new implementation workers
-- Resolution status: effective and reconciled; implementation dispatch remains
-  frozen until MB-020 and MB-022 are complete
+- Dispatch status: resumed
+- Resolution status: effective and reconciled
 
-The coordinator may continue already active unaffected work. It may not launch
-another implementation worker until this record names the effective commit and
-merged PR, the primary checkout contains that merge, and MB-020 plus MB-022 are
-complete as required by the amended graph.
+AMEND-001 itself became effective and reconciled when PR #28 merged and the
+primary checkout read back its merge commit, so its amendment lifecycle no
+longer freezes dispatch. MB-007, MB-008, MB-009, MB-017, and MB-018 remained
+separately gated by their explicit MB-020 and MB-022 task dependencies. This
+record does not claim that MB-022 is remotely merged or complete.
