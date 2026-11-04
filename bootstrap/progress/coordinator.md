@@ -400,6 +400,9 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   Specification-plus-Standards mode because it is a Codex adapter with prior
   blocking findings; MB-020 will also receive both passes because this policy
   expands its shared agent-instruction scope. Completed history is unchanged.
+- AMEND-002 planning is committed as
+  `0398b0e3d0a11f88b9728ea48a8935b1b2eb1840`; remote effectiveness will be
+  recorded through the MB-006 coordinator PR.
 - Corrected MB-006 candidate
   `8e1fa8aaf21e7b08e613b668780ca30656bc5c42` addresses semantic Codex JSONL
   extraction, typed role/result/payload enforcement, exact skill/resource
