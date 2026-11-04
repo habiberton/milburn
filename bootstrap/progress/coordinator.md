@@ -233,6 +233,26 @@ Wave 1 — Foundation; preparing sequential task `MB-004`
   `TypeVar` does not survive through the non-generic command receipt. The same
   worker is correcting the authority mapping, regression coverage, and result
   typing locally; no MB-004 coordinator branch or PR exists yet.
+- Corrected MB-004 candidate
+  `d69b8627d780d03d0c421e19dbd1bfa743074b00` contains five verified attributed
+  commits from the assigned base. Coordinator verification passed 71
+  orchestration tests and 177 total candidate smoke tests. Fresh Spec review
+  passed all five criteria; final Standards review passed after the worker
+  corrected its durable authority-fix SHA to
+  `cf80598106ed7f00904e8b19169d761d23b8ccef`.
+- User-authorized issues #22 and #23 were mirrored as `MB-018` and `MB-019`
+  with their exact blocked GitHub mappings, owned paths, acceptance criteria,
+  tests, and progress paths. Both remain open with `milburn:blocked`.
+- `MB-018` follows `MB-006` and `MB-017` in Wave 2 and cannot overlap
+  unfinished work on either. It now gates `MB-010`, `MB-011`, and `MB-013`.
+  `MB-019` precedes and gates `MB-015` in Wave 4; `MB-016` remains transitively
+  gated through `MB-015`.
+- `PRD.md` and `ARCH.md` now distinguish logical attempts from replaceable,
+  generation-fenced Codex sessions and specify validated transcript-free
+  handoff manifests, role-specific continuation boundaries, mandatory
+  uncertain-effect reconciliation, and the rule that one compaction alone is
+  not a replacement trigger. Usage remains observability-only without pricing
+  or budget enforcement.
 
 ## Verification
 
@@ -251,6 +271,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Monitor `/root/mb004_builder_a01` for the corrected candidate. Re-run
-attribution, scope, required tests, and fresh two-axis review before creating
-its coordinator branch or evidence-bearing PR.
+Commit the accepted MB-004 candidate record, create its coordinator integration
+branch, non-squash merge the worker chain, verify the integrated branch, then
+push and open its single evidence-bearing PR with `Closes #4`.

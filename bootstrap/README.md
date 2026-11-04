@@ -74,6 +74,10 @@ After Wave 1 is integrated, dispatch independent boundary implementations:
 - `MB-017` — observability-only Codex token usage events and replayable usage
   summaries. It depends on `MB-006` and must not run concurrently with
   unfinished `MB-006` work because it extends the adapter contract.
+- `MB-018` — semantic session-generation observations and validated durable
+  handoff manifests. It depends on `MB-006` and `MB-017` and must not run
+  concurrently with unfinished work on either task because it extends both
+  contracts.
 - `MB-007` — skill catalog, role rules, validation, and digests.
 - `MB-008` — GitHub gateway, MCP effect journal, and local fakes.
 - `MB-009` — Git worktree manager and fake workspace manager.
@@ -92,17 +96,22 @@ Integrate the boundaries into product workflows:
   validation.
 
 The root may parallelize `MB-010` and `MB-011` after their dependencies,
-including `MB-017`, are done. `MB-012` follows the Architect contracts, and
-`MB-013` follows issue registry integration plus usage telemetry.
+including `MB-017` and `MB-018`, are done. `MB-012` follows the Architect
+contracts, and `MB-013` follows issue registry integration plus usage and
+session-lifecycle telemetry.
 
 ### Wave 4 — QA and recovery
 
 After a complete Coder candidate path exists:
 
 - `MB-014` — independent Tester and QA state transitions.
+- `MB-019` — role-specific session continuation, rotation, and replacement
+  policy. It follows `MB-010`, `MB-013`, `MB-017`, and `MB-018`.
 - `MB-015` — supervision, reconciliation, crash recovery, and fault handling.
 
-These may run in parallel only if their owned paths remain separate.
+`MB-015` depends on `MB-019`, so supervision and recovery use the same fenced
+replacement policy. `MB-016` remains transitively gated through `MB-015`.
+Other Wave 4 work may run in parallel only if its owned paths remain separate.
 
 ### Wave 5 — Integrated proof
 

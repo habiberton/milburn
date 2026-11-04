@@ -83,6 +83,14 @@ The initial `GitHubGateway` implementation is an MCP client connected to a GitHu
 
 MCP is the transport boundary, not the policy or durability boundary. An MCP timeout is an uncertain outcome until Milburn reads GitHub state and determines whether the requested effect occurred.
 
+### 2.8 Logical agents outlive session generations
+
+Task ownership belongs to a logical role attempt, not to one Codex session.
+An attempt may span replaceable, monotonically fenced session generations.
+Replacement never copies the private transcript: it starts from a validated,
+versioned handoff manifest and durable controller state. One compaction
+observation alone is not a replacement trigger.
+
 ## 3. System boundaries
 
 ### 3.1 Controller owns
@@ -164,6 +172,9 @@ Maintains one primary Codex Coordinator endpoint per Milburn home. It:
 - Drains unread decisions and results when a closed interface resumes.
 
 The session manager does not permit the Coordinator to invoke runtime or GitHub mutations directly.
+Fresh model turns and replacement sessions retain the same logical Coordinator
+identity because decisions, notifications, cursors, and acknowledgements are
+durable and generation-fenced.
 
 ### 5.3 Transition guard
 
@@ -259,6 +270,33 @@ Creates a clean validation workspace at the exact candidate SHA and launches a C
 
 Combines tmux existence, process identity, Codex semantic state when available, event age, Git and progress activity, and explicit results. It classifies attempts as `starting`, `busy`, `idle`, `waiting`, `unknown`, `stopped`, or `failed`. `unknown` is never automatically safe to replace.
 
+### 5.14 Session lifecycle and handoff policy
+
+`HandoffManifestValidator` checks task and attempt identity, issue and
+acceptance references, worktree, branch, base/head SHAs, progress, completed
+and remaining work, exact tests, open decisions, inbox/outbox sequences,
+uncertain effects, and brief/rules digests. A stale or mismatched manifest, a
+missing acknowledgement, or an unresolved effect hidden by the handoff blocks
+replacement. Manifests contain neither transcripts nor fabricated state.
+
+`SessionReplacementPolicy` applies role-specific boundaries:
+
+- Coordinator identity survives fresh turns and replacement sessions.
+- A Coder normally keeps one session for its task attempt; one compaction alone
+  does not replace it, and replacement requires a validated checkpoint.
+- Planner and Architect finish at approved artifact boundaries.
+- Classifier/Router uses short fresh calls.
+- Tester always starts fresh from the exact candidate SHA and acceptance
+  criteria.
+
+Replacement may follow repeated observable compaction, durable evidence of
+degraded or contradictory context, unrecoverable failure, an explicit
+independence requirement, or a completed semantic boundary. It first validates
+Git, progress, tests, decisions, acknowledgements, handoff freshness, and every
+uncertain external effect. Token telemetry may compare continuation and
+replacement, but it never restores budget policy or becomes the sole safety
+signal.
+
 ## 6. Codex adapter
 
 ```python
@@ -287,6 +325,15 @@ semantics so duplicate delivery and restart replay are idempotent. Missing or
 unsupported usage produces an explicit `unavailable` observation. The adapter
 never invents counts and the usage path never stores prompts or private
 transcripts.
+
+### 6.2 Session observation semantic boundary
+
+When supported, the adapter emits structured session identity, compaction, and
+context-usage observations with task, role, attempt, generation, endpoint or
+session ID, source version, observation time, and partial/final status.
+Unsupported fields are explicitly unavailable; terminal appearance and prose
+are never parsed. Stable observation identities make duplicate delivery and
+restart replay idempotent across both session and usage projections.
 
 ## 7. tmux runtime
 
@@ -514,8 +561,22 @@ GitHubEffect
   requested_arguments_digest, status, remote_identity, last_observation
 
 AgentAttempt
-  attempt_id, generation, role, feature_id, issue_number, endpoint,
-  worktree, branch, base_sha, rules_digest, skill_bindings, status
+  attempt_id, role, feature_id, issue_number, worktree, branch,
+  base_sha, rules_digest, skill_bindings, status
+
+SessionGeneration
+  attempt_id, generation, endpoint, session_id, source_version,
+  started_at, status, fenced_at
+
+SessionObservation
+  observation_id, task_id, role, attempt_id, generation, endpoint,
+  session_id, kind, availability, source_version, observed_at, finality
+
+HandoffManifest
+  schema_version, role, task_id, attempt_id, issue_ref, acceptance_refs,
+  worktree, branch, base_sha, head_sha, progress_ref, completed, remaining,
+  test_evidence, open_decisions, inbox_sequence, outbox_sequence,
+  uncertain_effects, brief_digest, rules_digest
 
 TokenUsageObservation
   observation_id, source_version, task_id, role, attempt_id, endpoint,
@@ -553,6 +614,7 @@ effect:github:<effect-id>
 coordinator:<milburn-home-id>
 decision:<decision-id>
 usage:<attempt-id>
+session:<attempt-id>
 ```
 
 Typical issue sequence:
@@ -578,6 +640,20 @@ observation identities, reconciles cumulative partial observations with final
 totals, and derives per-attempt, task, role, and workflow summaries without
 reading agent transcripts. Replaying the same event set after restart produces
 the same totals.
+
+Session lifecycle sequence:
+
+```text
+SessionObservationRecorded* → HandoffManifestValidated
+→ SessionReplacementRequested → SessionGenerationFenced
+→ SessionGenerationStarted → SessionReplacementCompleted
+```
+
+Generation is part of every endpoint and message correlation. Once fenced, a
+generation cannot receive steering or lifecycle commands. Before replacement,
+uncertain external effects are reconciled rather than copied forward or
+retried; replay reconstructs every generation and the latest valid checkpoint
+deterministically.
 
 GitHub mutation sequence:
 
@@ -634,6 +710,9 @@ If the user interface or Coordinator session is unavailable, the notification re
 - **tmux endpoint missing:** mark `unknown` until process and workspace evidence are reconciled.
 - **Coordinator unavailable:** retain unread notifications and open decisions; workers remain in `waiting_user` and are not treated as failed.
 - **Coordinator answer is ambiguous:** keep the decision open and ask the user to clarify rather than guessing which worker instruction to send.
+- **Compaction observed:** record the semantic observation; do not replace a session solely because one compaction occurred.
+- **Replacement requested:** validate the durable handoff, fence the old generation, and reconcile uncertain effects before launching the next generation.
+- **Late generation message:** reject it without delivery or state transition.
 
 ## 14. Security model
 
@@ -641,7 +720,7 @@ tmux organizes processes and worktrees isolate changes; neither is a security sa
 
 ## 15. Observability
 
-The operator can answer which feature and issue are active, which role is running and why, which tmux endpoint and process belong to it, which worktree and SHAs are involved, when progress last changed, which issue-linked commits exist, what QA found, whether the attempt is busy, waiting, unknown, stopped, or failed, which Coordinator notifications remain unread, and which decisions are still open.
+The operator can answer which feature and issue are active, which logical role and session generation are running and why, which tmux endpoint and process belong to them, which worktree and SHAs are involved, when progress last changed, which issue-linked commits exist, what QA found, whether the attempt is busy, waiting, unknown, stopped, or failed, why a session continued, rotated, or was replaced, which Coordinator notifications remain unread, and which decisions are still open.
 
 ## 16. Proposed source tree
 
@@ -662,6 +741,7 @@ milburn/
 ├── docs/
 │   ├── operations.md
 │   ├── recovery.md
+│   ├── session-lifecycle.md
 │   └── testing.md
 ├── pyproject.toml
 ├── README.md
@@ -678,6 +758,7 @@ milburn/
 │       │   ├── events.py
 │       │   ├── models.py
 │       │   ├── usage.py
+│       │   ├── sessions.py
 │       │   ├── states.py
 │       │   ├── policies.py
 │       │   └── errors.py
@@ -687,6 +768,9 @@ milburn/
 │       │   ├── scheduler.py
 │       │   ├── coordinator.py
 │       │   ├── notifications.py
+│       │   ├── handoffs.py
+│       │   ├── session_policy.py
+│       │   ├── session_replacement.py
 │       │   ├── supervisor.py
 │       │   └── reconciliation.py
 │       ├── agents/
@@ -694,6 +778,7 @@ milburn/
 │       │   ├── briefs.py
 │       │   ├── result_parser.py
 │       │   ├── usage.py
+│       │   ├── session_observations.py
 │       │   ├── skill_catalog.py
 │       │   └── role_rules/
 │       │       ├── coordinator.md
@@ -722,11 +807,14 @@ milburn/
 │       │   ├── sqlite_store.py
 │       │   ├── projections.py
 │       │   ├── usage_projections.py
+│       │   ├── session_projections.py
 │       │   └── migrations/
 │       ├── validation/
 │       │   ├── coder_protocol.py
 │       │   ├── issue_contracts.py
 │       │   ├── qa_policy.py
+│       │   ├── handoff_manifest.py
+│       │   ├── session_replacement.py
 │       │   └── skill_validation.py
 │       └── observability/
 │           ├── logging.py
@@ -795,13 +883,13 @@ Unit tests cover one policy or state transition at a time:
 | Package | Required coverage |
 |---|---|
 | `domain` | Event versions, serialization, command validation, legal and illegal states, usage observation invariants |
-| `orchestration` | Scheduling, dependencies, decision correlation, notification cursors, reconciliation choices |
-| `agents` | Brief assembly, result parsing, role/skill binding, digest recording, Codex-reported usage conversion |
+| `orchestration` | Scheduling, dependencies, decision correlation, notification cursors, handoff validation, fenced session replacement, reconciliation choices |
+| `agents` | Brief assembly, result parsing, role/skill binding, digest recording, Codex-reported usage and session-observation conversion |
 | `runtime` | Endpoint parsing, generation protection, safe paths, inbox sequencing |
 | `integrations.mcp` | Tool discovery, argument mapping, timeout/error classification, effect states |
 | `integrations.github` | Issue contracts, idempotency markers, read-after-write, uncertain-effect reconciliation |
-| `persistence` | Expected sequence, replay determinism, migrations, concurrent append rejection, idempotent usage summaries |
-| `validation` | Progress parsing, commit markers, candidate SHA, QA evidence, skill structure |
+| `persistence` | Expected sequence, replay determinism, migrations, concurrent append rejection, idempotent usage and session projections |
+| `validation` | Progress parsing, commit markers, candidate SHA, QA evidence, skill structure, handoff freshness, generation fencing |
 
 Core controller, state-machine, event-store, effect-journal, and validation branches target at least 90% branch coverage. Coverage is a diagnostic; required behavioral invariants remain the release gate.
 
@@ -849,6 +937,9 @@ after the doorbell, before acknowledgement
 after a Coder commit, before progress update
 after progress update, before result collection
 after Tester pass, before issue closure
+after handoff validation, before generation fencing
+after generation fencing, before replacement launch
+after replacement launch, before uncertain-effect reconciliation completes
 ```
 
 Restart must not duplicate issues, launches, user decisions, unsafe steering, or completion. It must not reuse a possibly live worktree or discard an uncertain external effect.
@@ -878,16 +969,18 @@ Every commit runs unit tests, static analysis, formatting checks, skill structur
 4. Build tmux runtime and verified postconditions.
 5. Build Codex adapter and live contract tests.
 6. Persist adapter-reported usage observations and replayable summaries.
-7. Build role-rule rendering, `SkillCatalog`, skill validation, role bindings, and digest recording.
-8. Create and fixture-test the six required skill packages.
-9. Build the persistent Coordinator session, notification queue, and decision round trip.
-10. Build the controller-owned MCP client, GitHub gateway, effect journal, registry, and reconciliation.
-11. Build Planner and Router coordinators.
-12. Build Architect and issue validation.
-13. Build worktree manager and Coder coordinator.
-14. Build protocol guard and progress watcher.
-15. Build Tester and QA policy.
-16. Add recovery drills, fault injection, CI gates, live evaluations, and operator views.
+7. Persist session observations, projections, and validated handoff manifests.
+8. Build role-rule rendering, `SkillCatalog`, skill validation, role bindings, and digest recording.
+9. Create and fixture-test the six required skill packages.
+10. Build the persistent Coordinator session, notification queue, and decision round trip.
+11. Build the controller-owned MCP client, GitHub gateway, effect journal, registry, and reconciliation.
+12. Build Planner and Router coordinators.
+13. Build Architect and issue validation.
+14. Build worktree manager and Coder coordinator.
+15. Build protocol guard and progress watcher.
+16. Build Tester and QA policy.
+17. Add role-specific fenced session replacement policy.
+18. Add recovery drills, fault injection, CI gates, live evaluations, and operator views.
 
 ## 19. Definition of architectural completion
 

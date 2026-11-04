@@ -222,7 +222,7 @@
       "id": "MB-004",
       "wave": 1,
       "title": "Implement the workflow controller shell and transition guard",
-      "status": "in_progress",
+      "status": "candidate",
       "github": {
         "issue_number": 4,
         "issue_url": "https://github.com/habiberton/milburn/issues/4",
@@ -238,7 +238,14 @@
       "branch": "bootstrap/builder/MB-004/a01-workflow-controller",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-004-a01",
       "base_sha": "86c11c23f603bc2a8f5b5463d5f8c1807f0644ad",
-      "candidate_sha": null,
+      "candidate_sha": "d69b8627d780d03d0c421e19dbd1bfa743074b00",
+      "integration_branch": "bootstrap/coordinator/MB-004/a01-integration",
+      "integration_commit_sha": null,
+      "pull_request": {
+        "number": null,
+        "url": null,
+        "merge_commit_sha": null
+      },
       "progress_path": "bootstrap/progress/tasks/MB-004.md",
       "owned_paths": [
         "src/milburn/orchestration/controller.py",
@@ -395,6 +402,55 @@
       ]
     },
     {
+      "id": "MB-018",
+      "wave": 2,
+      "title": "Record session compaction and build durable handoff manifests",
+      "status": "blocked",
+      "github": {
+        "issue_number": 22,
+        "issue_url": "https://github.com/habiberton/milburn/issues/22",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
+      "dependencies": ["MB-002", "MB-003", "MB-006", "MB-017"],
+      "parallel_group": null,
+      "owner": null,
+      "branch": null,
+      "worktree": null,
+      "base_sha": null,
+      "candidate_sha": null,
+      "progress_path": "bootstrap/progress/tasks/MB-018.md",
+      "owned_paths": [
+        "src/milburn/domain/sessions.py",
+        "src/milburn/agents/session_observations.py",
+        "src/milburn/orchestration/handoffs.py",
+        "src/milburn/persistence/session_projections.py",
+        "src/milburn/validation/handoff_manifest.py",
+        "tests/unit/agents/test_session_observations.py",
+        "tests/unit/orchestration/test_handoffs.py",
+        "tests/unit/persistence/test_session_projections.py",
+        "tests/unit/validation/test_handoff_manifest.py",
+        "tests/fixtures/agents/sessions/"
+      ],
+      "acceptance_criteria": [
+        "Milburn represents a logical agent attempt separately from its replaceable Codex session generations.",
+        "Adapter observations record compaction, context-usage, and session identity only when supported by a semantic Codex interface; unsupported data is explicitly unavailable.",
+        "Versioned events retain task ID, role, attempt ID, session generation, endpoint/session ID, source version, observation time, and whether an observation is partial or final.",
+        "A versioned handoff manifest contains role, task and attempt IDs, issue and acceptance criteria references, worktree, branch, base and head SHAs, progress reference, completed and remaining work, exact test evidence, open decisions, inbox/outbox sequence, uncertain external effects, and brief/rules digests.",
+        "The handoff manifest contains no private transcript and no fabricated summary of unavailable state.",
+        "A replacement session is rejected when the manifest is stale, mismatched to the task or Git state, missing required acknowledgements, or hides an uncertain external effect.",
+        "Replay reconstructs session generations and the latest valid handoff checkpoint deterministically.",
+        "Duplicate lifecycle observations and restart recovery do not duplicate usage or session transitions."
+      ],
+      "required_tests": [
+        "python3 -m pytest tests/unit/agents/test_session_observations.py tests/unit/orchestration/test_handoffs.py tests/unit/persistence/test_session_projections.py tests/unit/validation/test_handoff_manifest.py -q",
+        "scripts/smoke-test.sh"
+      ]
+    },
+    {
       "id": "MB-007",
       "wave": 2,
       "title": "Implement the skill catalog, role rules, skill packages, and digest validation",
@@ -538,7 +594,7 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-005", "MB-006", "MB-007", "MB-017"],
+      "dependencies": ["MB-005", "MB-006", "MB-007", "MB-017", "MB-018"],
       "parallel_group": "wave-3-coordination",
       "owner": null,
       "branch": null,
@@ -579,7 +635,7 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-006", "MB-007", "MB-017"],
+      "dependencies": ["MB-006", "MB-007", "MB-017", "MB-018"],
       "parallel_group": "wave-3-coordination",
       "owner": null,
       "branch": null,
@@ -666,7 +722,7 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-005", "MB-006", "MB-007", "MB-009", "MB-012", "MB-017"],
+      "dependencies": ["MB-005", "MB-006", "MB-007", "MB-009", "MB-012", "MB-017", "MB-018"],
       "parallel_group": null,
       "owner": null,
       "branch": null,
@@ -736,6 +792,57 @@
       ]
     },
     {
+      "id": "MB-019",
+      "wave": 4,
+      "title": "Implement role-specific session rotation and replacement policy",
+      "status": "blocked",
+      "github": {
+        "issue_number": 23,
+        "issue_url": "https://github.com/habiberton/milburn/issues/23",
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "open",
+        "last_observed_status_label": "milburn:blocked",
+        "last_observed_assignees": []
+      },
+      "dependencies": ["MB-010", "MB-013", "MB-017", "MB-018"],
+      "parallel_group": null,
+      "owner": null,
+      "branch": null,
+      "worktree": null,
+      "base_sha": null,
+      "candidate_sha": null,
+      "progress_path": "bootstrap/progress/tasks/MB-019.md",
+      "owned_paths": [
+        "src/milburn/orchestration/session_policy.py",
+        "src/milburn/orchestration/session_replacement.py",
+        "src/milburn/validation/session_replacement.py",
+        "tests/unit/orchestration/test_session_policy.py",
+        "tests/unit/orchestration/test_session_replacement.py",
+        "tests/unit/validation/test_session_replacement.py",
+        "tests/recovery/test_compaction_replacement.py",
+        "tests/integration/workflows/test_session_rotation.py",
+        "docs/session-lifecycle.md"
+      ],
+      "acceptance_criteria": [
+        "A logical role and attempt may span multiple fenced Codex session generations without changing task ownership.",
+        "Coordinator policy permits fresh model turns and replacement sessions while durable decisions and notifications remain authoritative.",
+        "Coder policy normally keeps one session for one task attempt, does not replace solely because one compaction occurred, and replaces only from a validated checkpoint.",
+        "Planner and Architect sessions end at approved artifact boundaries; Classifier/Router calls are short and fresh; Tester always starts fresh from the exact candidate SHA and acceptance criteria.",
+        "Replacement triggers include repeated compaction when observable, degraded or contradictory context evidenced against durable state, unrecoverable session failure, explicit independence requirements, or a completed semantic boundary.",
+        "Before replacement, Milburn validates Git state, progress, tests, decisions, message acknowledgements, uncertain effects, and handoff freshness.",
+        "Session generation fencing prevents late messages or lifecycle commands from reaching a replacement generation.",
+        "Recovery never treats unknown as dead and never duplicates external effects.",
+        "Usage telemetry compares continuation and replacement costs without making cache assumptions or using token cost as the sole safety decision.",
+        "Operator evidence explains why a session continued, rotated, or was replaced.",
+        "Final-response and stopping rules remain independent of session replacement; replacing a session is not task completion."
+      ],
+      "required_tests": [
+        "python3 -m pytest tests/unit/orchestration/test_session_policy.py tests/unit/orchestration/test_session_replacement.py tests/unit/validation/test_session_replacement.py tests/recovery/test_compaction_replacement.py tests/integration/workflows/test_session_rotation.py -q",
+        "scripts/smoke-test.sh"
+      ]
+    },
+    {
       "id": "MB-015",
       "wave": 4,
       "title": "Implement supervision, reconciliation, crash recovery, and fault handling",
@@ -749,7 +856,7 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-010", "MB-012", "MB-013"],
+      "dependencies": ["MB-010", "MB-012", "MB-013", "MB-019"],
       "parallel_group": "wave-4-assurance",
       "owner": null,
       "branch": null,
