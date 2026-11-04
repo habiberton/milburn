@@ -125,6 +125,10 @@ def project_usage_events(
 
         assert observation.counts is not None
         state.available = True
+        if observation.kind is UsageObservationKind.FINAL:
+            # An authoritative final supersedes a prior unavailable read for
+            # this same reconciled source, but never another distinct source.
+            state.unavailable_seen = False
         for field_name in TOKEN_FIELDS:
             reported = getattr(observation.counts, field_name)
             if reported is None:
@@ -218,14 +222,29 @@ def _compatible(source: _SourceState, observation: TokenUsageObservation) -> boo
         observation.attempt_id,
     ):
         return False
-    return not (
+    session_conflict = (
         source.session_id is not None
         and observation.session_id is not None
         and source.session_id != observation.session_id
-    ) and not (
+    )
+    endpoint_conflict = (
         source.endpoint is not None
         and observation.endpoint is not None
         and source.endpoint != observation.endpoint
+    )
+    if session_conflict or endpoint_conflict:
+        return False
+    source_has_identity = source.session_id is not None or source.endpoint is not None
+    observation_has_identity = (
+        observation.session_id is not None or observation.endpoint is not None
+    )
+    if not source_has_identity or not observation_has_identity:
+        return True
+    return (
+        source.session_id is not None
+        and source.session_id == observation.session_id
+    ) or (
+        source.endpoint is not None and source.endpoint == observation.endpoint
     )
 
 

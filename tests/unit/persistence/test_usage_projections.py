@@ -288,6 +288,93 @@ def test_distinct_session_and_endpoint_sources_are_aggregated_separately() -> No
     assert aggregate.finality is UsageFinality.FINAL
 
 
+def test_disjoint_partial_identities_require_a_positive_shared_match() -> None:
+    session_only = usage(
+        "session-source",
+        "source-1",
+        endpoint=None,
+        session_id="session-a",
+        counts=TokenCounts(input_tokens=10),
+    )
+    endpoint_only = usage(
+        "endpoint-source",
+        "source-1",
+        endpoint="endpoint-b",
+        session_id=None,
+        kind=UsageObservationKind.FINAL,
+        counts=TokenCounts(input_tokens=7),
+    )
+
+    aggregate = project_usage_events(
+        (session_only, endpoint_only)
+    ).attempt_totals["a01"]
+
+    assert aggregate.reported_tokens.input_tokens == 17
+    assert aggregate.finality is UsageFinality.PARTIAL
+
+
+def test_authoritative_final_supersedes_unavailable_for_reconciled_source() -> None:
+    unavailable = usage(
+        "unavailable",
+        "source-1",
+        endpoint=None,
+        session_id=None,
+        kind=UsageObservationKind.UNAVAILABLE,
+        counts=None,
+        cumulative=False,
+    )
+    final = usage(
+        "final",
+        "source-2",
+        endpoint="endpoint-late",
+        session_id=None,
+        kind=UsageObservationKind.FINAL,
+        counts=TokenCounts(
+            input_tokens=12,
+            output_tokens=3,
+            cached_input_tokens=2,
+            reasoning_tokens=1,
+        ),
+    )
+
+    aggregate = project_usage_events((unavailable, final)).attempt_totals["a01"]
+
+    assert aggregate.reported_tokens.input_tokens == 12
+    assert aggregate.availability is UsageAvailability.COMPLETE
+    assert aggregate.finality is UsageFinality.FINAL
+
+
+def test_distinct_unavailable_source_keeps_aggregate_partial() -> None:
+    unavailable = usage(
+        "unavailable",
+        "source-1",
+        endpoint=None,
+        session_id="session-a",
+        kind=UsageObservationKind.UNAVAILABLE,
+        counts=None,
+        cumulative=False,
+    )
+    final = usage(
+        "final",
+        "source-1",
+        endpoint="endpoint-b",
+        session_id=None,
+        kind=UsageObservationKind.FINAL,
+        counts=TokenCounts(
+            input_tokens=12,
+            output_tokens=3,
+            cached_input_tokens=2,
+            reasoning_tokens=1,
+        ),
+    )
+
+    aggregate = project_usage_events((unavailable, final)).attempt_totals["a01"]
+
+    assert aggregate.reported_tokens.input_tokens == 12
+    assert aggregate.availability is UsageAvailability.PARTIAL
+    assert aggregate.finality is UsageFinality.PARTIAL
+
+
 def test_missing_identity_is_rejected_when_multiple_sources_are_compatible() -> None:
     first = usage(
         "first",
