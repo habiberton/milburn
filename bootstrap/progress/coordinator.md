@@ -2,7 +2,7 @@
 
 ## Current wave
 
-Wave 1 — Foundation; repairing `MB-001` through its coordinator PR
+Wave 1 — Foundation; `MB-001` remotely complete and resuming `MB-002`
 
 ## Repository state
 
@@ -109,6 +109,8 @@ Wave 1 — Foundation; repairing `MB-001` through its coordinator PR
   then fast-forwarded the primary checkout to the same SHA.
 - Post-fast-forward verification passed again: 11 app unit tests and the full
   smoke test.
+- Closed issue #1 now carries `milburn:done`; open issue #2 retains its existing
+  `habiberton` assignment and is restored to `milburn:in-progress`.
 
 ## Verification
 
@@ -127,6 +129,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the verified PR merge record, change closed issue #1 from `milburn:qa`
-to `milburn:done`, reconcile task status, then restore issue #2 to
-`milburn:in-progress` and resume the preserved `MB-002/a01` attempt.
+Commit the reconciled issue states, fast-forward the clean preserved `MB-002`
+worker branch to the new integration baseline, record that exact base, and
+resume `/root/mb002_builder_a01` under the new PR rules.
