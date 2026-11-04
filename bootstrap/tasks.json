@@ -222,7 +222,7 @@
       "id": "MB-004",
       "wave": 1,
       "title": "Implement the workflow controller shell and transition guard",
-      "status": "candidate",
+      "status": "integrated",
       "github": {
         "issue_number": 4,
         "issue_url": "https://github.com/habiberton/milburn/issues/4",
@@ -240,7 +240,7 @@
       "base_sha": "86c11c23f603bc2a8f5b5463d5f8c1807f0644ad",
       "candidate_sha": "d69b8627d780d03d0c421e19dbd1bfa743074b00",
       "integration_branch": "bootstrap/coordinator/MB-004/a01-integration",
-      "integration_commit_sha": null,
+      "integration_commit_sha": "bd0e306c7b4d47ce817da7744d9bab1bc895011b",
       "pull_request": {
         "number": null,
         "url": null,

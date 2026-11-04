@@ -6,9 +6,9 @@ Wave 1 — Foundation; preparing sequential task `MB-004`
 
 ## Repository state
 
-- Integration branch: `main`
+- Integration branch: `bootstrap/coordinator/MB-004/a01-integration`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
-- Active workers: `builder-MB-004-a01` (`/root/mb004_builder_a01`)
+- Active workers: none
 - Pending candidates: none
 
 ## Completed
@@ -253,6 +253,14 @@ Wave 1 — Foundation; preparing sequential task `MB-004`
   uncertain-effect reconciliation, and the rule that one compaction alone is
   not a replacement trigger. Usage remains observability-only without pricing
   or budget enforcement.
+- Accepted MB-004 candidate
+  `d69b8627d780d03d0c421e19dbd1bfa743074b00` was non-squash merged on the
+  coordinator branch as two-parent integration commit
+  `bd0e306c7b4d47ce817da7744d9bab1bc895011b`. The progress-record conflict was
+  resolved by retaining worker evidence and coordinator assignment facts.
+- Integrated-branch verification passed: 71 orchestration tests, 177 total
+  smoke tests, 19 valid task records, and `git diff --check` against
+  `origin/main`.
 
 ## Verification
 
@@ -271,6 +279,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the accepted MB-004 candidate record, create its coordinator integration
-branch, non-squash merge the worker chain, verify the integrated branch, then
-push and open its single evidence-bearing PR with `Closes #4`.
+Push `bootstrap/coordinator/MB-004/a01-integration`, open its single
+evidence-bearing PR with `Closes #4`, merge only with a merge commit, verify
+`origin/main`, and fast-forward the primary checkout before advancing Wave 2.
