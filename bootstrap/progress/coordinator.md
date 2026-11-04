@@ -164,6 +164,13 @@ Wave 1 — Foundation; preparing sequential task `MB-003`
   `Milburn Builder [MB-003/a01]`.
 - Builder `/root/mb003_builder_a01` was launched with the bounded persistence
   task, owned paths, required tests, and local-commit-only PR rules.
+- Initial candidate `5d7badbd888e7bc32af1e72b5b3066434cd97bd0`
+  passed attribution, scope, 24 persistence tests, and 99 total smoke tests, but
+  both independent review axes rejected it before integration.
+- Reviews reproduced two blocking defects: unknown future migrations were
+  accepted while `user_version` was lowered, and unconditional rollback could
+  mask a lock failure when transaction entry failed. The same worker is adding
+  validation and regression tests locally; no coordinator branch or PR exists.
 
 ## Verification
 
@@ -182,6 +189,5 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Monitor `/root/mb003_builder_a01`; on candidate return, verify attribution,
-scope, tests, and both review axes before creating its single coordinator branch
-and PR.
+Monitor `/root/mb003_builder_a01` for the corrected candidate. Re-run all checks
+and fresh two-axis review before creating its coordinator branch or PR.
