@@ -8,7 +8,7 @@ Wave 1 — Foundation; preparing sequential task `MB-003`
 
 - Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
-- Active workers: `builder-MB-003-a01` (`/root/mb003_builder_a01`)
+- Active workers: none
 - Pending candidates: none
 
 ## Completed
@@ -169,8 +169,14 @@ Wave 1 — Foundation; preparing sequential task `MB-003`
   both independent review axes rejected it before integration.
 - Reviews reproduced two blocking defects: unknown future migrations were
   accepted while `user_version` was lowered, and unconditional rollback could
-  mask a lock failure when transaction entry failed. The same worker is adding
-  validation and regression tests locally; no coordinator branch or PR exists.
+  mask a lock failure when transaction entry failed. The same worker corrected
+  both locally without remote mutations.
+- Corrected candidate `d2498e97feb273bec083e1e287094a0eb20b0791`
+  resolved both defects. Coordinator verification passed: four attributed
+  commits, approved paths, 31 persistence tests, and 106 total smoke tests.
+- Fresh Spec and Standards re-reviews both passed with no actionable findings.
+- `MB-003` owns coordinator integration branch
+  `bootstrap/coordinator/MB-003/a01-integration` and will have one PR.
 
 ## Verification
 
@@ -189,5 +195,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Monitor `/root/mb003_builder_a01` for the corrected candidate. Re-run all checks
-and fresh two-axis review before creating its coordinator branch or PR.
+Commit the accepted candidate, create the `MB-003` coordinator branch,
+non-squash merge the worker commits, verify the integrated branch, then push and
+open its single evidence-bearing PR with `Closes #3`.

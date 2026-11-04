@@ -176,7 +176,7 @@
       "id": "MB-003",
       "wave": 1,
       "title": "Implement the SQLite event store, projections, and deterministic replay",
-      "status": "in_progress",
+      "status": "candidate",
       "github": {
         "issue_number": 3,
         "issue_url": "https://github.com/habiberton/milburn/issues/3",
@@ -192,7 +192,14 @@
       "branch": "bootstrap/builder/MB-003/a01-event-store",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-003-a01",
       "base_sha": "f6084ba1a485d120c72d44f215f66ca499d677c2",
-      "candidate_sha": null,
+      "candidate_sha": "d2498e97feb273bec083e1e287094a0eb20b0791",
+      "integration_branch": "bootstrap/coordinator/MB-003/a01-integration",
+      "integration_commit_sha": null,
+      "pull_request": {
+        "number": null,
+        "url": null,
+        "merge_commit_sha": null
+      },
       "progress_path": "bootstrap/progress/tasks/MB-003.md",
       "owned_paths": [
         "src/milburn/persistence/",
