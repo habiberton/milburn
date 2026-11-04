@@ -272,14 +272,14 @@
       "id": "MB-020",
       "wave": 1,
       "title": "Add concise defect feedback briefs to the bootstrap workflow",
-      "status": "integrated",
+      "status": "done",
       "github": {
         "issue_number": 24,
         "issue_url": "https://github.com/habiberton/milburn/issues/24",
         "status_source": "github",
         "assignment_source": "github",
-        "last_observed_state": "open",
-        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_state": "closed",
+        "last_observed_status_label": "milburn:qa",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-004"],
@@ -294,7 +294,7 @@
       "pull_request": {
         "number": 30,
         "url": "https://github.com/habiberton/milburn/pull/30",
-        "merge_commit_sha": null
+        "merge_commit_sha": "1f7cb989e80b58333839f30f36fa0ccbf7076e8d"
       },
       "progress_path": "bootstrap/progress/tasks/MB-020.md",
       "owned_paths": [
@@ -524,7 +524,7 @@
       "id": "MB-022",
       "wave": 2,
       "title": "Add a durable plan-amendment gate before worker dispatch",
-      "status": "blocked",
+      "status": "ready",
       "github": {
         "issue_number": 27,
         "issue_url": "https://github.com/habiberton/milburn/issues/27",

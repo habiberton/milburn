@@ -476,6 +476,15 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   Specification + Standards mode and rationale, worker/coordinator SHAs,
   acceptance and test evidence, review findings, risks, and the task feedback
   summary.
+- PR #30 merged through GitHub's two-parent merge method as
+  `1f7cb989e80b58333839f30f36fa0ccbf7076e8d`. Remote read-back verified
+  `origin/main` contains PR tip `51c180b`, corrected candidate `266b403`, both
+  coordinator integration merges, and evidence correction `c7b501e`; primary
+  `main` fast-forwarded to the exact remote SHA.
+- Post-fast-forward MB-020 verification passed: 7 feedback briefs, 10 focused
+  tests, and 243 smoke tests with 3 protected skips. Issue #24 was closed by
+  `Closes #24`; after this durable completion record is committed, the root may
+  replace `milburn:qa` with `milburn:done` and reconcile MB-022 as ready.
 
 ## Verification
 
@@ -494,7 +503,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Push `bootstrap/coordinator/MB-020/a01-integration`, open its evidence-bearing
-PR with `Closes #24`, merge by merge commit, verify and fast-forward
-`origin/main`, then begin MB-022. Keep all other implementation dispatch
-frozen.
+Commit the MB-020 remote completion record, label issue #24 done, reconcile
+MB-022/#27 as ready, then prepare and dispatch MB-022 only. Keep all other
+implementation dispatch frozen.
