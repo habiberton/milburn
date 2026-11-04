@@ -1,0 +1,9 @@
+{
+  "source_version": "usage-2",
+  "kind": "final",
+  "cumulative": true,
+  "input_tokens": 150,
+  "output_tokens": 35,
+  "cached_input_tokens": 50,
+  "reasoning_tokens": 12
+}

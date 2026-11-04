@@ -428,7 +428,7 @@
       "id": "MB-017",
       "wave": 2,
       "title": "Persist per-agent token usage and replayable usage summaries",
-      "status": "candidate",
+      "status": "integrated",
       "github": {
         "issue_number": 21,
         "issue_url": "https://github.com/habiberton/milburn/issues/21",
@@ -444,7 +444,14 @@
       "branch": "bootstrap/builder/MB-017/a01-token-usage",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-017-a01",
       "base_sha": "425dd6e3ee42c5b7a7ee7177f4a2f86455bc2ae6",
-      "candidate_sha": "35e0bda2dc1844579c682862c270f94bbef9ad21",
+      "candidate_sha": "cb0604a5fb615e017da14aaa67667eec1671a54d",
+      "integration_branch": "bootstrap/coordinator/MB-017/a01-integration",
+      "integration_commit_sha": "4025275fe0bfca36058a550d53788b680cb85f2f",
+      "pull_request": {
+        "number": 33,
+        "url": "https://github.com/habiberton/milburn/pull/33",
+        "merge_commit_sha": null
+      },
       "progress_path": "bootstrap/progress/tasks/MB-017.md",
       "owned_paths": [
         "src/milburn/domain/usage.py",
@@ -598,14 +605,14 @@
       "id": "MB-007",
       "wave": 2,
       "title": "Implement the skill catalog, role rules, skill packages, and digest validation",
-      "status": "integrated",
+      "status": "done",
       "github": {
         "issue_number": 7,
         "issue_url": "https://github.com/habiberton/milburn/issues/7",
         "status_source": "github",
         "assignment_source": "github",
-        "last_observed_state": "open",
-        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_state": "closed",
+        "last_observed_status_label": "milburn:done",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-004", "MB-020", "MB-022"],
@@ -620,7 +627,7 @@
       "pull_request": {
         "number": 32,
         "url": "https://github.com/habiberton/milburn/pull/32",
-        "merge_commit_sha": null
+        "merge_commit_sha": "e8f2d925afd99c82c87b0e726fb70214acd62133"
       },
       "progress_path": "bootstrap/progress/tasks/MB-007.md",
       "owned_paths": [

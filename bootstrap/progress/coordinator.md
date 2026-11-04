@@ -624,6 +624,36 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   `https://github.com/habiberton/milburn/pull/32`. It includes `Closes #7`,
   worker/integration SHAs, acceptance/tests, both review histories, risks, and
   MB-007-F001/F002 summaries.
+- PR #32 merged through GitHub's two-parent merge method as
+  `e8f2d925afd99c82c87b0e726fb70214acd62133`. Remote read-back verified
+  `origin/main` contains PR tip `2bff4b8`, candidate `0b33817`, and integration
+  `71acc3f`; primary `main` fast-forwarded to the exact remote SHA.
+- Post-fast-forward MB-007 verification passed: semantic amendment preflight
+  clear, 9 feedback briefs, 27 focused tests, and 312 smoke tests with 3
+  protected skips and 3 subtests. Issue #7 closed through `Closes #7`; after
+  this completion record commits, the root may apply `milburn:done`.
+- Local MB-007 completion record `48714ad` committed and closed issue #7 now
+  carries `milburn:done`.
+- Final corrected MB-017 candidate
+  `cb0604a5fb615e017da14aaa67667eec1671a54d` contains nine verified attributed
+  commits. Coordinator verification passed 26 focused tests, smoke (311 passed,
+  3 protected skips, 3 subtests), and diff checks. Both second fresh reviews
+  are in progress.
+- Both second fresh MB-017 reviews passed with no actionable findings. The root
+  non-squash merged all nine worker commits on the coordinator branch as
+  two-parent integration `4025275fe0bfca36058a550d53788b680cb85f2f` and
+  finalized MB-017-F001/F002/F003 from retained evidence. Integrated
+  verification and the one-ticket PR remain.
+- Final integrated MB-017 Specification and Standards reviews both passed with
+  no actionable findings at `7634e5f`. The combined branch passes 26 focused
+  tests, 338 smoke tests with 3 protected skips and 3 subtests, 10 feedback
+  briefs, semantic amendment preflight, and diff checks. It is ready for its
+  single task PR.
+- The root pushed `bootstrap/coordinator/MB-017/a01-integration` at `d999c42`
+  and opened evidence-bearing PR #33:
+  `https://github.com/habiberton/milburn/pull/33`. It includes `Closes #21`,
+  worker/integration SHAs, acceptance/tests, both review histories, risks, and
+  MB-017-F001/F002/F003 summaries.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
