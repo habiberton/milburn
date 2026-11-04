@@ -572,6 +572,12 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   `tests/unit/agents/__init__.py`, and `tests/unit/persistence/__init__.py`
   package markers as the minimal owned-path expansion. This is a test-harness
   detail, not a plan amendment; global pytest configuration remains unchanged.
+- MB-017/a01 returned candidate
+  `5d28f949c001503312d80f4fcb56535e01a503e3` with three verified attributed
+  commits from exact base `425dd6e`. The diff stays within recorded paths plus
+  the approved package markers. Coordinator verification passed 17 focused
+  tests, smoke (302 passed, 3 protected skips, 3 subtests), and diff checks.
+  Specification and Standards reviews are in progress while MB-007 continues.
 
 ## Current verification
 
