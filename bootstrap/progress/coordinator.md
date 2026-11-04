@@ -8,9 +8,9 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
 
 - Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
-- Active workers: none
-- Pending candidates: corrected MB-006 candidate
-  `8e1fa8aaf21e7b08e613b668780ca30656bc5c42` and MB-020 candidate
+- Active workers: `builder-MB-006-a01` (`/root/mb006_builder_a01`) correcting
+  final fake interrupt/collect parity
+- Pending candidates: MB-020 candidate
   `cde56a19d7a9009c840c0bcde964d35369c0f790`
 
 ## Completed
@@ -409,6 +409,12 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   binding retention, and expanded opt-in live lifecycle coverage. It reports
   four attributed commits, 28 focused tests, and 205 smoke tests (one protected
   live skip); coordinator verification and fresh reviews remain.
+- Second-round MB-006 candidate `5444f2e5` added full protected lifecycle
+  coverage and terminal/retired fake guards. Final Specification review passed,
+  but Standards review found interrupted fake collection could still emit a
+  successful scripted result unlike the live boundary. The same unaffected
+  worker is preserving an explicit interrupted outcome and adding regression
+  evidence; no integration branch or PR exists.
 - MB-020 will use its own coordinator branch and PR. Its implementation will
   backfill only evidence already recorded for MB-001 through MB-004 and will
   not be mixed into the already merged MB-004 history.
@@ -430,6 +436,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit AMEND-002 with coordinator attribution and carry it through the MB-006
-coordinator PR. Continue MB-006 correction and two-pass re-review; preserve
+Carry AMEND-002 through the eventual MB-006 coordinator PR. Continue MB-006
+correction and two-pass re-review; preserve
 MB-020 for later two-pass review. Keep all new implementation dispatch frozen.
