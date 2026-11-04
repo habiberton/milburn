@@ -91,12 +91,18 @@ class FakeTmuxRuntime:
 
     def interrupt(self, endpoint: RuntimeEndpoint) -> RuntimeObservation:
         self._require_active(endpoint)
+        before = self.inspect(endpoint)
+        if not before.matched:
+            return before
         self.actions.append(FakeRuntimeAction("interrupt", endpoint.attempt_id, endpoint.generation))
         self._statuses[(endpoint.attempt_id, endpoint.generation)] = ObservationStatus.EXITED
         return self.inspect(endpoint)
 
     def terminate(self, endpoint: RuntimeEndpoint) -> RuntimeObservation:
         self._require_active(endpoint)
+        before = self.inspect(endpoint)
+        if not before.matched:
+            return before
         self.actions.append(FakeRuntimeAction("terminate", endpoint.attempt_id, endpoint.generation))
         self._statuses[(endpoint.attempt_id, endpoint.generation)] = ObservationStatus.MISSING
         return self.inspect(endpoint)

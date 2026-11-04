@@ -253,6 +253,31 @@ def test_fake_runtime_is_deterministic_and_records_actions() -> None:
     ]
 
 
+@pytest.mark.parametrize("operation", ["interrupt", "terminate"])
+@pytest.mark.parametrize(
+    "status",
+    [
+        ObservationStatus.UNKNOWN,
+        ObservationStatus.MISSING,
+        ObservationStatus.EXITED,
+        ObservationStatus.PROCESS_MISMATCH,
+    ],
+)
+def test_fake_lifecycle_does_not_act_on_non_running_endpoint(
+    operation: str,
+    status: ObservationStatus,
+) -> None:
+    runtime = FakeTmuxRuntime()
+    endpoint = runtime.create_window(spec())
+    runtime.set_status(endpoint, status)
+
+    observation = getattr(runtime, operation)(endpoint)
+
+    assert observation.status is status
+    assert runtime.inspect(endpoint).status is status
+    assert [action.kind for action in runtime.actions] == ["create_window"]
+
+
 def test_durable_endpoint_can_be_registered_after_restart() -> None:
     endpoint = RuntimeEndpoint(
         session_name="milburn",
