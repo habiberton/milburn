@@ -61,6 +61,11 @@ class PlanAmendmentBootstrapTests(unittest.TestCase):
         self.assertEqual(validate_records(self.root), [])
         self.assertEqual(preflight_errors(self.root, dirty_paths=()), [])
 
+    def test_checked_in_amendment_records_clear_semantic_preflight(self) -> None:
+        repository = Path(__file__).resolve().parents[2]
+
+        self.assertEqual(preflight_errors(repository, dirty_paths=()), [])
+
     def test_missing_required_record_section_fails(self) -> None:
         self.write_record(VALID_RECORD.replace("## Active-work impact", "## Notes"))
         self.assertTrue(

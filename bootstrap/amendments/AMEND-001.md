@@ -47,10 +47,11 @@ affected tasks but are not active-work rows.
 - Planning commit: `4c6f773a1612fc431c26919b0c28e8272fb7f78e`
 - Effective remote PR: #28
 - Effective merge commit: `182b414ad33540730dec5896a64e3e60024cf78c`
-- Dispatch status: frozen
+- Dispatch status: resumed
 - Resolution status: effective and reconciled
 
-The coordinator may continue already active unaffected work. It may not launch
-another implementation worker until this record names the effective commit and
-merged PR, the primary checkout contains that merge, and MB-020 plus MB-022 are
-complete as required by the amended graph.
+AMEND-001 itself became effective and reconciled when PR #28 merged and the
+primary checkout read back its merge commit, so its amendment lifecycle no
+longer freezes dispatch. MB-007, MB-008, MB-009, MB-017, and MB-018 remained
+separately gated by their explicit MB-020 and MB-022 task dependencies. This
+record does not claim that MB-022 is remotely merged or complete.
