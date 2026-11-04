@@ -110,6 +110,33 @@ def test_restart_registers_and_resumes_exact_lease(
     assert resumed.matched
 
 
+def test_restart_accepts_committed_progress_descending_from_recorded_base(
+    repository: tuple[Path, Path, str],
+) -> None:
+    original = GitWorktreeManager()
+    lease = original.prepare(request(repository))
+    (lease.worktree / "progress.txt").write_text("checkpoint\n")
+    git(lease.worktree, "add", "progress.txt")
+    git(lease.worktree, "commit", "-m", "checkpoint")
+    recovered = GitWorktreeManager()
+
+    inspection = recovered.register(lease)
+
+    assert inspection.head_sha != lease.base_sha
+    assert recovered.resume(lease, PriorProcessState.STOPPED).matched
+
+
+def test_restart_rejects_fabricated_durable_base(
+    repository: tuple[Path, Path, str],
+) -> None:
+    original = GitWorktreeManager()
+    lease = original.prepare(request(repository))
+    fabricated = replace(lease, base_sha="0" * 40)
+
+    with pytest.raises(WorktreeOwnershipError, match="exact repository commit"):
+        GitWorktreeManager().register(fabricated)
+
+
 def test_resume_preserves_and_reports_dirty_work(
     repository: tuple[Path, Path, str],
 ) -> None:

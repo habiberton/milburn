@@ -271,6 +271,7 @@ class GitWorktreeManager:
         inspection = self._inspect_lease(lease)
         if not inspection.matched or inspection.branch != lease.branch:
             raise WorktreeOwnershipError("durable lease does not match Git worktree identity")
+        self._validate_base_ancestry(lease, inspection)
         self._leases[lease.worktree] = lease
         return inspection
 
@@ -283,9 +284,11 @@ class GitWorktreeManager:
     ) -> WorktreeInspection:
         self._require_stopped(prior_process)
         self._require_owned(lease)
+        self._validate_lease_filesystem(lease)
         inspection = self._inspect_lease(lease)
         if not inspection.matched or inspection.branch != lease.branch:
             raise WorktreeOwnershipError("worktree identity changed before resume")
+        self._validate_base_ancestry(lease, inspection)
         return inspection
 
     def retire(
@@ -295,9 +298,11 @@ class GitWorktreeManager:
         if self._retired.get(lease.worktree) == lease:
             return self._inspect_lease(lease)
         self._require_owned(lease)
+        self._validate_lease_filesystem(lease)
         inspection = self._inspect_lease(lease)
         if not inspection.matched or inspection.branch != lease.branch:
             raise WorktreeOwnershipError("worktree identity changed before retirement")
+        self._validate_base_ancestry(lease, inspection)
         if inspection.clean is not True:
             raise WorktreeDirtyError("dirty worktree evidence must be preserved")
         removed = self._git(lease.repository, "worktree", "remove", "--", str(lease.worktree))
@@ -345,6 +350,27 @@ class GitWorktreeManager:
                 continue
             if active.repository == lease.repository and active.branch == lease.branch:
                 raise WorktreeConflictError("issue branch already has mutating ownership")
+
+    def _validate_base_ancestry(
+        self, lease: WorktreeLease, inspection: WorktreeInspection
+    ) -> None:
+        if inspection.head_sha is None:
+            raise WorktreeOwnershipError("worktree has no observable head commit")
+        base = self._git(
+            lease.repository, "rev-parse", "--verify", f"{lease.base_sha}^{{commit}}"
+        )
+        if base.returncode or base.stdout.strip() != lease.base_sha:
+            raise WorktreeOwnershipError("recorded base is not an exact repository commit")
+        ancestor = self._git(
+            lease.repository,
+            "merge-base", "--is-ancestor", lease.base_sha, inspection.head_sha,
+        )
+        if ancestor.returncode == 1:
+            raise WorktreeOwnershipError("worktree head no longer descends from recorded base")
+        if ancestor.returncode:
+            raise WorktreeCommandError(
+                ancestor.stderr.strip() or "could not verify worktree base ancestry"
+            )
 
     def _require_owned(self, lease: WorktreeLease) -> None:
         if self._leases.get(lease.worktree) != lease:
