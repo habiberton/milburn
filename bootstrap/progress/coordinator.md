@@ -693,6 +693,14 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   semantic identity omitted kind. The same worker is adding strict identity,
   evidence, Tester SHA, and observation-kind regressions plus feedback
   proposals. Both fresh review axes are required afterward.
+- Initial MB-008 reviews blocked the candidate on five external-effect gaps:
+  label/close reconciliation ignored requested postconditions; post-call
+  protocol failures stayed `CALL_STARTED`; reused markers were not bound to the
+  semantic request; tool discovery did not prove required properties/types;
+  and generation fences keyed attempt without task. The same worker is adding
+  fail-closed schema, task-scoped fencing, semantic marker/postcondition,
+  uncertainty recovery regressions and feedback proposals. Both fresh review
+  axes are required afterward.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
