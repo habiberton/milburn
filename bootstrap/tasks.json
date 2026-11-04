@@ -84,14 +84,14 @@
       "id": "MB-001",
       "wave": 1,
       "title": "Create the package, CLI, configuration, and test foundation",
-      "status": "qa",
+      "status": "done",
       "github": {
         "issue_number": 1,
         "issue_url": "https://github.com/habiberton/milburn/issues/1",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:qa",
+        "last_observed_status_label": "milburn:done",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": [],
@@ -105,7 +105,7 @@
       "pull_request": {
         "number": 18,
         "url": "https://github.com/habiberton/milburn/pull/18",
-        "merge_commit_sha": null
+        "merge_commit_sha": "be8f277ffd60b66181afd7fb97e5975179bdfdd8"
       },
       "progress_path": "bootstrap/progress/tasks/MB-001.md",
       "owned_paths": [
@@ -132,14 +132,14 @@
       "id": "MB-002",
       "wave": 1,
       "title": "Implement domain contracts, commands, events, states, and errors",
-      "status": "blocked",
+      "status": "qa",
       "github": {
         "issue_number": 2,
         "issue_url": "https://github.com/habiberton/milburn/issues/2",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:blocked",
+        "last_observed_status_label": "milburn:in-progress",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-001"],
@@ -147,8 +147,15 @@
       "owner": "builder-MB-002-a01",
       "branch": "bootstrap/builder/MB-002/a01-domain-contracts",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-002-a01",
-      "base_sha": "b50ae6f6caffe4629e095d9dafb52b2651aba34c",
-      "candidate_sha": null,
+      "base_sha": "b2df26c73f0cd9c39cd19ec07b5b5d2c24fa872e",
+      "candidate_sha": "b661baea1cb70d6eb56e35b5d303ca9aad249579",
+      "integration_branch": "bootstrap/coordinator/MB-002/a01-integration",
+      "integration_commit_sha": "fd5cc0554aeef620927ddf444dc344e55a5d74cd",
+      "pull_request": {
+        "number": 19,
+        "url": "https://github.com/habiberton/milburn/pull/19",
+        "merge_commit_sha": null
+      },
       "progress_path": "bootstrap/progress/tasks/MB-002.md",
       "owned_paths": [
         "src/milburn/domain/",

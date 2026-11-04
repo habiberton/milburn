@@ -2,14 +2,14 @@
 
 ## Current wave
 
-Wave 1 — Foundation; repairing `MB-001` through its coordinator PR
+Wave 1 — Foundation; `MB-002` integrated on its coordinator branch
 
 ## Repository state
 
 - Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
-- Active workers: none; `/root/mb002_builder_a01` interrupted with its worktree preserved
-- Pending candidates: `MB-001` is integrated locally but not present on `origin/main`
+- Active workers: none
+- Pending candidates: none
 
 ## Completed
 
@@ -100,6 +100,51 @@ Wave 1 — Foundation; repairing `MB-001` through its coordinator PR
   and opened evidence-bearing PR #18:
   `https://github.com/habiberton/milburn/pull/18`. GitHub reports it clean and
   mergeable, and `Closes #1` resolves to the intended task issue.
+- PR #18 was updated through the same coordinator branch to tip
+  `30677950ff1d14a554add1ce21f979d37e977760` and merged using GitHub's merge
+  commit method. The remote merge commit is
+  `be8f277ffd60b66181afd7fb97e5975179bdfdd8` with two parents.
+- The root fetched `origin/main`, verified it equals that merge commit and
+  contains both the worker integration history and the prior completion record,
+  then fast-forwarded the primary checkout to the same SHA.
+- Post-fast-forward verification passed again: 11 app unit tests and the full
+  smoke test.
+- Closed issue #1 now carries `milburn:done`; open issue #2 retains its existing
+  `habiberton` assignment and is restored to `milburn:in-progress`.
+- The clean preserved `MB-002/a01` worker branch was fast-forwarded to verified
+  baseline `b2df26c73f0cd9c39cd19ec07b5b5d2c24fa872e`, which includes the merged
+  `MB-001` history and the durable coordinator PR strategy.
+- The same `/root/mb002_builder_a01` worker was resumed with that exact base and
+  explicit instructions to return local commits only under the new PR rules.
+- Initial `MB-002` candidate `b4fa8c56801f395e53824b888a78c4ccf42ae62b`
+  passed attribution, owned-path, whitespace, 52 domain-test, and 63-test smoke
+  verification, but independent review rejected it before integration.
+- Spec findings: unapproved feature/issue transition edges and public transition
+  guards accepting raw strings. Standards findings: missing negative command
+  validation tests and duplicated timezone-aware datetime validation.
+- The same worker corrected those findings locally without remote mutations.
+- Corrected candidate `b661baea1cb70d6eb56e35b5d303ca9aad249579`
+  resolved every blocking finding. Coordinator checks passed: three attributed
+  commits, approved paths only, exact-range whitespace check, 64 domain tests,
+  and 75 total smoke tests.
+- Fresh Spec re-review passed all four acceptance criteria. Fresh Standards
+  re-review passed with one accepted low judgement call: `CommandArgument` and
+  `EventFact` retain similar validation while remaining distinct public domain
+  types.
+- `MB-002` owns coordinator integration branch
+  `bootstrap/coordinator/MB-002/a01-integration` and will have exactly one PR.
+- Corrected candidate was non-squash merged on that coordinator branch as
+  `fd5cc0554aeef620927ddf444dc344e55a5d74cd`; the only conflict was the task
+  progress record, resolved by retaining worker evidence and coordinator
+  recovery facts.
+- Integrated-branch verification passed: 64 domain tests, 75 total smoke tests,
+  and `git diff --check` against `origin/main`.
+- The root pushed coordinator branch
+  `bootstrap/coordinator/MB-002/a01-integration` at
+  `6b9976c234c426163d97287067e2aa082a58a2b4` and opened the single
+  evidence-bearing PR #19: `https://github.com/habiberton/milburn/pull/19`.
+  GitHub resolves `Closes #2` to the intended issue and reports the PR clean and
+  mergeable.
 
 ## Verification
 
@@ -118,7 +163,7 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the PR record, update the same `MB-001` branch, and merge PR #18 with a
-merge commit. Fetch and verify `origin/main`, fast-forward the primary checkout,
-restore issue #1 to `milburn:done`, then unblock and resume the preserved
-`MB-002/a01` attempt.
+Commit the PR record, update that same coordinator branch, recheck mergeability,
+then merge PR #19 only with a merge commit. Fetch and verify `origin/main`,
+fast-forward the primary checkout, and reconcile issue/task state before
+starting `MB-003`.
