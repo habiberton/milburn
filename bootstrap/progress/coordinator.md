@@ -6,7 +6,7 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
 
 ## Repository state
 
-- Integration branch: `main`
+- Integration branch: `bootstrap/coordinator/MB-006/a01-integration`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
 - Active workers: none
 - Pending candidates: MB-020 candidate
@@ -428,6 +428,10 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   because this is a Codex/external adapter with prior blocking findings; both
   final fresh reviews passed with no actionable findings. It will use
   `bootstrap/coordinator/MB-006/a01-integration` and one PR carrying AMEND-002.
+- MB-006 was non-squash merged on its coordinator branch as two-parent commit
+  `b5c28003e62e4c45ec4d41e588152f2173585f43`. Integrated verification passed
+  30 focused tests, 233 smoke tests (three protected skips), 22 valid task
+  records, and `git diff --check` against `origin/main`.
 - MB-020 will use its own coordinator branch and PR. Its implementation will
   backfill only evidence already recorded for MB-001 through MB-004 and will
   not be mixed into the already merged MB-004 history.
@@ -449,7 +453,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the accepted MB-006 record, non-squash merge its worker chain, verify the
-coordinator branch, and carry AMEND-002 through its evidence-bearing PR.
-Preserve MB-020 for later two-pass review; keep new implementation dispatch
-frozen.
+Push the verified MB-006 coordinator branch and open its evidence-bearing PR
+carrying AMEND-002. Preserve MB-020 for later two-pass review; keep new
+implementation dispatch frozen.

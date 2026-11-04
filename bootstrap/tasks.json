@@ -370,7 +370,7 @@
       "id": "MB-006",
       "wave": 2,
       "title": "Implement the Codex adapter, launch briefs, and result parsing",
-      "status": "candidate",
+      "status": "integrated",
       "github": {
         "issue_number": 6,
         "issue_url": "https://github.com/habiberton/milburn/issues/6",
@@ -388,7 +388,7 @@
       "base_sha": "61c453848c1364a7b77695c1ecb9477908b80784",
       "candidate_sha": "38b28545a6fb409d62fa1145e083109df649d308",
       "integration_branch": "bootstrap/coordinator/MB-006/a01-integration",
-      "integration_commit_sha": null,
+      "integration_commit_sha": "b5c28003e62e4c45ec4d41e588152f2173585f43",
       "pull_request": {
         "number": null,
         "url": null,
