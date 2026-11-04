@@ -378,6 +378,11 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   `c21a1aaf748625b70b0235cc3af552c3cca89b68`. Integrated verification passed
   26 unit tests, the real tmux contract, 203 smoke tests (one protected skip),
   22 valid task records, and `git diff --check` against `origin/main`.
+- The root pushed `bootstrap/coordinator/MB-005/a01-integration` at
+  `ea84420240490b1315eca0bf31b314f5b21f8e5a` and opened clean, mergeable,
+  evidence-bearing PR #28: `https://github.com/habiberton/milburn/pull/28`.
+  GitHub resolves `Closes #5`; the PR carries AMEND-001 and is recorded as its
+  effective remote review.
 - Corrected MB-006 candidate
   `8e1fa8aaf21e7b08e613b668780ca30656bc5c42` addresses semantic Codex JSONL
   extraction, typed role/result/payload enforcement, exact skill/resource
@@ -405,6 +410,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Push the verified MB-005 coordinator branch and open its evidence-bearing PR
-carrying AMEND-001. Verify and freshly review corrected MB-006; keep all new
-implementation dispatch frozen.
+Push the PR/amendment record update, merge PR #28 with a merge commit, verify
+and reconcile `origin/main`, then verify and freshly review corrected MB-006.
+Keep all new implementation dispatch frozen.

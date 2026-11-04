@@ -48,7 +48,7 @@ this amendment.
 ## Effectiveness
 
 - Planning commit: `4c6f773a1612fc431c26919b0c28e8272fb7f78e`
-- Effective remote PR: pending
+- Effective remote PR: #28 (`https://github.com/habiberton/milburn/pull/28`)
 - Effective merge commit: pending
 - Dispatch status: frozen for new implementation workers
 - Resolution status: committed; pending remote PR merge and reconciliation
