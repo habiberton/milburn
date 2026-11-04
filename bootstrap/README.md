@@ -152,7 +152,13 @@ scripts/verify-candidate-commits.py \
 
 Decompose centrally, implement independent leaves in parallel, and integrate
 centrally. Integrate one candidate at a time and run the combined smoke test
-after each integration.
+after each integration. Workers and reviewers never push; only the root
+coordinator may push.
+
+After integration, independent review, and every required test pass, the root
+pushes `main` to `origin` and reads `origin/main` back to verify that it contains
+the recorded task completion commit. Only after that remote verification may
+the root apply `milburn:done` and close the task's GitHub issue.
 
 ## Retirement gate
 

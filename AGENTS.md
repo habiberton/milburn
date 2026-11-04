@@ -178,6 +178,7 @@ A worker must not:
 - Mark its own task complete.
 - Launch another agent.
 - Integrate into the primary branch.
+- Push any branch or commit to a remote.
 
 ## Root integration procedure
 
@@ -202,6 +203,14 @@ When a worker returns a candidate:
 10. Run `scripts/smoke-test.sh` after every integration.
 11. Record the integrated commit and result in the task registry and
     coordinator progress.
+12. Confirm the independent review passed and every required test is green.
+13. The root coordinator pushes `main` to `origin`; no worker or reviewer may
+    push.
+14. Fetch or query `origin/main` and verify that it contains the recorded task
+    completion commit. A successful push command without this read-back is not
+    completion evidence.
+15. Only after remote verification may the root apply `milburn:done` and close
+    the GitHub issue.
 
 Do not delete a worktree until its candidate is integrated, rejected, or
 explicitly archived.
@@ -218,11 +227,12 @@ integrated commit. It reviews two questions separately:
 2. Does the change preserve repository conventions, public interfaces,
    maintainability, and test quality?
 
-The reviewer does not modify the candidate branch. It returns findings with
-file locations and evidence. The coordinator either records a pass or returns
-the same task to a worker with the findings. When subagent tools are
-unavailable, the root performs a distinct review pass after clearing the
-implementation context as much as practical and records that limitation.
+The reviewer does not modify the candidate branch or push any branch or commit.
+It returns findings with file locations and evidence. The coordinator either
+records a pass or returns the same task to a worker with the findings. When
+subagent tools are unavailable, the root performs a distinct review pass after
+clearing the implementation context as much as practical and records that
+limitation.
 
 ## Conflict procedure
 
@@ -240,8 +250,10 @@ Do not allow workers to create competing shared interfaces.
 ## Completion and handoff
 
 Workers produce candidate commits. The root coordinator integrates candidates.
-A separate review pass supplies QA evidence. Only the coordinator may mark a
-task `done` after integration and review.
+A separate review pass supplies QA evidence. Only the root coordinator may
+push. Only after integration, independent review, required tests, a successful
+push of `main`, and verification that `origin/main` contains the completion
+commit may the coordinator mark a task `done` and close its GitHub issue.
 
 Before ending any session, record completed work, exact commits, test commands
 and results, remaining work, blockers, and the first action for the next agent.
