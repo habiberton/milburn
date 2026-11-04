@@ -152,6 +152,25 @@ def test_interruption_cannot_be_collected_as_scripted_task_success() -> None:
     assert collected.protocol_error == "Codex exited without a semantic task result"
 
 
+def test_running_fake_rejects_retirement_without_invalidating_endpoint() -> None:
+    fake = FakeCodexAdapter((ScriptedCodexRun(result_document()),))
+    endpoint = fake.launch(request())
+
+    rejected = fake.retire(endpoint)
+    still_running = fake.status(endpoint)
+    steering = fake.steer(
+        endpoint,
+        SteeringMessage(Role.CODER, "task-6", "attempt-1", "Still active."),
+    )
+
+    assert not rejected.observed
+    assert rejected.detail == "running endpoint cannot be retired"
+    assert still_running.process_state is ProcessState.RUNNING
+    assert steering.accepted
+    assert fake.interrupt(endpoint).observed
+    assert fake.retire(endpoint).observed
+
+
 @pytest.mark.parametrize(
     ("exit_code", "task_success"),
     [(0, False), (17, True)],

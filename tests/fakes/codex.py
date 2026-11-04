@@ -98,7 +98,11 @@ class FakeCodexRuntime:
         )
 
     def retire(self, endpoint: str) -> ControlResult:
-        self._require(endpoint)
+        run = self._require(endpoint)
+        if run.state is ProcessState.RUNNING:
+            return ControlResult(
+                observed=False, detail="running endpoint cannot be retired"
+            )
         self.retired.append(endpoint)
         del self._runs[endpoint]
         return ControlResult(observed=True, detail="scripted retirement")
