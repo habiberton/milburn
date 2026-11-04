@@ -9,7 +9,8 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
 - Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
 - Active workers: `builder-MB-005-a01` (`/root/mb005_builder_a01`) correcting
-  independent tmux-contract failure; MB-020 assignment is being prepared
+  independent tmux-contract failure and `builder-MB-020-a01`
+  (`/root/mb020_builder_a01`) implementing the feedback process
 - Pending candidates: MB-005 candidate
   `6e00d03be1eb2c86aeee6d057a4a8d68c1c7d085` rejected before review, and
   MB-006 candidate `7d6636b2548f7354936b6631ab811b0eaa5ed1bc`
@@ -333,6 +334,12 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   `09636fd9f0993493091c515ee9e29c58d5d0f81f`. The worktree is
   `/Users/habiberton/projects/milburn-worktrees/MB-020-a01` with identity
   `Milburn Builder [MB-020/a01]`.
+- MB-020/a01 was launched with the writing-for-agents guidance: one concise
+  source of truth, context pointers from always-loaded instructions, and
+  checkable gates. Because only the root may finalize feedback briefs, the
+  worker will implement the process and validator and propose evidence-only
+  MB-001 through MB-004 backfill entries in its own progress; the coordinator
+  will write those historical briefs on the integration branch.
 - MB-020 will use its own coordinator branch and PR. Its implementation will
   backfill only evidence already recorded for MB-001 through MB-004 and will
   not be mixed into the already merged MB-004 history.
@@ -354,6 +361,5 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the resolved MB-020 base and dispatch the bounded feedback worker.
-Continue MB-005 correction and MB-006
+Monitor MB-020 and MB-005. Continue MB-006
 verification/review; do not launch MB-007 through MB-009 before MB-020 is done.

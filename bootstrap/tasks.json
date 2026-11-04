@@ -272,7 +272,7 @@
       "id": "MB-020",
       "wave": 1,
       "title": "Add concise defect feedback briefs to the bootstrap workflow",
-      "status": "assigned",
+      "status": "in_progress",
       "github": {
         "issue_number": 24,
         "issue_url": "https://github.com/habiberton/milburn/issues/24",
