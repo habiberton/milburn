@@ -538,16 +538,18 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   finalized MB-022-F001/F002 from retained evidence. Integrated verification
   and the one-ticket PR remain.
 
-## Verification
+## Current verification
 
-- `scripts/bootstrap-repo.sh`: passed on 2026-11-03; validated 16 tasks across
-  6 waves and reran the bootstrap smoke checks.
-- `scripts/smoke-test.sh`: passed on 2026-11-03; validated 16 task records and
-  the candidate-attribution verifier. The product test suite does not exist yet.
-- GitHub read-back verified all 16 issues are open, correctly titled, marked,
-  labeled, unassigned, and contain their dependency links and acceptance
-  criteria.
-- No implementation agents have been launched.
+- Candidate attribution: 10 builder commits verified from exact base
+  `0b6613d8199c70d6d43d8e3acfb7cdf79a39243a` through `491f59e`.
+- Integrated amendment preflight: 2 checked-in records valid and clear.
+- Required MB-022 suite: 42 passed, 3 subtests passed.
+- Integrated smoke: 22 task records, 8 feedback briefs, and 2 amendment records
+  valid; 285 product tests passed with 3 protected skips and 3 subtests.
+- Final integrated Specification and Standards review found only this stale
+  coordinator-tail handoff; the current verification and resume sections now
+  replace it. Both axes must confirm the correction before PR publication.
+- `git diff --check`: passed.
 
 ## Blockers
 
@@ -555,6 +557,8 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the MB-020 remote completion record, label issue #24 done, reconcile
-MB-022/#27 as ready, then prepare and dispatch MB-022 only. Keep all other
-implementation dispatch frozen.
+Record the final integrated MB-022 reviews and verification, push
+`bootstrap/coordinator/MB-022/a01-integration`, and open its one-ticket
+evidence-bearing PR with `Closes #27`. Merge only by merge commit, verify and
+fast-forward `origin/main`, update task records, and only then reconcile the
+next dependency-ready Wave 2 tasks for dispatch.
