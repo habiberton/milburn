@@ -870,6 +870,12 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   runtime tests, smoke with 406 passed/3 protected skips/3 subtests,
   attribution, owned paths, and diff checks. Issue #9 returned to
   `milburn:in-progress`; both fresh review axes restart on this exact SHA.
+- Final MB-009 Specification passed candidate `c867081`, but Standards found
+  F005 in fake parity: a flat ancestor-membership set accepted a forged retired
+  head and recorded base that were independent parents of the current merge,
+  instead of proving both directed ancestry links. Issue #9 returned to
+  `milburn:changes-requested`; the worker is adding relationship-aware fake
+  ancestry and the merged-graph regression. Both review axes restart afterward.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
