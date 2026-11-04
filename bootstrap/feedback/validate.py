@@ -172,6 +172,12 @@ def validate(repo_root: Path) -> list[str]:
             end = headings[position + 1] if position + 1 < len(headings) else len(body)
             feedback_id = body[start][4:]
             entry_source = f"{source}:{feedback_id}"
+            expected_id = f"{task_id}-F{position + 1:03d}"
+            if feedback_id != expected_id:
+                errors.append(
+                    f"{entry_source}: feedback IDs must start at F001 and be "
+                    f"contiguous; expected {expected_id}"
+                )
             previous = seen_ids.get(feedback_id)
             if previous is not None:
                 errors.append(f"{entry_source}: duplicate feedback ID first used in {previous}")

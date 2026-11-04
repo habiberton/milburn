@@ -65,6 +65,17 @@ class FeedbackValidatorTests(unittest.TestCase):
         self.write_brief("MB-001.md", VALID_ENTRY.replace("MB-001-F001", "MB-001-F000"))
         self.assertTrue(any("feedback ID must match" in error for error in validate(self.root)))
 
+    def test_rejects_first_feedback_id_after_f001(self) -> None:
+        self.write_brief("MB-001.md", VALID_ENTRY.replace("MB-001-F001", "MB-001-F002"))
+        self.assertTrue(any("expected MB-001-F001" in error for error in validate(self.root)))
+
+    def test_rejects_feedback_id_gap(self) -> None:
+        second_entry = "\n".join(VALID_ENTRY.splitlines()[4:]).replace(
+            "MB-001-F001", "MB-001-F003"
+        )
+        self.write_brief("MB-001.md", f"{VALID_ENTRY}\n{second_entry}\n")
+        self.assertTrue(any("expected MB-001-F002" in error for error in validate(self.root)))
+
     def test_rejects_unknown_task_id(self) -> None:
         self.write_brief("MB-999.md", VALID_ENTRY.replace("MB-001", "MB-999"))
         self.assertTrue(any("unknown task ID" in error for error in validate(self.root)))
