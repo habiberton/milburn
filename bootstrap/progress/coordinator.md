@@ -663,6 +663,10 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   protected skips and 3 subtests. Issue #21 closed through `Closes #21`; after
   this completion record commits, the root may apply `milburn:done` and mark
   MB-018 ready.
+- Local MB-017 completion record `5516553` committed. Closed issue #21 now
+  carries `milburn:done`; issue #22 and task MB-018 are ready. MB-018 and the
+  already-ready MB-008 have disjoint owned paths and are selected as the next
+  preferred two-worker pair; MB-009 remains ready and undispatched.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
