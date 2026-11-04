@@ -685,6 +685,14 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   passed 15 focused unit tests, 1 local contract, smoke (354 passed, 3
   protected skips, 3 subtests), and diff checks. Its two-pass review waits only
   for the active MB-018 review slots.
+- Initial MB-018 reviews blocked the candidate on four contract gaps: Tester
+  replacement did not require the exact manifest head SHA; duplicate test
+  commands could hide contradictory evidence; replay could process stale
+  endpoint/session lifecycle facts and deduplicate identity conflicts; and
+  unsupported context/compaction observations shared one source version while
+  semantic identity omitted kind. The same worker is adding strict identity,
+  evidence, Tester SHA, and observation-kind regressions plus feedback
+  proposals. Both fresh review axes are required afterward.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
