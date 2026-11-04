@@ -132,7 +132,7 @@
       "id": "MB-002",
       "wave": 1,
       "title": "Implement domain contracts, commands, events, states, and errors",
-      "status": "candidate",
+      "status": "qa",
       "github": {
         "issue_number": 2,
         "issue_url": "https://github.com/habiberton/milburn/issues/2",
@@ -150,7 +150,7 @@
       "base_sha": "b2df26c73f0cd9c39cd19ec07b5b5d2c24fa872e",
       "candidate_sha": "b661baea1cb70d6eb56e35b5d303ca9aad249579",
       "integration_branch": "bootstrap/coordinator/MB-002/a01-integration",
-      "integration_commit_sha": null,
+      "integration_commit_sha": "fd5cc0554aeef620927ddf444dc344e55a5d74cd",
       "pull_request": {
         "number": null,
         "url": null,

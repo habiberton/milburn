@@ -2,7 +2,7 @@
 
 ## Current wave
 
-Wave 1 — Foundation; `MB-001` remotely complete and resuming `MB-002`
+Wave 1 — Foundation; `MB-002` integrated on its coordinator branch
 
 ## Repository state
 
@@ -133,6 +133,12 @@ Wave 1 — Foundation; `MB-001` remotely complete and resuming `MB-002`
   types.
 - `MB-002` owns coordinator integration branch
   `bootstrap/coordinator/MB-002/a01-integration` and will have exactly one PR.
+- Corrected candidate was non-squash merged on that coordinator branch as
+  `fd5cc0554aeef620927ddf444dc344e55a5d74cd`; the only conflict was the task
+  progress record, resolved by retaining worker evidence and coordinator
+  recovery facts.
+- Integrated-branch verification passed: 64 domain tests, 75 total smoke tests,
+  and `git diff --check` against `origin/main`.
 
 ## Verification
 
@@ -151,6 +157,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the accepted candidate record, create the `MB-002` coordinator branch,
-non-squash merge the verified worker branch, run all required tests on the
-integrated branch, then push and open its evidence-bearing PR with `Closes #2`.
+Commit the integration evidence, push the `MB-002` coordinator branch, open its
+single evidence-bearing PR with `Closes #2`, record and update that PR branch,
+then merge only with a merge commit after GitHub reports it mergeable.
