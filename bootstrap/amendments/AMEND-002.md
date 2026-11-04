@@ -42,7 +42,7 @@ ownership.
 ## Effectiveness
 
 - Planning commit: `0398b0e3d0a11f88b9728ea48a8935b1b2eb1840`
-- Effective remote PR: pending (intended MB-006 coordinator PR)
+- Effective remote PR: #29 (`https://github.com/habiberton/milburn/pull/29`)
 - Effective merge commit: pending
 - Resolution status: committed; pending MB-006 PR merge and reconciliation
 

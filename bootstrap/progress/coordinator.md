@@ -432,6 +432,11 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   `b5c28003e62e4c45ec4d41e588152f2173585f43`. Integrated verification passed
   30 focused tests, 233 smoke tests (three protected skips), 22 valid task
   records, and `git diff --check` against `origin/main`.
+- The root pushed `bootstrap/coordinator/MB-006/a01-integration` at
+  `abc650ff9d63513ee33e464d869de6d7d6e742ad` and opened clean, mergeable,
+  evidence-bearing PR #29: `https://github.com/habiberton/milburn/pull/29`.
+  GitHub resolves `Closes #6`; the PR records Specification + Standards mode
+  and is AMEND-002's effective remote review.
 - MB-020 will use its own coordinator branch and PR. Its implementation will
   backfill only evidence already recorded for MB-001 through MB-004 and will
   not be mixed into the already merged MB-004 history.
@@ -453,6 +458,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Push the verified MB-006 coordinator branch and open its evidence-bearing PR
-carrying AMEND-002. Preserve MB-020 for later two-pass review; keep new
+Push the PR/amendment record update, merge PR #29 with a merge commit, verify
+and reconcile `origin/main`, then proceed to MB-020 two-pass review. Keep new
 implementation dispatch frozen.
