@@ -492,6 +492,13 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   builder attempt MB-022/a01. Its branch/worktree assignment, exact owned paths,
   two-pass review mode, and test contract are recorded; no other Wave 2 worker
   may launch.
+- MB-022/a01 found that the exact required pytest command collects two
+  non-package modules named `test_plan_amendments`, causing an import-file
+  mismatch before tests run. The coordinator approved the minimal owned-path
+  expansion for empty `tests/bootstrap/__init__.py` and
+  `tests/unit/orchestration/__init__.py` package markers. This resolves a test
+  harness detail without changing approved product behavior, dependencies, or
+  authority boundaries; the task remains in two-pass review mode.
 
 ## Verification
 
