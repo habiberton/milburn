@@ -25,6 +25,11 @@ implementation choices remain within the approved design.
 - `decisions.md`: bootstrap implementation decisions that do not change the
   approved product or architecture.
 
+Git attribution is also durable. The bootstrap script configures the primary
+checkout as `Milburn Coordinator [BOOTSTRAP/root]`. Every worker worktree gets
+a unique role, task, and attempt identity, and every candidate commit carries
+matching trailers that are verified before integration.
+
 ## Work waves
 
 ### Wave 0 — Bootstrap verification
@@ -101,12 +106,32 @@ candidate commits through their own progress records.
 
 ```text
 primary checkout: /path/to/milburn
-worker branches:  bootstrap/MB-005-tmux-runtime
-worker trees:     /path/to/milburn-worktrees/MB-005
+worker branches:  bootstrap/builder/MB-005/a01-tmux-runtime
+worker trees:     /path/to/milburn-worktrees/MB-005-a01
 ```
 
 The root creates worktrees and passes their absolute paths to workers. Workers
 never edit the primary checkout.
+
+Immediately after creating a worker tree, the root runs:
+
+```text
+scripts/configure-worktree-identity.sh \
+  /path/to/milburn-worktrees/MB-005-a01 builder MB-005 a01
+```
+
+The worker stages its changes and commits with:
+
+```text
+scripts/agent-commit.sh "implement verified tmux lifecycle"
+```
+
+Before integration, the root runs:
+
+```text
+scripts/verify-candidate-commits.py \
+  <base-sha> <candidate-sha> builder MB-005 a01
+```
 
 ## Integration rule
 
@@ -120,4 +145,3 @@ Archive this bootstrap layer only after Milburn has demonstrated durable task
 state, verified tmux lifecycle, Codex result collection, a persistent
 Coordinator, one-task-per-Coder enforcement, progress-file recovery, and
 independent Tester validation.
-

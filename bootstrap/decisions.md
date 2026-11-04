@@ -29,3 +29,10 @@ make recovery task-specific.
 Temporary build coordination lives under `bootstrap/`. The `.milburn/`
 namespace is reserved for the product's future runtime state.
 
+## 2026-11-03 — Logical agent identity is enforced in Git
+
+The bootstrap process uses one approved GitHub-linked email and distinct
+worktree-local names for Coordinator and worker attempts. Commits include
+Milburn role, worker, task, and attempt trailers. The root verifies candidate
+metadata before integration. Workers do not receive separate GitHub push
+credentials.

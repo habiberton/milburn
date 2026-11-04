@@ -3,6 +3,9 @@
 ## Assignment
 
 - Worker:
+- Role:
+- Attempt:
+- Expected Git identity:
 - Branch:
 - Worktree:
 - Base commit:
@@ -13,6 +16,7 @@
 - Status: assigned
 - Current commit:
 - Working tree:
+- Candidate attribution check: not run
 
 ## Completed
 
@@ -35,4 +39,3 @@
 
 Read `AGENTS.md`, the task record, relevant specification sections, Git status,
 Git history, and this file before editing product code.
-

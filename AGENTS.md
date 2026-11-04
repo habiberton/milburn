@@ -101,8 +101,8 @@ If these conditions are not met, run the tasks sequentially.
 The root coordinator creates every worker worktree before launching its worker.
 Use:
 
-- Branch: `bootstrap/<task-id>-<short-name>`
-- Worktree: `../milburn-worktrees/<task-id>`
+- Branch: `bootstrap/<role>/<task-id>/<attempt-id>-<short-name>`
+- Worktree: `../milburn-worktrees/<task-id>-<attempt-id>`
 
 Before dispatch, update the task record with:
 
@@ -116,6 +116,19 @@ Before dispatch, update the task record with:
 Create the task progress file from
 `bootstrap/progress/tasks/TEMPLATE.md` before creating the worker branch, so it
 is present in the worker's starting commit.
+
+After creating the worktree and before launching the worker, configure its
+logical Git identity:
+
+```text
+scripts/configure-worktree-identity.sh \
+  <absolute-worktree> <role> <task-id> <attempt-id>
+```
+
+The script uses the repository's approved GitHub-linked email without writing
+that email into tracked files. It assigns a distinct name such as
+`Milburn Builder [MB-005/a01]` and records the role, task, attempt, and worker ID
+in worktree-local Git configuration.
 
 The primary checkout is reserved for coordination and integration. Workers must
 not edit it.
@@ -132,8 +145,9 @@ Every worker receives:
 6. Acceptance criteria.
 7. Required test commands.
 8. Progress-file path.
-9. Commit-message prefix.
-10. Instruction to return a candidate commit rather than merge it.
+9. Configured Git identity and attempt ID.
+10. Instruction to create commits with `scripts/agent-commit.sh`.
+11. Instruction to return a candidate commit rather than merge it.
 
 Every worker begins by reading `AGENTS.md`, its task record, relevant approved
 specification sections, Git status, relevant Git history, and its progress file.
@@ -149,7 +163,9 @@ A worker must:
 - Implement one small vertical slice at a time.
 - Test behavior through public interfaces.
 - Update its progress file after meaningful checkpoints and before handoff.
-- Make coherent commits containing its task ID.
+- Stage intended changes and create coherent commits with
+  `scripts/agent-commit.sh "<summary>"`. The helper adds the task prefix and
+  required role, worker, task, and attempt trailers.
 - Return the exact candidate commit SHA and test evidence.
 - Stop after producing the candidate.
 
@@ -168,15 +184,23 @@ A worker must not:
 When a worker returns a candidate:
 
 1. Confirm the commit exists on the assigned branch.
-2. Read the task progress record.
-3. Compare the diff with owned paths.
-4. Reject or explicitly review unapproved path changes.
-5. Check every acceptance criterion against evidence.
-6. Run the task tests independently.
-7. Review compatibility with approved shared interfaces.
-8. Integrate one candidate at a time.
-9. Run `scripts/smoke-test.sh` after every integration.
-10. Record the integrated commit and result in the task registry and
+2. Verify every candidate commit before review or integration:
+
+   ```text
+   scripts/verify-candidate-commits.py \
+     <base-sha> <candidate-sha> <role> <task-id> <attempt-id>
+   ```
+
+3. Read the task progress record.
+4. Compare the diff with owned paths.
+5. Reject or explicitly review unapproved path changes.
+6. Check every acceptance criterion against evidence.
+7. Run the task tests independently.
+8. Review compatibility with approved shared interfaces.
+9. Integrate one candidate at a time with a non-squash merge so worker commit
+   attribution remains intact.
+10. Run `scripts/smoke-test.sh` after every integration.
+11. Record the integrated commit and result in the task registry and
     coordinator progress.
 
 Do not delete a worktree until its candidate is integrated, rejected, or
@@ -228,6 +252,7 @@ Process exit or a prose claim is never proof of completion.
 - Preserve user changes and unrelated work.
 - Do not reset or destructively clean a checkout.
 - Do not expose secrets in prompts, progress files, commits, logs, or fixtures.
+- Do not replace or override the configured worktree Git identity.
 - Do not merge, deploy, or mutate GitHub unless the current bootstrap task and
   the user explicitly authorize it.
 - Worktrees provide change isolation, not a security sandbox.

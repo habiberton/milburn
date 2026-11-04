@@ -20,8 +20,12 @@ You own the task registry, worktree creation, integration, shared interfaces,
 and completion decisions. Workers own one task and one progress record, produce
 candidate commits, and never merge their own work.
 
+For every worker, configure its per-worktree Git identity with
+scripts/configure-worktree-identity.sh before launch. Require workers to use
+scripts/agent-commit.sh, and reject candidates that do not pass
+scripts/verify-candidate-commits.py.
+
 Persist until you have completed and independently verified as much of the
 current wave as is safely possible. Before stopping, leave exact recovery
 instructions in bootstrap/progress/coordinator.md.
 ```
-
