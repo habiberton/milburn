@@ -6,7 +6,7 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
 
 ## Repository state
 
-- Integration branch: `bootstrap/coordinator/MB-005/a01-integration`
+- Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
 - Active workers: none
 - Pending candidates: corrected MB-006 candidate
@@ -383,6 +383,17 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   evidence-bearing PR #28: `https://github.com/habiberton/milburn/pull/28`.
   GitHub resolves `Closes #5`; the PR carries AMEND-001 and is recorded as its
   effective remote review.
+- PR #28 merged using GitHub's two-parent merge-commit method as
+  `182b414ad33540730dec5896a64e3e60024cf78c`. The root fetched and verified
+  `origin/main` contains candidate `b9bab642d97075302e9c79949eab68c2f5502296`,
+  integration commit `c21a1aaf748625b70b0235cc3af552c3cca89b68`,
+  PR tip `1d8d0e272a761b9caf8e7bc2ce69cb3bfd9aaf50`, and AMEND-001 planning commit
+  `4c6f773a1612fc431c26919b0c28e8272fb7f78e`, then fast-forwarded the primary
+  checkout to the exact remote merge SHA.
+- Post-fast-forward verification passed: 26 runtime tests, the real tmux
+  contract, 203 smoke tests (one protected skip), and 22 valid task records.
+  AMEND-001 is effective and reconciled; new implementation dispatch remains
+  frozen until MB-020 and MB-022 are complete.
 - Corrected MB-006 candidate
   `8e1fa8aaf21e7b08e613b668780ca30656bc5c42` addresses semantic Codex JSONL
   extraction, typed role/result/payload enforcement, exact skill/resource
@@ -410,6 +421,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Push the PR/amendment record update, merge PR #28 with a merge commit, verify
-and reconcile `origin/main`, then verify and freshly review corrected MB-006.
-Keep all new implementation dispatch frozen.
+Commit the verified MB-005/AMEND-001 result, apply `milburn:done` to issue #5,
+then verify and freshly review corrected MB-006. Keep all new implementation
+dispatch frozen.

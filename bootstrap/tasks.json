@@ -321,14 +321,14 @@
       "id": "MB-005",
       "wave": 2,
       "title": "Implement the tmux runtime and fake runtime",
-      "status": "integrated",
+      "status": "done",
       "github": {
         "issue_number": 5,
         "issue_url": "https://github.com/habiberton/milburn/issues/5",
         "status_source": "github",
         "assignment_source": "github",
-        "last_observed_state": "open",
-        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_state": "closed",
+        "last_observed_status_label": "milburn:done",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-004", "MB-020"],
@@ -343,7 +343,7 @@
       "pull_request": {
         "number": 28,
         "url": "https://github.com/habiberton/milburn/pull/28",
-        "merge_commit_sha": null
+        "merge_commit_sha": "182b414ad33540730dec5896a64e3e60024cf78c"
       },
       "progress_path": "bootstrap/progress/tasks/MB-005.md",
       "owned_paths": [
