@@ -749,6 +749,14 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   verification and the local completion record, transitioned from
   `milburn:qa` to `milburn:done`. Registry and GitHub now agree that MB-018 is
   complete.
+- Corrected MB-008 candidate
+  `664f66dbab75ebe2ee56c6672f8f1b8e304b7ddf` contains three verified builder
+  commits from exact base `c88f465`. Fix commit `da40e15` closes all five
+  initial blockers: semantic label/close reconciliation, post-call uncertainty,
+  request-bound markers, fail-closed MCP schemas, and task-scoped generation
+  fences. Root verification passed 29 unit tests, 1 local contract, smoke with
+  368 passed/3 protected skips/3 subtests, attribution, and owned-path checks.
+  Both fresh independent review axes are required before integration.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
