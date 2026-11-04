@@ -288,6 +288,12 @@ Wave 2 — Independent boundaries; reconciling newly ready tasks
   `milburn:in-progress`. Builder assignments `MB-005/a01` and `MB-006/a01`
   are prepared; their progress records will be included in the exact branch
   base checkpoint before worktrees are created.
+- Both worker branches and worktrees were created from exact base
+  `61c453848c1364a7b77695c1ecb9477908b80784`: MB-005 at
+  `/Users/habiberton/projects/milburn-worktrees/MB-005-a01` and MB-006 at
+  `/Users/habiberton/projects/milburn-worktrees/MB-006-a01`. Their worktree
+  identities are configured as `Milburn Builder [MB-005/a01]` and
+  `Milburn Builder [MB-006/a01]`.
 
 ## Verification
 
@@ -306,6 +312,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Commit the Wave 2 assignment checkpoint, create and configure MB-005/a01 and
-MB-006/a01 worktrees from that exact base, record the resolved bases, then
-dispatch both bounded workers.
+Commit the resolved Wave 2 bases, then dispatch MB-005/a01 and MB-006/a01 with
+their bounded owned paths, acceptance criteria, tests, and local-commit-only
+handoff rules.
