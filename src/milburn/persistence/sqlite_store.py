@@ -21,7 +21,13 @@ NO_STREAM = -1
 class SQLiteEventStore:
     """Store versioned events atomically in ordered named streams."""
 
-    def __init__(self, database: str | Path) -> None:
+    def __init__(self, database: str | Path, *, busy_timeout_ms: int = 5000) -> None:
+        if (
+            not isinstance(busy_timeout_ms, int)
+            or isinstance(busy_timeout_ms, bool)
+            or busy_timeout_ms < 0
+        ):
+            raise ValueError("busy_timeout_ms must be a non-negative integer")
         self._database = str(database)
         self._connection = sqlite3.connect(
             self._database,
@@ -30,9 +36,13 @@ class SQLiteEventStore:
         )
         self._connection.row_factory = sqlite3.Row
         self._connection.execute("PRAGMA foreign_keys = ON")
-        self._connection.execute("PRAGMA busy_timeout = 5000")
+        self._connection.execute(f"PRAGMA busy_timeout = {busy_timeout_ms}")
         self._lock = RLock()
-        self._apply_migrations()
+        try:
+            self._apply_migrations()
+        except BaseException:
+            self._connection.close()
+            raise
 
     def __enter__(self) -> Self:
         return self
@@ -87,8 +97,10 @@ class SQLiteEventStore:
                 )
 
         with self._lock:
+            transaction_started = False
             try:
                 self._connection.execute("BEGIN IMMEDIATE")
+                transaction_started = True
                 actual_sequence = self._stream_sequence(stream)
                 if actual_sequence != expected_sequence:
                     raise ConcurrencyError(
@@ -118,13 +130,20 @@ class SQLiteEventStore:
                     )
                 self._connection.execute("COMMIT")
             except ConcurrencyError:
-                self._connection.execute("ROLLBACK")
+                self._rollback_if_started(transaction_started)
                 raise
             except sqlite3.IntegrityError as error:
-                self._connection.execute("ROLLBACK")
+                self._rollback_if_started(transaction_started)
                 raise InvalidEventBatchError(f"event append rejected: {error}") from error
+            except sqlite3.OperationalError as error:
+                self._rollback_if_started(transaction_started)
+                if _is_lock_error(error):
+                    raise ConcurrencyError(
+                        f"event append could not acquire the database lock: {error}"
+                    ) from error
+                raise
             except BaseException:
-                self._connection.execute("ROLLBACK")
+                self._rollback_if_started(transaction_started)
                 raise
         return events
 
@@ -177,29 +196,26 @@ class SQLiteEventStore:
 
     def _apply_migrations(self) -> None:
         with self._lock:
+            transaction_started = False
             try:
                 self._connection.execute("BEGIN IMMEDIATE")
-                self._connection.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS schema_migrations (
-                        version INTEGER PRIMARY KEY,
-                        checksum TEXT NOT NULL
+                transaction_started = True
+                applied, user_version, metadata_exists = self._migration_state()
+                self._validate_migration_state(applied, user_version)
+
+                if not metadata_exists:
+                    self._connection.execute(
+                        """
+                        CREATE TABLE schema_migrations (
+                            version INTEGER PRIMARY KEY,
+                            checksum TEXT NOT NULL
+                        )
+                        """
                     )
-                    """
-                )
-                applied = {
-                    int(row["version"]): str(row["checksum"])
-                    for row in self._connection.execute(
-                        "SELECT version, checksum FROM schema_migrations"
-                    )
-                }
+
+                applied_versions = {version for version, _ in applied}
                 for migration in MIGRATIONS:
-                    known_checksum = applied.get(migration.version)
-                    if known_checksum is not None:
-                        if known_checksum != migration.checksum:
-                            raise MigrationError(
-                                f"migration {migration.version} checksum changed"
-                            )
+                    if migration.version in applied_versions:
                         continue
                     for statement in migration.statements:
                         self._connection.execute(statement)
@@ -208,11 +224,70 @@ class SQLiteEventStore:
                         (migration.version, migration.checksum),
                     )
                 latest = max((migration.version for migration in MIGRATIONS), default=0)
-                self._connection.execute(f"PRAGMA user_version = {latest}")
+                if user_version != latest:
+                    self._connection.execute(f"PRAGMA user_version = {latest}")
                 self._connection.execute("COMMIT")
-            except BaseException:
-                self._connection.execute("ROLLBACK")
+            except sqlite3.OperationalError as error:
+                self._rollback_if_started(transaction_started)
+                if _is_lock_error(error):
+                    raise MigrationError(
+                        f"migration could not acquire the database lock: {error}"
+                    ) from error
                 raise
+            except BaseException:
+                self._rollback_if_started(transaction_started)
+                raise
+
+    def _migration_state(self) -> tuple[tuple[tuple[int, str], ...], int, bool]:
+        metadata_exists = self._connection.execute(
+            """
+            SELECT 1 FROM sqlite_master
+            WHERE type = 'table' AND name = 'schema_migrations'
+            """
+        ).fetchone() is not None
+        applied = ()
+        if metadata_exists:
+            applied = tuple(
+                (int(row["version"]), str(row["checksum"]))
+                for row in self._connection.execute(
+                    "SELECT version, checksum FROM schema_migrations ORDER BY version"
+                )
+            )
+        user_version = int(self._connection.execute("PRAGMA user_version").fetchone()[0])
+        return applied, user_version, metadata_exists
+
+    @staticmethod
+    def _validate_migration_state(
+        applied: tuple[tuple[int, str], ...], user_version: int
+    ) -> None:
+        known = tuple((migration.version, migration.checksum) for migration in MIGRATIONS)
+        applied_versions = tuple(version for version, _ in applied)
+        expected_versions = tuple(version for version, _ in known[: len(applied)])
+        if applied_versions != expected_versions:
+            raise MigrationError(
+                "applied migration versions are not an exact recognized prefix: "
+                f"found {applied_versions}, expected {expected_versions}"
+            )
+
+        for (version, checksum), (_, expected_checksum) in zip(applied, known):
+            if checksum != expected_checksum:
+                raise MigrationError(f"migration {version} checksum changed")
+
+        expected_user_version = applied_versions[-1] if applied_versions else 0
+        if user_version != expected_user_version:
+            raise MigrationError(
+                f"user_version is {user_version}; expected {expected_user_version} "
+                "for the applied migration prefix"
+            )
+
+    def _rollback_if_started(self, transaction_started: bool) -> None:
+        if not transaction_started or not self._connection.in_transaction:
+            return
+        try:
+            self._connection.execute("ROLLBACK")
+        except sqlite3.Error:
+            # Cleanup failure must not hide the error that caused the rollback.
+            pass
 
 
 def _decode_event(payload: str) -> DomainEvent:
@@ -221,3 +296,8 @@ def _decode_event(payload: str) -> DomainEvent:
     except json.JSONDecodeError as error:
         raise InvalidEventBatchError("stored event payload is invalid JSON") from error
     return DomainEvent.from_dict(decoded)
+
+
+def _is_lock_error(error: sqlite3.OperationalError) -> bool:
+    message = str(error).lower()
+    return "locked" in message or "busy" in message

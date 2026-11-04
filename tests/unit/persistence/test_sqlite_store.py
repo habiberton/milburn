@@ -1,5 +1,6 @@
 """Public SQLite event-store behavior."""
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 import sqlite3
@@ -36,6 +37,21 @@ def event(
         causation_id=None,
         facts=tuple(EventFact(name=name, value=value) for name, value in facts),
     )
+
+
+def migration_metadata(database: Path) -> tuple[tuple[tuple[int, str], ...], int]:
+    connection = sqlite3.connect(database)
+    try:
+        rows = tuple(
+            (int(version), str(checksum))
+            for version, checksum in connection.execute(
+                "SELECT version, checksum FROM schema_migrations ORDER BY version"
+            )
+        )
+        user_version = int(connection.execute("PRAGMA user_version").fetchone()[0])
+        return rows, user_version
+    finally:
+        connection.close()
 
 
 def test_append_and_read_preserve_stream_and_global_order(tmp_path: Path) -> None:
@@ -192,7 +208,116 @@ def test_changed_applied_migration_is_rejected(tmp_path: Path) -> None:
         connection.commit()
     finally:
         connection.close()
+    before = migration_metadata(database)
 
     with pytest.raises(MigrationError, match="checksum changed"):
         SQLiteEventStore(database)
-from concurrent.futures import ThreadPoolExecutor
+
+    assert migration_metadata(database) == before
+
+
+@pytest.mark.parametrize(
+    "versions",
+    [
+        pytest.param((0, 1), id="unknown-version"),
+        pytest.param((1, 2), id="future-version"),
+        pytest.param((2,), id="gap-before-first-version"),
+    ],
+)
+def test_unrecognized_migration_sequences_are_rejected_without_metadata_changes(
+    tmp_path: Path, versions: tuple[int, ...]
+) -> None:
+    database = tmp_path / "events.sqlite3"
+    with SQLiteEventStore(database):
+        pass
+    connection = sqlite3.connect(database)
+    try:
+        checksum = connection.execute(
+            "SELECT checksum FROM schema_migrations WHERE version = 1"
+        ).fetchone()[0]
+        connection.execute("DELETE FROM schema_migrations")
+        connection.executemany(
+            "INSERT INTO schema_migrations (version, checksum) VALUES (?, ?)",
+            ((version, checksum) for version in versions),
+        )
+        connection.execute(f"PRAGMA user_version = {versions[-1]}")
+        connection.commit()
+    finally:
+        connection.close()
+    before = migration_metadata(database)
+
+    with pytest.raises(MigrationError, match="exact recognized prefix"):
+        SQLiteEventStore(database)
+
+    assert migration_metadata(database) == before
+
+
+def test_future_user_version_is_rejected_without_being_lowered(tmp_path: Path) -> None:
+    database = tmp_path / "events.sqlite3"
+    with SQLiteEventStore(database):
+        pass
+    connection = sqlite3.connect(database)
+    try:
+        connection.execute("PRAGMA user_version = 99")
+        connection.commit()
+    finally:
+        connection.close()
+    before = migration_metadata(database)
+
+    with pytest.raises(MigrationError, match="user_version is 99; expected 1"):
+        SQLiteEventStore(database)
+
+    assert migration_metadata(database) == before
+
+
+def test_user_version_must_agree_with_applied_prefix(tmp_path: Path) -> None:
+    database = tmp_path / "events.sqlite3"
+    with SQLiteEventStore(database):
+        pass
+    connection = sqlite3.connect(database)
+    try:
+        connection.execute("PRAGMA user_version = 0")
+        connection.commit()
+    finally:
+        connection.close()
+    before = migration_metadata(database)
+
+    with pytest.raises(MigrationError, match="user_version is 0; expected 1"):
+        SQLiteEventStore(database)
+
+    assert migration_metadata(database) == before
+
+
+def test_locked_append_preserves_explicit_concurrency_error(tmp_path: Path) -> None:
+    database = tmp_path / "events.sqlite3"
+    with SQLiteEventStore(database, busy_timeout_ms=1) as store:
+        locker = sqlite3.connect(database, isolation_level=None)
+        try:
+            locker.execute("BEGIN IMMEDIATE")
+            with pytest.raises(ConcurrencyError, match="database lock") as raised:
+                store.append(
+                    "feature:one",
+                    NO_STREAM,
+                    (event("event-1", "feature:one", 0),),
+                )
+            assert "cannot rollback" not in str(raised.value).lower()
+            assert isinstance(raised.value.__cause__, sqlite3.OperationalError)
+        finally:
+            locker.execute("ROLLBACK")
+            locker.close()
+
+
+def test_locked_migration_preserves_explicit_migration_error(tmp_path: Path) -> None:
+    database = tmp_path / "events.sqlite3"
+    with SQLiteEventStore(database):
+        pass
+    locker = sqlite3.connect(database, isolation_level=None)
+    try:
+        locker.execute("BEGIN IMMEDIATE")
+        with pytest.raises(MigrationError, match="database lock") as raised:
+            SQLiteEventStore(database, busy_timeout_ms=1)
+        assert "cannot rollback" not in str(raised.value).lower()
+        assert isinstance(raised.value.__cause__, sqlite3.OperationalError)
+    finally:
+        locker.execute("ROLLBACK")
+        locker.close()
