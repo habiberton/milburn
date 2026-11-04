@@ -2,11 +2,11 @@
 
 ## Current wave
 
-Wave 1 — Foundation; preparing sequential task `MB-004`
+Wave 2 — Independent boundaries; reconciling newly ready tasks
 
 ## Repository state
 
-- Integration branch: `bootstrap/coordinator/MB-004/a01-integration`
+- Integration branch: `main`
 - Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
 - Active workers: none
 - Pending candidates: none
@@ -267,6 +267,15 @@ Wave 1 — Foundation; preparing sequential task `MB-004`
   evidence-bearing PR #26: `https://github.com/habiberton/milburn/pull/26`.
   GitHub resolves `Closes #4` to the intended issue and reports the PR clean
   and mergeable.
+- PR #26 merged using GitHub's two-parent merge-commit method as
+  `0994a9ac5918ccc54ca3d91c39976e294d83506d`. The root fetched and verified
+  `origin/main` contains candidate
+  `d69b8627d780d03d0c421e19dbd1bfa743074b00`, integration commit
+  `bd0e306c7b4d47ce817da7744d9bab1bc895011b`, and PR tip
+  `64522a0a86dd79062e4ad3c826e19b7a87259eb1`, then fast-forwarded the primary
+  checkout to the exact merge SHA.
+- Post-fast-forward verification passed again: 71 orchestration tests, 177
+  total smoke tests, and 19 valid task records.
 
 ## Verification
 
@@ -285,5 +294,6 @@ None recorded. The user authorized the protected-branch PR workflow.
 
 ## Resume here
 
-Push the PR-record update, merge PR #26 only with a merge commit, verify
-`origin/main`, and fast-forward the primary checkout before advancing Wave 2.
+Apply the final `milburn:done` label to closed issue #4, reconcile Wave 2
+dependencies and GitHub labels, then prepare and dispatch the first two
+independent ready boundary tasks.
