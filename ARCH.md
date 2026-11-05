@@ -1,1136 +1,449 @@
-# Milburn Architecture Specification
+# Milburn Architecture
 
-**Status:** Greenfield v1 architecture
+**Status:** Approved by the user, 2026-11-04, with the recommendations in §13.
+Implements `PRD.md`.
+Replaces the v1 `ARCH.md` and `ARCHv2.md`. Citations follow `PRD.md`'s header:
+`ARCHv1 §n` is `ARCH.md` at `6db08eb`; `ARCHv2 D2-n` is on `design/v2-draft` at
+`d67063a`.
 
-**Product:** Milburn
-
-**Initial harness:** Codex only
-
-**Companion document:** `PRD.md`
-
-## 1. Architecture summary
-
-Milburn v1 is a local control plane for six specialized Codex roles. A persistent Coordinator provides the single user-facing chat while a deterministic controller retains authority. The controller advances an allowed workflow, records lifecycle facts, starts each Codex process in its own tmux window, isolates Coder changes in Git worktrees, uses GitHub issues as the task registry, and requires a separate Tester before completion.
+## 1. Summary
 
 ```text
-                              ┌──────────────────┐
-                              │     Operator     │
-                              └────────┬─────────┘
-                                       │ one continuing chat
-                              ┌────────▼─────────┐
-                              │ Codex Coordinator│
-                              └────────┬─────────┘
-                                       │
-                                       ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                    Milburn deterministic controller                 │
-│ Intake → state machine → transition guard → scheduler → supervisor  │
-│                 │                 │                  │               │
-│                 ▼                 ▼                  ▼               │
-│          Event store       GitHub MCP gateway   tmux + worktrees     │
-└──────────────────────────────────────┬──────────────────────────────┘
-                                       │ bounded launches
-                                       ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                    Codex agent plane: one window each               │
-│ Coordinator  Planner  Classifier/Router  Architect  Coder  Tester   │
-└──────────────────────────────────────┬──────────────────────────────┘
-                                       │
-                                       ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ PRD.md · ARCH.md · issues · commits · progress.txt · QA · events    │
-└─────────────────────────────────────────────────────────────────────┘
+User ⇄ Coordinator (Claude Code or Codex session, user-started)
+          │ calls
+          ▼
+      milburn CLI ──── event store (~/.milburn/projects/<id>/events.sqlite)
+          │  ├── worktree leases        ├── GitHub effect journal
+          │  ├── gates and QA gate      └── delivery (integrate, push, PR, merge)
+          │  launches headless
+          ▼
+   role agents (Coder, Tester, Architect, Designer)
+   one attempt each, one worktree each, Claude Code or Codex
 ```
 
-## 2. Architectural decisions
-
-### 2.1 Codex only
-
-Version 1 has one harness adapter: `CodexAdapter`. Routing chooses a role, not a harness or provider. The adapter boundary remains for future expansion, but no other adapter belongs in v1.
-
-### 2.2 No pricing or budget subsystem
-
-The controller does not attach prices to usage, accept budgets or cost ceilings,
-reserve funds, or route work based on spend. Codex-reported token usage is
-observability telemetry, not monetary policy. It is persisted only when the
-adapter reports it and does not introduce placeholder pricing or budget fields.
-Pricing and budgeting can later be added as a separate policy service.
-
-### 2.3 Every agent runs in tmux
-
-Coordinator, Planner, Classifier/Router, Architect, Coder, and Tester are Codex processes in dedicated tmux windows. Deterministic checks remain ordinary controller functions.
-
-The Coordinator window is logically persistent. Its individual model turns end while workers continue. Actionable events wake a new Coordinator turn; routine progress remains silent.
-
-### 2.4 Two durable records with distinct jobs
-
-- GitHub issues define and display implementation tasks and their workflow status.
-- Milburn events record agent attempts, tmux endpoints, worktrees, commands, recovery, and validation.
-
-A reconciler compares them after restart and asks for a decision when they conflict.
-
-### 2.5 Durable artifacts replace transcript handoff
-
-A replacement Coder receives the issue, specs, worktree, `progress.txt`, Git history, and current diff. It does not receive the prior private Codex transcript.
-
-### 2.6 Recommendations are not authority
-
-The Router proposes a role and the Tester supplies QA evidence. The deterministic transition guard and completion policy decide what may happen.
-
-### 2.7 GitHub uses a controller-owned MCP gateway
-
-The initial `GitHubGateway` implementation is an MCP client connected to a GitHub MCP server. Agents do not receive unrestricted GitHub mutation tools. They submit narrow Milburn commands, and controller code validates, authorizes, records, invokes, and reconciles each external effect.
-
-MCP is the transport boundary, not the policy or durability boundary. An MCP timeout is an uncertain outcome until Milburn reads GitHub state and determines whether the requested effect occurred.
-
-### 2.8 Logical agents outlive session generations
-
-Task ownership belongs to a logical role attempt, not to one Codex session.
-An attempt may span replaceable, monotonically fenced session generations.
-Replacement never copies the private transcript: it starts from a validated,
-versioned handoff manifest and durable controller state. One compaction
-observation alone is not a replacement trigger.
-
-### 2.9 Plan amendments fence dispatch
-
-A user-authorized change to product scope, policy, specifications, task graph,
-acceptance, or dispatch rules is a versioned plan amendment. New launch effects
-stop while an amendment is pending, but existing attempts keep ownership and
-generation unless an explicit impact decision says to steer, pause, or stop
-them. Applying an approved amendment requires an expected planning revision,
-durable remote evidence, and reconciliation before dispatch resumes.
-
-## 3. System boundaries
-
-### 3.1 Controller owns
-
-- Command validation and event appends.
-- Workflow transitions and scheduling.
-- Agent launch, steering, interruption, and retirement.
-- tmux identity and worktree ownership.
-- GitHub synchronization and idempotency.
-- GitHub MCP connection ownership, tool allow-listing, effect journaling, and reconciliation.
-- Coder protocol checks.
-- QA acceptance and completion.
-- Plan-amendment impact classification, expected-version application, and the
-  dispatch freeze/resume decision.
-
-The controller also owns the durable correlation between a worker question, the Coordinator presentation, the user's answer, and the worker acknowledgement.
-
-### 3.2 Coordinator owns
-
-The Coordinator owns conversational presentation: understanding the user's request, explaining status, presenting worker questions, collecting answers, and summarizing results. It submits bounded commands to the controller and cannot directly launch processes, mutate GitHub, or approve completion.
-
-### 3.3 Other Codex agents own
-
-Bounded language-and-tool tasks. Each instance has one role and one expected result. Agents cannot launch peers directly.
-
-### 3.4 Runtime owns
-
-tmux endpoint creation and control, process inspection, and verified lifecycle postconditions. Sending input alone is not proof of success.
-
-### 3.5 Workspace owns
-
-Mutating Coders receive dedicated worktrees. Tester validates a clean checkout of the exact candidate commit where practical.
-
-## 4. Workflow state machines
-
-Feature state:
-
-```text
-received → planning → architecture → issues_ready
-         → implementation → testing → completed
-
-Any active state may become decision_needed, blocked, failed, or cancelled.
-```
-
-Issue state:
-
-```text
-draft → blocked | ready → coding → qa → passed → done
-                            ↑       │
-                            └───────┘ changes_requested
-```
-
-Allowed role transitions:
-
-| Input | Allowed next role |
-|---|---|
-| New user request | Coordinator intake, then Planner or operator decision |
-| Accepted plan | Architect |
-| Ready issue | Coder |
-| Candidate commit | Tester |
-| QA changes requested | Coder |
-| QA reports design conflict | Architect or operator |
-| Ambiguous route | Operator |
-
-## 5. Components
-
-### 5.1 Intake service
-
-Normalizes the request, binds repository and base branch, assigns request and feature IDs, records delivery posture, and appends `RequestAccepted`.
-
-### 5.2 Coordinator session manager
-
-Maintains one primary Codex Coordinator endpoint per Milburn home. It:
-
-- Restores or launches the Coordinator tmux window.
-- Delivers user messages and actionable operational events.
-- Tracks unread event and open-decision cursors.
-- Records which decisions were presented to the user.
-- Accepts bounded Coordinator commands such as intake proposals and decision answers.
-- Prevents routine worker progress from creating unnecessary model turns.
-- Drains unread decisions and results when a closed interface resumes.
-
-The session manager does not permit the Coordinator to invoke runtime or GitHub mutations directly.
-Fresh model turns and replacement sessions retain the same logical Coordinator
-identity because decisions, notifications, cursors, and acknowledgements are
-durable and generation-fenced.
-
-### 5.3 Transition guard
-
-A pure deterministic service that rejects unknown roles and illegal state transitions before an agent launches.
-
-### 5.4 Classifier/Router coordinator
-
-1. Render a brief containing current state, latest event, known roles, and allowed transitions.
-2. Start a Codex Router in its own window.
-3. Collect one `RoleRouteProposal`.
-4. Validate it with the transition guard.
-5. Record approval, rejection, or escalation.
-
-The proposal contains no shell command, tmux target, credentials, or arbitrary launch arguments.
-
-### 5.5 Planner coordinator
-
-Starts a Codex Planner with the user goal, repository summary, scope, known decisions, and output contract. The Planner returns stages, dependencies, risks, and questions. It does not create issues or launch agents.
-
-### 5.6 Architect coordinator
-
-Starts a Codex Architect with the accepted plan. The Architect creates or updates `PRD.md` and `ARCH.md`, then returns dependency-aware `IssueDraft` objects.
-
-The Architect does not receive unrestricted GitHub credentials. Controller code validates and creates issues using stable idempotency keys.
-
-### 5.7 GitHub registry
-
-Reads issue metadata, creates validated issues, applies configured labels, adds run-linked comments, records dependencies, prevents duplicate creation, advances issue status, and reconciles remote state.
-
-The registry depends on a controller-owned gateway:
-
-```python
-class GitHubGateway(Protocol):
-    def get_repository(self, repository: RepositoryId) -> Repository: ...
-    def list_issues(self, query: IssueQuery) -> tuple[Issue, ...]: ...
-    def create_issue(self, command: CreateIssueCommand) -> Issue: ...
-    def add_comment(self, command: AddCommentCommand) -> IssueComment: ...
-    def set_labels(self, command: SetLabelsCommand) -> Issue: ...
-    def close_issue(self, command: CloseIssueCommand) -> Issue: ...
-```
-
-`GitHubMcpGateway` is the v1 implementation. It maps these operations to an allow-listed GitHub MCP tool set. The rest of Milburn does not depend on MCP tool names or wire format.
-
-Suggested idempotency key:
-
-```text
-milburn:<repository-id>:<feature-id>:<architect-task-key>
-```
-
-The key is stored in the issue body or a machine-readable comment and in Milburn events. Every mutation follows this sequence:
-
-```text
-validate role-specific command
-→ append GitHubEffectRequested(effect_id)
-→ reconcile by idempotency marker
-→ invoke the allow-listed MCP tool only if absent
-→ read GitHub state back
-→ append GitHubEffectObserved(remote identity)
-```
-
-If the MCP call times out, Milburn does not immediately retry. It searches for the effect marker first. Existing remote state is adopted; absent state permits a retry with the same effect ID; unreadable state remains unresolved.
-
-### 5.8 Agent GitHub permissions
-
-- **Coordinator:** may request bounded read-only status summaries; no direct mutation tools.
-- **Planner:** receives controller-prepared repository and issue summaries.
-- **Classifier/Router:** receives only workflow facts needed for routing.
-- **Architect:** reads bounded issue context and submits `IssueDraft` objects.
-- **Coder:** reads its assigned issue and submits progress or candidate commands.
-- **Tester:** reads its assigned issue and submits `QAReport`.
-
-Only controller code invokes GitHub mutations through the gateway.
-
-### 5.9 Scheduler
-
-An issue is schedulable only when dependencies are done, no Coder attempt is active, specs and approvals exist, a worktree slot is available, repository concurrency policy permits it, and no plan amendment is pending. Version 1 may allow only one active Coder globally.
-
-### 5.10 Worktree manager
-
-Validates the repository, creates branch `milburn/issue-<number>`, creates an attempt worktree, records path/base/branch, prevents simultaneous mutating ownership, preserves evidence, and deletes only controller-created validated paths.
-
-### 5.11 Coder coordinator
-
-Builds a brief from one issue, relevant spec sections, repository instructions, worktree identity, role rules, test instructions, and result contract. It records the hash of the rendered rules.
-
-`CoderProtocolGuard` verifies the progress file, issue-linked commits, claimed SHA, test evidence, and issue ownership before accepting a result.
-
-### 5.12 Tester coordinator
-
-Creates a clean validation workspace at the exact candidate SHA and launches a Codex Tester with the issue, acceptance criteria, specs, test instructions, and Coder evidence clearly labeled as claims. It returns a `QAReport` and does not edit the candidate branch by default.
-
-### 5.13 Supervisor
-
-Combines tmux existence, process identity, Codex semantic state when available, event age, Git and progress activity, and explicit results. It classifies attempts as `starting`, `busy`, `idle`, `waiting`, `unknown`, `stopped`, or `failed`. `unknown` is never automatically safe to replace.
-
-### 5.14 Session lifecycle and handoff policy
-
-`HandoffManifestValidator` checks task and attempt identity, issue and
-acceptance references, worktree, branch, base/head SHAs, progress, completed
-and remaining work, exact tests, open decisions, inbox/outbox sequences,
-uncertain effects, and brief/rules digests. A stale or mismatched manifest, a
-missing acknowledgement, or an unresolved effect hidden by the handoff blocks
-replacement. Manifests contain neither transcripts nor fabricated state.
-
-`SessionReplacementPolicy` applies role-specific boundaries:
-
-- Coordinator identity survives fresh turns and replacement sessions.
-- A Coder normally keeps one session for its task attempt; one compaction alone
-  does not replace it, and replacement requires a validated checkpoint.
-- Planner and Architect finish at approved artifact boundaries.
-- Classifier/Router uses short fresh calls.
-- Tester always starts fresh from the exact candidate SHA and acceptance
-  criteria.
-
-Replacement may follow repeated observable compaction, durable evidence of
-degraded or contradictory context, unrecoverable failure, an explicit
-independence requirement, or a completed semantic boundary. It first validates
-Git, progress, tests, decisions, acknowledgements, handoff freshness, and every
-uncertain external effect. A configured context-use percentage or absolute ceiling
-is an additional trigger; it applies only at a quiescent point after the same
-validation and is never the sole safety signal. Token telemetry may compare continuation and
-replacement, but it never restores budget policy or becomes the sole safety
-signal.
-
-### 5.15 Defect feedback service
-
-`DefectFeedbackService` accepts versioned observations from QA and controller
-boundaries, correlates repository, task, role, attempt, session generation,
-candidate SHA, and QA result, and records concise symptom and evidence. A
-resolution links resolver authority, fix commit, concise root cause and
-resolution, plus exact regression command and result evidence.
-
-Stable defect and evidence identities make duplicate reports, retries, and
-restart reconciliation idempotent. Projections expose open defects, resolved
-defects, per-task briefs, and recurring lessons. Completion policy rejects an
-unresolved blocking defect or a resolved blocking defect without regression
-evidence. Same-scope failures return to the Coder; separately scoped defects
-become linked GitHub issues through the controller-owned gateway.
-
-### 5.16 Plan amendment coordinator
-
-`PlanAmendmentCoordinator` records a user-authorized request, assesses every
-affected task and active attempt, and classifies active work as `unaffected`,
-`needs_steering`, `must_pause`, or `must_stop`. A pending amendment blocks
-`AgentLaunchRequested`, while unaffected attempts continue unchanged.
-
-Approval binds the expected planning revision plus registry, specification, and
-GitHub effect digests. Application appends one versioned fact, reconciles the
-remote merge revision, and resumes dispatch only when local and remote state
-agree. Stable amendment/effect IDs and expected-version writes make retry and
-replay idempotent. Restart restores both pending amendments and the dispatch
-freeze rather than applying or dropping them implicitly.
-
-### 5.17 Context, rework, and workspace policies
-
-These policies implement PRD sections 12.4 to 12.7. They add no new authority;
-they are controller policy over existing components.
-
-| Policy | Component | Task |
+The Coordinator thinks. The CLI checks, records, and performs every effect that
+matters. Role agents produce commits and schema-checked results. The v1 core idea
+stays: agents propose, deterministic code decides, external effects are journaled
+(review, "Verdict").
+
+## 2. Decisions
+
+- **A1. The CLI is not a daemon.** Each command opens the store, does its work, and
+  exits. Role-agent runs are detached child processes whose stdout is a log file;
+  `milburn collect` reads them. Nothing has to stay alive between commands except the
+  role-agent processes themselves. A live monitor is a later projection (R26).
+- **A2. Role agents run headless through structured channels.** Codex uses
+  `codex exec --json`; Claude Code uses `claude -p --output-format stream-json`.
+  Continuing a session uses each harness's resume command. No keyboard steering:
+  tmux is retired as a control plane (G1). Interrupt means stopping the process; the
+  Coder protocol's committed checkpoints make that safe.
+- **A3. The event store lives outside every writable root.** It sits under
+  `~/.milburn/projects/<project-id>/`, not in a worktree and not in the repository's
+  Git directory, which a Coder can write (G20). A role agent's sandbox therefore
+  cannot write it (R11).
+- **A4. One integration branch per work item.** Task branches are created from the
+  work item's integration branch head and merged back into it after QA passes. This
+  is the delivery path v1 lacked (review B1, G16).
+- **A5. Stages and task types are configuration.** A built-in process is a stage
+  table; a task is typed by data. Both are validated at load (ARCHv2 D2-1).
+- **A6. Retire, then delete.** Modules marked retire (§11) are unwired and deleted,
+  each in its own task, with the full suite passing after each removal.
+
+## 3. Actors and authority
+
+Every command and event names one actor:
+
+| Actor | Who | May |
 |---|---|---|
-| Launch brief generation, source digest, size budget, start-size observation, bounded state digest | Session lifecycle (5.14) with the Codex observation boundary (6.2) | MB-019 |
-| Context-use replacement trigger | `SessionReplacementPolicy` (5.14) | MB-019 |
-| Convergence and escalation policy | Tester coordinator (5.12) over `DefectFeedbackService` (5.15) | MB-014 |
-| Recurrence detection, user-accepted known limitation, bounded lessons in briefs | `DefectFeedbackService` (5.15) | MB-021 |
-| Shared test environment and bounded command runner | Workspace (3.5) and runtime | MB-013, MB-014 |
-| Read-only reconcile report, usage report | Supervisor (5.13) and operator CLI | MB-015, MB-016 |
+| `user` | Recorded via the Coordinator with the user's verbatim words | Answer questions, approve stages and skips, accept known limitations, approve repository creation |
+| `coordinator` | CLI invoked from the Coordinator's session | Every command except recording `user` decisions without a quote |
+| `controller` | The CLI itself, inside a command | Record its own decisions: request accepted, launch requested, worktree created, attempt started, testing requested, changes requested, task approved, work item delivered |
+| `role:<name>` | A role-agent run, via its collected result | Nothing directly; its result enters only through `milburn collect` |
 
-Design rules:
+This answers G2: controller decisions have an actor and a command of their own, and
+`domain/policies.py` gains `controller` in its actor table. A role agent cannot
+invoke a mutating command because its sandbox cannot open the store for writing
+(A3); the CLI also refuses a mutating command when `MILBURN_ATTEMPT_ID` is set in its
+environment, which every role launch sets.
 
-- The convergence policy is a pure function over recorded rounds (finding
-  identity, category, location, severity, round), so replay is deterministic.
-- A context-use threshold is an input to replacement. The validation in 5.14 stays
-  the safety gate, and unsupported observations never trigger it.
-- Events record durable log references for command output, not the output.
-- Environment preparation takes a lock, is idempotent, and leaves no partial
-  environment after a failed install.
-- Reconcile reads projections and external state and performs no writes; an
-  unreachable source yields `unknown`.
-- Only a recorded user decision creates an accepted known limitation.
+## 4. CLI commands
 
-Required tests: pure-policy unit tests for each escalation rule with negative
-cases; stale and over-budget brief rejection; a threshold trigger ignored without
-a quiescent point or on an unsupported observation; concurrent first-time
-environment preparation; reconcile reporting `unknown` and performing no writes.
+Output is one summary line plus `--json` for machines. Every mutating command
+takes an idempotency key (generated by default and recorded), checks preconditions
+before any effect, and leaves state consistent on failure.
 
-## 6. Codex adapter
+| Group | Commands | Notes |
+|---|---|---|
+| Setup | `init`, `config check` | Writes `.milburn/config.toml`, creates the store and worktree root (G14), verifies the OpenSpec pin, installs the Coordinator skill and harness rules |
+| State | `status [--digest]`, `events [--follow]`, `reconcile`, `usage` | Read-only. `--digest` is the bounded Coordinator resume (R32); `reconcile` reports unknown, never success, when a source is unreachable (PRDv1 §12.7) |
+| Process | `process list`, `process start <name>`, `stage skip <id> --reason`, `gate check <stage>` | Gates are named checks (§7) |
+| Questions | `question add/answer/assume/defer/withdraw`, `decision record` | Ledger per PRDv2 §4.2; `answer`, `assume`, and decisions need `--user-quote` |
+| Tasks | `task create`, `task ready`, `dispatch <task> [--role --harness]`, `collect <attempt>`, `attempt stop`, `attempt rotate` | `dispatch` leases a worktree, renders the brief, launches the run; `collect` parses and validates the result |
+| QA | `qa request <task>`, `task complete <task>` | The QA gate (§8) |
+| Delivery | `integrate <task>`, `deliver <work-item>` | Merge into the integration branch; push, PR, and merge per delivery mode (§5) |
+| Repository | `repo use <path>`, `repo create` | `create` refuses (§7.3) |
+| Specs | `spec validate`, `spec show`, `spec archive` | Wrapper over the pinned OpenSpec (ARCHv2 §4.9); `archive` is controller-only |
+| Run | `run -- <cmd>` | Bounded command output (R35); available to role agents |
 
-```python
-class CodexAdapter(Protocol):
-    def launch(self, request: LaunchRequest) -> AgentEndpoint: ...
-    def steer(self, endpoint: AgentEndpoint, message: SteeringMessage) -> Ack: ...
-    def status(self, endpoint: AgentEndpoint) -> AgentStatus: ...
-    def interrupt(self, endpoint: AgentEndpoint) -> ControlResult: ...
-    def collect(self, endpoint: AgentEndpoint) -> AgentResult: ...
-    def retire(self, endpoint: AgentEndpoint) -> ControlResult: ...
-```
+The CLI runs Git with `core.hooksPath` set to an empty directory, so hooks a role
+agent wrote in the shared Git directory never run with CLI authority.
 
-The adapter owns Codex command syntax, session arguments, permissions, result collection, and semantic status. The controller does not parse terminal colors or treat a prompt as completion.
-
-### 6.1 Token usage semantic boundary
-
-The adapter converts usage exposed by supported Codex session or result APIs
-into structured observations. It does not scrape terminal presentation or
-human-oriented prose. An observation identifies the task, role, attempt, Codex
-session or endpoint, and model when available; classifies itself as `partial`,
-`final`, or `unavailable`; and carries only the input, output, cached-input, and
-reasoning token fields actually reported by Codex.
-
-Every observation has a stable identity plus source-version and cumulative
-semantics so duplicate delivery and restart replay are idempotent. Missing or
-unsupported usage produces an explicit `unavailable` observation. The adapter
-never invents counts and the usage path never stores prompts or private
-transcripts.
-
-### 6.2 Session observation semantic boundary
-
-When supported, the adapter emits structured session identity, compaction, and
-context-usage observations with task, role, attempt, generation, endpoint or
-session ID, source version, observation time, and partial/final status.
-Unsupported fields are explicitly unavailable; terminal appearance and prose
-are never parsed. Stable observation identities make duplicate delivery and
-restart replay idempotent across both session and usage projections.
-
-## 7. tmux runtime
-
-```python
-class TmuxRuntime(Protocol):
-    def create_window(self, spec: WindowSpec) -> RuntimeEndpoint: ...
-    def send_doorbell(self, endpoint: RuntimeEndpoint, token: str) -> SendResult: ...
-    def inspect(self, endpoint: RuntimeEndpoint) -> RuntimeObservation: ...
-    def interrupt(self, endpoint: RuntimeEndpoint) -> RuntimeObservation: ...
-    def terminate(self, endpoint: RuntimeEndpoint) -> RuntimeObservation: ...
-```
-
-Endpoint identity includes session, window ID, pane ID, attempt ID, role, generation, process identity, and worktree when applicable. Titles are labels, not identifiers. Generation prevents a delayed command from affecting a replacement process.
-
-## 8. Role rule system
+## 5. Work items, branches, and delivery
 
 ```text
-milburn/role_rules/
-├── coordinator.md
-├── planner.md
-├── classifier_router.md
-├── architect.md
-├── tester.md
-└── coder/
-    ├── startup.md
-    ├── working.md
-    └── completion.md
+default branch ── milburn/w<id> (integration) ──┬── milburn/w<id>/t<id> (task)
+                                                └── milburn/w<id>/t<id> (task)
 ```
 
-`BriefRenderer` combines role rules, task context, repository instructions, and a result contract. The rendered brief and SHA-256 digest are recorded before launch. Rules guide the model; controller code enforces mechanically checkable rules.
+- **Creation.** A request that dispatches any task opens a work item. Its
+  integration branch starts at the default branch head.
+- **Task base.** `dispatch` creates the task worktree from the integration head at
+  that moment. The scheduler readies a task only when every dependency is
+  integrated, so the base contains them (B1).
+- **Integration.** `integrate <task>` requires `task complete` to have passed, then
+  merges the task branch into the integration branch with a merge commit. On
+  conflict it changes nothing and opens a rework attempt that merges the
+  integration head into the task branch; that rework goes through QA again.
+- **Specs.** A spec task's commits are integrated like any other task, so later
+  task worktrees contain the change folder (G6). After the last build task passes,
+  `spec archive` commits the archive on the integration branch.
+- **Delivery.** `deliver <work-item>` requires every task completed and integrated:
 
-### 8.1 Required Codex skill packages
+  | Mode | Effect |
+  |---|---|
+  | `local-only` | Records delivery. The integration branch stays local. No GitHub call. |
+  | `pr` | Pushes the integration branch, opens or updates one pull request, records it. Never merges. |
+  | `auto-merge` | As `pr`; then merges with a merge commit only if every task has a passed QA report for its integrated SHA, no stage QA was skipped, and every required check passes on the pushed head (review M5). Otherwise it reports what is missing and stays in `pr`. |
 
-Skills use progressive disclosure: `SKILL.md` contains purpose, routing, essential workflow, and important constraints; detailed schemas and mode-specific guidance live in referenced files; deterministic repeated checks live in scripts. Skills do not duplicate controller policy or generic Codex capabilities.
+- **Task IDs.** Work item and task IDs come from store sequences, not issue numbers,
+  so local mode cannot collide (G19). A GitHub issue, when one exists, is linked.
 
-```text
-.agents/skills/
-├── milburn-coordination/
-│   ├── SKILL.md
-│   └── references/
-│       ├── decision-presentation.md
-│       └── result-summary.md
-├── milburn-planning/
-│   ├── SKILL.md
-│   └── references/
-│       ├── plan-template.md
-│       └── planning-checklist.md
-├── milburn-routing/
-│   ├── SKILL.md
-│   └── references/
-│       └── routing-rules.md
-├── milburn-architecture/
-│   ├── SKILL.md
-│   ├── references/
-│   │   ├── prd-template.md
-│   │   ├── architecture-template.md
-│   │   ├── issue-template.md
-│   │   ├── ambiguity-checklist.md
-│   │   └── decomposition-rules.md
-│   └── scripts/
-│       └── validate-specs.py
-├── milburn-long-running-coder/
-│   ├── SKILL.md
-│   ├── references/
-│   │   ├── startup-checklist.md
-│   │   ├── progress-template.txt
-│   │   └── completion-checklist.md
-│   └── scripts/
-│       └── verify-handoff.py
-└── milburn-qa/
-    ├── SKILL.md
-    ├── references/
-    │   ├── qa-report-template.md
-    │   ├── acceptance-testing.md
-    │   └── defect-classification.md
-    └── scripts/
-        └── validate-qa-report.py
+## 6. Task types
+
+Task types live in `.milburn/config.toml`; Milburn ships these defaults (names
+provisional, open item 6):
+
+```toml
+[task_type.spec]
+role = "architect"
+result = "SpecResult"          # schema generated from the domain model
+rules = "role_rules/architect"
+skills = ["milburn-spec"]
+sandbox = "workspace-write"
+spec_format = "openspec"       # the default; the only format in this release
+qa = false                     # spec gate: `spec validate` plus scenario coverage
+
+[task_type.design]
+role = "designer"
+result = "DesignResult"
+skills = ["milburn-design"]
+sandbox = "workspace-write"
+qa = false                     # user approval is the gate
+
+[task_type.code]
+role = "coder"
+result = "CoderResult"
+rules = "role_rules/coder"     # long-running Coder protocol (PRDv1 §9, built in MB-013)
+skills = ["milburn-long-running-coder"]
+sandbox = "workspace-write"
+git_write = true               # adds the common Git directory (G20)
+qa = true
+
+[task_type.test]
+role = "tester"
+result = "QAReport"
+skills = ["milburn-qa"]
+sandbox = "read-only"
+harness = "other-than-coder"   # default; "any" turns it off (R8)
 ```
 
-Skill responsibilities:
+Validation at load: unknown roles, missing skills or schemas, unknown sandboxes,
+and `git_write` without `workspace-write` are rejected.
 
-- `milburn-coordination`: turn user language into bounded intake, explain worker questions without changing their meaning, correlate answers, and summarize verified outcomes.
-- `milburn-planning`: identify stages, dependencies, risks, decisions, and appropriate architecture work without launching agents or creating issues.
-- `milburn-routing`: select one known role, explain why, report confidence, and escalate ambiguity; it cannot authorize the transition.
-- `milburn-architecture`: perform discovery, request consequential decisions, create aligned PRD and architecture documents, design project lifecycle commands, and draft independently testable issues.
-- `milburn-long-running-coder`: recover from durable evidence, work one issue incrementally, maintain `progress.txt`, create issue-linked commits, test, and leave a clean handoff.
-- `milburn-qa`: validate the exact candidate SHA, map every acceptance criterion to evidence, distinguish product from infrastructure failure, and avoid silently fixing the candidate.
+`CoderResult` allows `blocked` and `decision_needed` with no commits; commits are
+required only for `candidate` (G21).
 
-### 8.2 Role-to-skill binding
+## 7. Built-in processes
 
-Role configuration declares required skills:
+### 7.1 Stage table shape
 
-```yaml
-roles:
-  coordinator:
-    required_skills: [milburn-coordination]
-  planner:
-    required_skills: [milburn-planning]
-  classifier_router:
-    required_skills: [milburn-routing]
-  architect:
-    required_skills: [milburn-architecture]
-  coder:
-    required_skills: [milburn-long-running-coder]
-  tester:
-    required_skills: [milburn-qa]
+```toml
+[process.<id>]
+title = "..."
+offer_when = "..."             # one line the Coordinator uses to offer it
+
+[[process.<id>.stage]]
+id = "..."
+actor = "coordinator" | "cli" | "task:<type>"
+inputs = ["<stage id>", ...]   # artifacts this stage reads
+gate = "<gate name>"           # a CLI check, §7.2
+skip = "user" | "policy:<name>" | "user,policy:<name>"
+returns_to = ["<stage id>"]    # allowed backward edges, e.g. design → discovery
+parallel = false               # true: many tasks of this stage run at once
 ```
 
-`SkillCatalog` validates names, frontmatter, referenced resources, and executable helpers before an attempt starts. It copies or mounts the approved skill into the workspace, explicitly names it in the launch brief, and records a `SkillBinding` containing name, version, root digest, and resource digests. A resumed or replacement attempt receives the current approved binding; a changed digest is visible as a new launch fact.
+Load-time validation rejects unknown gates and task types, unreachable stages, and
+any cycle not declared in `returns_to`. Every skip records reason and authority
+(R21).
 
-### 8.3 Skill authority boundary
+### 7.2 Gates
 
-A skill is instruction, not authority. It cannot grant a role GitHub mutation access, process-control access, a different worktree, completion rights, or permission to bypass an approval. Mechanically enforceable rules remain in controller policy and validation code. Skill scripts operate on bounded local inputs and must be tested before release.
-
-### 8.4 Skill validation
-
-Every skill receives:
-
-- Structural validation for metadata, naming, missing references, missing scripts, and unfinished placeholders.
-- Fixture-based behavioral checks using realistic inputs and result-contract validation.
-- Independent forward evaluations for complex behavior without revealing the expected answer to the evaluated agent.
-- Version and digest checks in launch contract tests.
-
-Tests assess artifacts and invariants, not exact wording.
-
-## 9. Long-running Coder design
-
-### 9.1 Progress path
-
-```text
-<worktree>/.milburn/issues/<issue-number>/progress.txt
-```
-
-It is issue-specific and committed to the issue branch.
-
-### 9.2 Startup algorithm
-
-```text
-verify attempt, issue, repository, worktree, branch, and base
-read AGENTS.md and repository guidance
-read the issue, dependencies, and comments
-read PRD.md and ARCH.md references
-read progress.txt
-inspect git status and uncommitted changes
-search git log for [#<issue-number>]
-inspect branch history and base..HEAD diff
-run the configured smoke test
-compare evidence with acceptance criteria
-select one coherent next action
-```
-
-### 9.3 Checkpoint checks
-
-Before a result is accepted:
-
-```text
-progress issue == assigned issue
-progress attempt == active attempt
-progress current head == claimed head
-claimed head is reachable from the recorded branch
-code-changing work has an issue-linked commit
-test evidence is present or explicitly blocked
-```
-
-### 9.4 Recovery algorithm
-
-```text
-project the active attempt from events
-inspect tmux endpoint and process
-inspect worktree lock, Git status, progress.txt, and GitHub issue
-
-if process is proven alive:
-    reconnect supervision
-elif process is proven stopped:
-    record recovery, increment generation, launch replacement
-else:
-    mark unknown and wait, escalate, or create a new worktree
-```
-
-The replacement always runs the full startup algorithm.
-
-### 9.5 Relationship to Anthropic's pattern
-
-Milburn adopts the durable progress file, Git history, incremental single-feature work, repeatable startup, clean handoff, and explicit end-to-end testing from Anthropic's [long-running agent research](https://www.anthropic.com/research/effective-harnesses-for-long-running-agents).
-
-Milburn changes the pattern by using GitHub issues instead of a local feature-list file, assigning initial decomposition to the Architect, assigning final QA to a separate Tester, and enforcing handoff rules in controller code.
-
-## 10. Data contracts
-
-Open-ended work remains prose. Durable facts use small typed envelopes.
-
-```text
-RequestEnvelope
-  request_id, feature_id, objective, repository_id, base_branch,
-  delivery_posture, submitted_at
-
-RoleRouteProposal
-  request_id, current_state, proposed_role, reason, confidence,
-  decision_needed
-
-DecisionRequest
-  decision_id, source_attempt_id, feature_id, issue_number, question,
-  why_it_matters, options, recommendation, blocking
-
-UserDecision
-  decision_id, coordinator_attempt_id, selected_option, answer,
-  answered_by, answered_at
-
-CoordinatorNotification
-  notification_id, kind, correlation_id, priority, summary,
-  unread, created_at
-
-PlanEnvelope
-  feature_id, summary, stages, dependencies, risks, decisions_needed
-
-ArchitecturePackage
-  feature_id, prd_artifact, arch_artifact, issue_drafts, open_decisions
-
-IssueDraft
-  task_key, title, objective, spec_links, acceptance_criteria,
-  dependencies, test_instructions, expected_artifacts, risks, non_goals
-
-GitHubEffect
-  effect_id, repository_id, operation, idempotency_marker,
-  requested_arguments_digest, status, remote_identity, last_observation
-
-AgentAttempt
-  attempt_id, role, feature_id, issue_number, worktree, branch,
-  base_sha, rules_digest, skill_bindings, status
-
-SessionGeneration
-  attempt_id, generation, endpoint, session_id, source_version,
-  started_at, status, fenced_at
-
-SessionObservation
-  observation_id, task_id, role, attempt_id, generation, endpoint,
-  session_id, kind, availability, source_version, observed_at, finality
-
-HandoffManifest
-  schema_version, role, task_id, attempt_id, issue_ref, acceptance_refs,
-  worktree, branch, base_sha, head_sha, progress_ref, completed, remaining,
-  test_evidence, open_decisions, inbox_sequence, outbox_sequence,
-  uncertain_effects, brief_digest, rules_digest
-
-DefectObservation
-  defect_id, repository_id, task_id, issue_number, role, attempt_id,
-  session_generation, candidate_sha, qa_report_id, discovery_phase,
-  severity, symptom, evidence, status
-
-DefectResolution
-  defect_id, fix_commit, root_cause, resolution_summary,
-  regression_command, regression_evidence, resolver_authority, status
-
-PlanAmendment
-  amendment_id, authority, requested_change, affected_tasks,
-  active_work_impacts, specification_revision, registry_revision,
-  github_effects, expected_version, decision, effective_revision, status
-
-TokenUsageObservation
-  observation_id, source_version, task_id, role, attempt_id, endpoint,
-  model, kind, input_tokens, output_tokens, cached_input_tokens,
-  reasoning_tokens, cumulative, observed_at
-
-TokenUsageSummary
-  attempt_totals, task_totals, role_totals, workflow_totals,
-  availability, finality
-
-SkillBinding
-  skill_name, version, root_digest, resource_digests,
-  workspace_path, validated_at
-
-CoderResult
-  attempt_id, issue_number, outcome, head_sha, progress_path,
-  commits, files_changed, test_claims, risks
-
-QAReport
-  attempt_id, issue_number, candidate_sha, outcome,
-  acceptance_results, commands, evidence_artifacts, defects, summary
-```
-
-## 11. Event streams and order
-
-Suggested streams:
-
-```text
-feature:<feature-id>
-issue:<repository-id>:<issue-number>
-agent:<attempt-id>
-runtime:<attempt-id>
-github:<repository-id>
-effect:github:<effect-id>
-coordinator:<milburn-home-id>
-decision:<decision-id>
-usage:<attempt-id>
-session:<attempt-id>
-defect:<repository-id>:<defect-id>
-amendment:<feature-id>:<amendment-id>
-```
-
-Typical issue sequence:
-
-```text
-GitHubIssueReady → RoleRouteProposed → RoleRouteApproved
-→ CoderAttemptRequested → WorktreeCreated → AgentLaunchRequested
-→ AgentStarted → CoderCheckpointObserved* → CoderResultReceived
-→ TestingRequested → TesterStarted → TestResultReceived
-→ IssueApproved | ChangesRequested | DecisionRequired
-```
-
-Commands request effects; events record observed facts. `AgentStarted` is appended only after start evidence is observed.
-
-Usage sequence:
-
-```text
-AgentUsageObserved* → AgentUsageFinalized | AgentUsageUnavailable
-```
-
-Usage events are append-only. Projection replay de-duplicates stable
-observation identities, reconciles cumulative partial observations with final
-totals, and derives per-attempt, task, role, and workflow summaries without
-reading agent transcripts. Replaying the same event set after restart produces
-the same totals.
-
-Session lifecycle sequence:
-
-```text
-SessionObservationRecorded* → HandoffManifestValidated
-→ SessionReplacementRequested → SessionGenerationFenced
-→ SessionGenerationStarted → SessionReplacementCompleted
-```
-
-Generation is part of every endpoint and message correlation. Once fenced, a
-generation cannot receive steering or lifecycle commands. Before replacement,
-uncertain external effects are reconciled rather than copied forward or
-retried; replay reconstructs every generation and the latest valid checkpoint
-deterministically.
-
-Defect feedback sequence:
-
-```text
-DefectObserved → DefectResolutionProposed → DefectResolved
-→ RegressionEvidenceRecorded
-```
-
-Each event has a stable correlation identity. Replay derives identical open,
-resolved, per-task, and recurring-lesson projections; duplicate QA reports or
-reconciliation retries do not duplicate defects or evidence.
-
-Plan amendment sequence:
-
-```text
-PlanAmendmentRequested → PlanAmendmentImpactAssessed
-→ PlanAmendmentApproved | PlanAmendmentRejected
-→ PlanAmendmentApplied → AgentDispatchResumed
-```
-
-The request freezes new launches before impact assessment. Application checks
-the expected planning version, and dispatch resumes only after the effective
-commit and remote merge are observed and reconciled.
-
-GitHub mutation sequence:
-
-```text
-GitHubEffectRequested → GitHubEffectReconciled
-→ GitHubMcpCallStarted → GitHubEffectObserved | GitHubEffectUncertain
-```
-
-Coordinator decision sequence:
-
-```text
-DecisionRequested → CoordinatorNotificationQueued
-→ DecisionPresented → UserDecisionReceived
-→ DecisionAnswerValidated → SteeringQueued
-→ SteeringDelivered → SteeringAcknowledged
-→ DecisionResolved → AgentResumed
-```
-
-## 12. Steering and lifecycle control
-
-Full steering messages are written to:
-
-```text
-<milburn-home>/inboxes/<attempt-id>/<sequence>.json
-```
-
-Milburn sends only a short doorbell token to the window. Lifecycle operations are separately allow-listed: `interrupt`, `terminate`, `resume`, `replace`, and `retire`. Each requires an observed postcondition.
-
-### 12.1 Coordinator wake and reply path
-
-The Coordinator does not keep one model turn loading while workers run. Its turn ends after acknowledgement or reporting. `CoordinatorSessionManager` watches the durable notification queue and starts a new Coordinator turn only for actionable items.
-
-For a worker question:
-
-1. The worker publishes a structured `DecisionRequest` to its outbox.
-2. The controller validates it, records it, marks the worker `waiting_user`, and queues a Coordinator notification.
-3. The session manager writes the notification to the Coordinator inbox and sends a doorbell to its tmux endpoint.
-4. The Coordinator explains the decision in the user chat and reports `DecisionPresented`.
-5. The user's next message is correlated with the open decision. The Coordinator submits a `UserDecision` command to the controller.
-6. The controller validates and records the answer, writes it to the originating worker's inbox, and sends that worker a doorbell.
-7. The worker acknowledges the message before the decision is resolved and work resumes.
-
-If the user interface or Coordinator session is unavailable, the notification remains unread. A resumed or replacement Coordinator drains open decisions and terminal results from durable state before handling unrelated conversation.
-
-## 13. Failure handling
-
-- **Codex exits without a result:** preserve worktree and progress; record exit separately from task failure.
-- **Progress evidence missing:** reject at `CoderProtocolGuard`; do not mark complete.
-- **GitHub MCP unavailable:** keep a pending effect and retry with the same effect ID only after the server and repository can be read again.
-- **GitHub MCP mutation times out:** mark the effect uncertain, search GitHub for its idempotency marker, and never assume either success or failure.
-- **MCP tool set changes:** fail startup compatibility checks if required allow-listed tools or expected argument fields are unavailable.
-- **Tester infrastructure fails:** return `failed`, not `changes_requested`, unless product evidence exists.
-- **Specs and issue conflict:** pause and route to Architect or operator.
-- **tmux endpoint missing:** mark `unknown` until process and workspace evidence are reconciled.
-- **Coordinator unavailable:** retain unread notifications and open decisions; workers remain in `waiting_user` and are not treated as failed.
-- **Coordinator answer is ambiguous:** keep the decision open and ask the user to clarify rather than guessing which worker instruction to send.
-- **Compaction observed:** record the semantic observation; do not replace a session solely because one compaction occurred.
-- **Replacement requested:** validate the durable handoff, fence the old generation, and reconcile uncertain effects before launching the next generation.
-- **Late generation message:** reject it without delivery or state transition.
-- **Blocking defect unresolved:** retain the task before `done` and return
-  same-scope evidence to the Coder.
-- **Defect outside task scope:** create a linked issue through controller policy
-  rather than hiding it in the current task.
-- **Plan amendment pending:** preserve active attempts according to their impact
-  decisions and reject every new launch request until the amendment is applied
-  and its remote revision reconciled.
-
-## 14. Security model
-
-tmux organizes processes and worktrees isolate changes; neither is a security sandbox. The GitHub MCP credential is owned by the controller, restricted to selected repositories, and initially limited to metadata read, issue read/write, pull-request read, and checks read. Merge, release, administration, and repository-content write permissions are excluded from v1. Secrets never enter briefs, progress files, issues, events, terminal captures, or defect feedback. Defect records contain concise evidence and links, never prompts, transcripts, chain-of-thought, private reasoning, or unbounded logs. Repository and issue text are untrusted data, and destructive or publishing actions require policy approval.
-
-## 15. Observability
-
-The operator can answer which feature and issue are active, which logical role and session generation are running and why, which tmux endpoint and process belong to them, which worktree and SHAs are involved, when progress last changed, which issue-linked commits exist, what QA found, which blocking or resolved defects and regression evidence correlate with the candidate and fix commits, which plan amendment authority and change are pending or effective, how active work was classified, which revision applies, whether dispatch is frozen, whether the attempt is busy, waiting, unknown, stopped, or failed, why a session continued, rotated, or was replaced, which Coordinator notifications remain unread, and which decisions are still open.
-
-## 16. Proposed source tree
-
-```text
-milburn/
-├── .agents/
-│   └── skills/
-│       ├── milburn-coordination/
-│       ├── milburn-planning/
-│       ├── milburn-routing/
-│       ├── milburn-architecture/
-│       ├── milburn-long-running-coder/
-│       └── milburn-qa/
-├── config/
-│   ├── roles.yaml
-│   ├── policies.yaml
-│   └── github-labels.yaml
-├── docs/
-│   ├── operations.md
-│   ├── recovery.md
-│   ├── session-lifecycle.md
-│   └── testing.md
-├── pyproject.toml
-├── README.md
-├── PRD.md
-├── ARCH.md
-├── src/
-│   └── milburn/
-│       ├── app/
-│       │   ├── cli.py
-│       │   ├── bootstrap.py
-│       │   └── configuration.py
-│       ├── domain/
-│       │   ├── commands.py
-│       │   ├── events.py
-│       │   ├── models.py
-│       │   ├── usage.py
-│       │   ├── sessions.py
-│       │   ├── defects.py
-│       │   ├── amendments.py
-│       │   ├── states.py
-│       │   ├── policies.py
-│       │   └── errors.py
-│       ├── orchestration/
-│       │   ├── controller.py
-│       │   ├── workflow.py
-│       │   ├── scheduler.py
-│       │   ├── coordinator.py
-│       │   ├── notifications.py
-│       │   ├── handoffs.py
-│       │   ├── session_policy.py
-│       │   ├── session_replacement.py
-│       │   ├── feedback.py
-│       │   ├── plan_amendments.py
-│       │   ├── supervisor.py
-│       │   └── reconciliation.py
-│       ├── agents/
-│       │   ├── codex_adapter.py
-│       │   ├── briefs.py
-│       │   ├── result_parser.py
-│       │   ├── usage.py
-│       │   ├── session_observations.py
-│       │   ├── skill_catalog.py
-│       │   └── role_rules/
-│       │       ├── coordinator.md
-│       │       ├── planner.md
-│       │       ├── classifier_router.md
-│       │       ├── architect.md
-│       │       ├── tester.md
-│       │       └── coder/
-│       │           ├── startup.md
-│       │           ├── working.md
-│       │           └── completion.md
-│       ├── runtime/
-│       │   ├── tmux.py
-│       │   ├── processes.py
-│       │   ├── worktrees.py
-│       │   └── messaging.py
-│       ├── integrations/
-│       │   ├── mcp/
-│       │   │   ├── client.py
-│       │   │   └── effects.py
-│       │   └── github/
-│       │       ├── gateway.py
-│       │       ├── registry.py
-│       │       └── contracts.py
-│       ├── persistence/
-│       │   ├── sqlite_store.py
-│       │   ├── projections.py
-│       │   ├── usage_projections.py
-│       │   ├── session_projections.py
-│       │   ├── defect_projections.py
-│       │   ├── amendment_projections.py
-│       │   └── migrations/
-│       ├── validation/
-│       │   ├── coder_protocol.py
-│       │   ├── issue_contracts.py
-│       │   ├── qa_policy.py
-│       │   ├── handoff_manifest.py
-│       │   ├── session_replacement.py
-│       │   ├── defect_policy.py
-│       │   ├── amendment_policy.py
-│       │   └── skill_validation.py
-│       └── observability/
-│           ├── logging.py
-│           ├── feedback_views.py
-│           └── operator_views.py
-└── tests/
-    ├── fakes/
-    │   ├── clock.py
-    │   ├── ids.py
-    │   ├── event_store.py
-    │   ├── codex.py
-    │   ├── tmux.py
-    │   ├── github.py
-    │   └── mcp.py
-    ├── fixtures/
-    │   ├── agents/
-    │   ├── skills/
-    │   ├── repositories/
-    │   └── workflows/
-    ├── unit/
-    │   ├── domain/
-    │   ├── orchestration/
-    │   ├── agents/
-    │   ├── runtime/
-    │   ├── integrations/
-    │   ├── persistence/
-    │   └── validation/
-    ├── contract/
-    │   ├── codex/
-    │   ├── tmux/
-    │   └── github_mcp/
-    ├── integration/
-    │   └── workflows/
-    ├── recovery/
-    ├── skills/
-    └── evals/
-```
-
-No pricing, budget, cost-ceiling, reservation, spend-routing, provider-registry,
-or non-Codex-adapter module belongs in v1. Usage modules are limited to
-observability-only Codex-reported token telemetry.
-
-## 17. Required tests
-
-### 17.1 Test framework and determinism
-
-The default test stack is `pytest`, `pytest-timeout`, and `pytest-xdist`; `hypothesis` is recommended for reducer and state-machine invariants once the basic suite is stable. Tests use a controllable clock, deterministic ID source, temporary directories, and explicit random seeds. Unit tests never sleep or depend on wall-clock timing.
-
-Ordinary unit and scripted integration tests must not launch Codex, tmux, GitHub, or a network connection. External boundaries are injected through protocols and replaced with:
-
-```text
-FakeClock
-DeterministicIdGenerator
-InMemoryEventStore
-FakeCodexAdapter
-FakeTmuxRuntime
-FakeGitHubGateway
-FakeMcpClient
-FakeNotificationQueue
-FakeWorktreeManager
-```
-
-### 17.2 Unit tests
-
-Unit tests cover one policy or state transition at a time:
-
-| Package | Required coverage |
+| Gate | Passes when |
 |---|---|
-| `domain` | Event versions, serialization, command validation, legal and illegal states, usage, defect, and plan-amendment invariants |
-| `orchestration` | Scheduling, dependencies, decision correlation, notification cursors, handoff validation, fenced session replacement, defect feedback, plan-amendment dispatch gates, reconciliation choices |
-| `agents` | Brief assembly, result parsing, role/skill binding, digest recording, Codex-reported usage and session-observation conversion |
-| `runtime` | Endpoint parsing, generation protection, safe paths, inbox sequencing |
-| `integrations.mcp` | Tool discovery, argument mapping, timeout/error classification, effect states |
-| `integrations.github` | Issue contracts, idempotency markers, read-after-write, uncertain-effect reconciliation |
-| `persistence` | Expected sequence, replay determinism, migrations, concurrent append rejection, idempotent usage, session, defect, and amendment projections |
-| `validation` | Progress parsing, commit markers, candidate SHA, QA and regression evidence, defect completion policy, amendment expected-version policy, skill structure, handoff freshness, generation fencing |
+| `goal-recorded` | A goal statement with a user quote is recorded |
+| `repository-ready` | §7.3 checks pass |
+| `grill` | ARCHv2 §4.3 conditions 1 to 4 |
+| `design-approved` | A recorded user approval names one `DesignSpec` digest |
+| `spec-valid` | `spec validate` passes, every requirement has a scenario, IDs are unique |
+| `tasks-cite-scenarios` | Every build task cites at least one existing scenario ID (skipped when the spec stage was skipped) |
+| `candidate-protocol` | The MB-013 `CoderProtocolGuard` accepts the candidate |
+| `qa-passed` | §8 |
+| `delivered` | §5 delivery recorded for the mode |
 
-Core controller, state-machine, event-store, effect-journal, and validation branches target at least 90% branch coverage. Coverage is a diagnostic; required behavioral invariants remain the release gate.
+### 7.3 Repository stage
 
-### 17.3 Skill tests
+- `repo use <path>`: the path is a Git repository, its tree is clean, and it has no
+  commits beyond an optional initial commit. The user named the path (recorded
+  quote).
+- `repo create`: requires a recorded user approval, then refuses with
+  `not available yet: repository creation is undecided`. The command, its approval
+  check, and its refusal event exist so a later decision changes one function.
 
-Skill tests include:
+### 7.4 Start from scratch
 
-- Structural validation of frontmatter, names, references, scripts, and unfinished placeholders.
-- Fixture-based checks against realistic new-repository, ambiguous-requirement, failed-QA, and recovery cases.
-- Script tests for `validate-specs.py`, `verify-handoff.py`, and `validate-qa-report.py`.
-- Launch contract tests proving required skill availability and digest recording.
-- Independent forward evaluations for complex skills without supplying the expected answer to the evaluated agent.
+```toml
+[process.start-from-scratch]
+title = "Start from scratch"
+offer_when = "The user wants to build a new product or repository from an idea"
 
-Tests validate artifacts and invariants rather than exact generated wording.
-
-### 17.4 Scripted-agent integration tests
-
-`ScriptedAgent` fixtures return predetermined `PlanEnvelope`, `ArchitecturePackage`, `CoderResult`, `DecisionRequest`, and `QAReport` objects. These tests exercise complete workflows without model calls:
-
-- Coordinator intake through plan and issue creation.
-- Architect question through user answer and acknowledgement.
-- Ready issue through Coder candidate and Tester pass.
-- Failed QA through changes requested and replacement Coder.
-- Controller restart with unread Coordinator events and active work.
-
-### 17.5 Contract tests
-
-- **Codex:** launch, steer, status, interrupt, collect, and retire with observed postconditions.
-- **tmux:** stable window IDs, duplicate titles, generation isolation, missing endpoints, and termination proof.
-- **GitHub MCP:** tool discovery, schema compatibility, result conversion, timeout classification, read-after-write, and idempotency reconciliation against a local stub server.
-- **Git:** branch/worktree creation, issue-linked commit search, uncommitted changes, and safe cleanup in temporary repositories.
-
-Live GitHub MCP compatibility uses a dedicated test repository and protected credentials; it is not required on every commit.
-
-### 17.6 Recovery and fault injection
-
-The suite deliberately stops the controller after each important boundary:
-
-```text
-after GitHubEffectRequested, before the MCP call
-after the MCP call, before the remote identity is recorded
-after issue creation, before read-after-write completes
-after worker inbox write, before the doorbell
-after the doorbell, before acknowledgement
-after a Coder commit, before progress update
-after progress update, before result collection
-after Tester pass, before issue closure
-after handoff validation, before generation fencing
-after generation fencing, before replacement launch
-after replacement launch, before uncertain-effect reconciliation completes
-after defect observation, before resolution
-after defect resolution, before regression evidence
-after amendment request, before impact assessment
-after amendment merge, before dispatch resumption
+[[process.start-from-scratch.stage]]
+id = "goal";       actor = "coordinator"; gate = "goal-recorded"
+[[process.start-from-scratch.stage]]
+id = "repository"; actor = "cli";         gate = "repository-ready"; inputs = ["goal"]
+[[process.start-from-scratch.stage]]
+id = "discovery";  actor = "coordinator"; gate = "grill";            inputs = ["goal"]; skip = "user"
+[[process.start-from-scratch.stage]]
+id = "design";     actor = "task:design"; gate = "design-approved";  inputs = ["discovery"]
+skip = "user,policy:not-user-facing"; returns_to = ["discovery"]
+[[process.start-from-scratch.stage]]
+id = "spec";       actor = "task:spec";   gate = "spec-valid";       inputs = ["discovery", "design"]; skip = "user"
+[[process.start-from-scratch.stage]]
+id = "tasks";      actor = "coordinator"; gate = "tasks-cite-scenarios"; inputs = ["spec"]
+[[process.start-from-scratch.stage]]
+id = "build";      actor = "task:code";   gate = "candidate-protocol"; inputs = ["tasks"]; parallel = true
+[[process.start-from-scratch.stage]]
+id = "qa";         actor = "task:test";   gate = "qa-passed";        inputs = ["build"]; parallel = true; skip = "user"
+[[process.start-from-scratch.stage]]
+id = "delivery";   actor = "cli";         gate = "delivered";        inputs = ["qa"]
 ```
 
-Restart must not duplicate issues, launches, user decisions, unsafe steering, or completion. It must not reuse a possibly live worktree or discard an uncertain external effect.
+(Semicolons separate keys for brevity here; the shipped file uses one key per line.)
 
-### 17.7 Live Codex evaluations
+"Add a feature" is the same table without `goal` and `repository`. "Fix a bug"
+is `triage` (coordinator, `grill`), `spec` (skipped by `policy:bug-no-behavior-change`
+unless the user turns it on), `build` (the brief requires a failing regression test
+first), `qa`, and `delivery`.
 
-An opt-in suite evaluates behavior that deterministic tests cannot prove:
+## 8. QA gate
 
-- Architect asks about consequential ambiguity but avoids unnecessary questions.
-- Architect produces aligned specs and agent-sized issues.
-- Coder follows startup recovery, updates progress, and avoids unrelated work.
-- Tester remains independent and distinguishes infrastructure failure.
-- Coordinator preserves the meaning, options, and recommendation of worker questions.
-- Router selects only known roles and escalates low-confidence ambiguity.
+`task complete <task>` passes only when all of these hold; otherwise it lists each
+unmet condition:
 
-These evaluations run manually or on a protected schedule with bounded fixtures, isolated workspaces, and explicit cost limits. They never receive production credentials.
+1. The candidate SHA is the task branch head and passed `candidate-protocol`.
+2. A `QAReport` with outcome `passed` names that SHA.
+3. The report's attempt is a Tester attempt for this task, distinct from every Coder
+   attempt and from the Coordinator.
+4. Unless the task type says `harness = "any"`, the Tester's harness differs from the
+   harness of the Coder attempt that produced the SHA.
+5. Every scenario ID the task cites is mapped to evidence in the report.
+6. No blocking defect is open without a user-accepted limitation (PRDv1 §12.5).
 
-### 17.8 CI gates
+`changes_requested` opens a new Coder attempt on the same task worktree; the lease
+moves to the new attempt explicitly, and only the latest attempt may act (issue #55)
+(G17). The rework convergence rules in PRDv1 §12.5 run on the recorded findings.
 
-Every commit runs unit tests, static analysis, formatting checks, skill structural validation, scripted-agent workflows, and local MCP-stub tests. Pull requests additionally run tmux contracts, temporary-Git contracts, recovery tests, and fault injection. Nightly or manually approved workflows run live Codex evaluations, live GitHub MCP compatibility, and the full reference application workflow.
+## 9. Harness adapters and telemetry
 
-## 18. Implementation order
+### 9.1 Adapter seam
 
-1. Define command, event, feature, issue, attempt, and result contracts.
-2. Build event store and replay.
-3. Build workflow state machine and transition guard.
-4. Build tmux runtime and verified postconditions.
-5. Build Codex adapter and live contract tests.
-6. Persist adapter-reported usage observations and replayable summaries.
-7. Persist session observations, projections, and validated handoff manifests.
-8. Build role-rule rendering, `SkillCatalog`, skill validation, role bindings, and digest recording.
-9. Create and fixture-test the six required skill packages.
-10. Build the persistent Coordinator session, notification queue, and decision round trip.
-11. Build the controller-owned MCP client, GitHub gateway, effect journal, registry, and reconciliation.
-12. Build Planner and Router coordinators.
-13. Build Architect and issue validation.
-14. Build worktree manager and Coder coordinator.
-15. Build protocol guard and progress watcher.
-16. Build Tester and QA policy.
-17. Add role-specific fenced session replacement policy.
-18. Add durable defect resolution, regression evidence, replayable feedback, and completion gates.
-19. Add durable plan amendments, expected-version application, replay, and dispatch fencing.
-20. Add recovery drills, fault injection, CI gates, live evaluations, and operator views.
+`HarnessAdapter` replaces `CodexAdapter` as the seam (decision 9). Per harness it
+builds the launch command and environment, parses the event stream into activity,
+usage, and the final result, and builds a resume command.
 
-## 19. Definition of architectural completion
+| Concern | Codex | Claude Code |
+|---|---|---|
+| Launch | `codex exec --json --sandbox <mode> [--add-dir <d>] --output-schema <file> -` | `claude -p --output-format stream-json --verbose --permission-mode <mode> [--add-dir <d>]` |
+| Result | Last completed `agent_message` (built in #64) | Final `result` message |
+| Schema enforcement | `--output-schema` | Needs validation (open item 2); otherwise validate after the run and reject |
+| Resume | `codex exec resume <session>` | `claude -p --resume <session>` |
+| Config isolation | `--ignore-user-config` or per-attempt `CODEX_HOME` (needs validation, G18) | Needs validation (open item 3) |
+| Sandbox | Required argument; `read-only` or `workspace-write` only. A missing sandbox is refused, never defaulted from user config (G12 follow-up from #64) | Needs validation |
 
-```text
-user request in the persistent Coordinator chat
-→ controller-accepted intake
-→ skill-bound Coordinator, Planner, Router, Architect, Coder, and Tester attempts
-→ plan
-→ PRD.md and ARCH.md
-→ dependency-aware GitHub issues created through the controller-owned MCP gateway
-→ one isolated Coder attempt per ready issue
-→ durable progress.txt and issue-linked commits
-→ independent Tester evidence
-→ controller-approved completion
-→ Coordinator-delivered result
-```
+Every launch sets `MILBURN_ATTEMPT_ID`, `GIT_AUTHOR_NAME`/`EMAIL`, and
+`GIT_COMMITTER_NAME`/`EMAIL` to a per-attempt identity (G22), through a new
+`ProcessLaunch.env` field. Skills are installed into each worktree at the harness's
+own path (`.agents/skills` for Codex, `.claude/skills` for Claude Code), copied
+from the pinned catalog with digests checked (G9). Role rules, skills, and schemas
+ship as package data (G11).
 
-Every step remains understandable after restart and without access to prior private transcripts. Deterministic tests cover policy and recovery, while protected live evaluations cover model behavior that cannot be proven with fixtures.
+### 9.2 Events
+
+The event store keeps its v1 design (ARCHv1 §11: append-only, versioned,
+optimistic sequencing, replay). The event envelope gains `work_item`, `task`,
+`attempt`, `generation`, `role`, `harness`, `source`, and `fidelity` (ARCHv2 §4.11).
+New event families: stage and gate events, question ledger events, delivery
+events, and `AgentUsageObserved` / `AgentActivityObserved` (G10). Amendment and
+routing events stop being emitted (§11).
+
+### 9.3 Usage mapping
+
+| Milburn field | Codex `turn.completed.usage` | Claude Code `result.usage` (needs validation) |
+|---|---|---|
+| `input_tokens` | `input_tokens` | `input_tokens` |
+| `cached_input_tokens` | `cached_input_tokens` | `cache_read_input_tokens` |
+| `cache_write_tokens` | `cache_write_input_tokens` | `cache_creation_input_tokens` |
+| `output_tokens` | `output_tokens` | `output_tokens` |
+| `reasoning_tokens` | `reasoning_output_tokens` | unavailable |
+
+Absent fields are recorded as unavailable, never zero (PRDv1 §12.1). Codex rollout
+logs record per-call `token_usage_record` events, not cumulative totals; the
+adapter must not add a cumulative and a per-call figure together.
+
+## 10. Context and token discipline: evidence and mechanisms
+
+| Requirement | Evidence from building Milburn | Mechanism |
+|---|---|---|
+| R31 | 27 of 58 bootstrap spawns inherited the transcript and used 142.4M of 171.4M subagent input tokens; their first call averaged 155k tokens against 21k for fresh spawns | `dispatch` always launches fresh with a brief; there is no fork option |
+| R32 | The root used 172.8M of 346M input tokens, mostly re-reading context during an 18-step manual integration; a fresh root started near 20k | `status --digest`; `integrate` and `deliver` are single commands |
+| R33 | Unbounded briefs were the root of the R31 and R32 costs | `agents/briefs.py` `BriefBounds` (built); generated briefs per MB-026 (#44) |
+| R34 | The build agent reached 94% context and compacted once | `attempt rotate` at a quiescent point from the progress file and handoff manifest (`orchestration/handoffs.py`, `validation/handoff_manifest.py`) |
+| R35 | Full test logs in context during the bootstrap (PRDv1 §12.6) | `runtime/commands.py` `BoundedCommandRunner` (MB-023), exposed as `milburn run` |
+| R36 | The same brief produced a valid plan in one run and omitted a required field in the next (G5) | Schemas generated from domain models; `--output-schema` on Codex |
+| R37 | A trivial `codex exec` used 37.6k input tokens; live slice run 2 used about 81k (Planner), 132k (Architect), and 285k (Coder) on a toy task, much of it reading skill files | Isolated per-attempt harness config; launch size recorded per attempt |
+| R38 | About 25M tokens per task in single-agent mode, 95% in the main session; each reviewer about 0.5M, about 20% of input at baseline | QA required per code task; extra passes chosen by risk |
+
+## 11. Keep, adapt, retire
+
+Retirement follows A6. Paths are under `src/milburn/`.
+
+| Module | Verdict | Reason |
+|---|---|---|
+| `persistence/sqlite_store.py`, `errors.py` | Keep | The spine (R26); location moves outside writable roots (A3) |
+| `persistence/projections.py` | Keep | Task, attempt, decision, effect replay; extend for work items and stages |
+| `persistence/usage_projections.py`, `domain/usage.py` | Keep | Token telemetry (R28, R29) |
+| `persistence/session_projections.py`, `domain/sessions.py` | Keep | Attempt vs session generation is needed for rotation (R34) |
+| `domain/base.py`, `domain/errors.py` | Keep | Shared versioned-model base |
+| `domain/events.py` | Adapt | Add envelope fields, usage, activity, stage, ledger, delivery events (§9.2) |
+| `domain/commands.py`, `domain/policies.py` | Adapt | CLI command set; `controller` actor (G2) |
+| `domain/models.py` | Adapt | `CoderResult` blocked without commits (G21); `delivery_posture` becomes delivery mode; drop `RoleRouteProposal` |
+| `domain/states.py` | Adapt | Work item and stage states; roles come from task types |
+| `domain/amendments.py` | Retire | Bootstrap governance, not product (review M2); `pause` covers the user need |
+| `integrations/mcp/journal.py` | Keep | The effect journal and generation fence (R41) |
+| `integrations/github/contracts.py`, `registry.py` | Keep | Extend contracts with branches, pull requests, checks, merge |
+| `integrations/github/gateway.py`, `integrations/mcp/contracts.py` | Retire | `gh`/REST replaces the MCP transport behind the same contracts and journal (§13 item 1) |
+| `runtime/worktrees.py` | Keep | Leases and ownership; fix latest-attempt authority (#55) |
+| `runtime/commands.py` | Keep | Bounded output (R35) |
+| `runtime/codex_process.py` | Adapt | Becomes the harness-neutral detached run host (A1) |
+| `runtime/processes.py` | Keep | PID-reuse fencing for detached runs |
+| `runtime/tmux.py`, `runtime/messaging.py` | Retire | Keyboard steering contradicts headless runs (G1) |
+| `agents/codex_adapter.py` | Adapt | Becomes `HarnessAdapter` plus a Codex implementation; sandbox becomes required |
+| `agents/result_parser.py` | Keep | Last-message rule (#64); add Claude Code stream and schema generation |
+| `agents/briefs.py` | Keep | `BriefBounds` (R33) |
+| `agents/usage.py`, `agents/session_observations.py` | Adapt | Per-harness mappings (§9.3) |
+| `agents/skill_catalog.py`, `validation/skill_validation.py` | Adapt | Per-harness install path (G9) |
+| `agents/role_rules/` | Adapt | Keep Coder, Tester, Architect; retire the Router's rules |
+| `orchestration/controller.py` | Adapt | Becomes the CLI command handler |
+| `orchestration/workflow.py` | Adapt | `TransitionGuard` evaluates stage tables |
+| `orchestration/scheduler.py` | Adapt | Parallel Coders with a configured limit (review M4); readiness means dependencies integrated |
+| `orchestration/coder.py` | Adapt | Harness-neutral dispatch |
+| `orchestration/role_results.py` | Keep | Shared result recording |
+| `orchestration/architecture.py` | Adapt | Spec task type; tasks cite scenario IDs; consume typed results (G8) |
+| `orchestration/planning.py` | Retire | Planning is the Coordinator's judgment and the spec stage |
+| `orchestration/handoffs.py` | Keep | Replacement planning (R34) |
+| `orchestration/notifications.py` | Adapt | Becomes the digest's unread section; no doorbell |
+| `orchestration/coordinator.py` | Retire | The persistent session manager and tmux transport; the Coordinator is the user's own session (R2). Its decision-record rules move to `decision record` |
+| `orchestration/routing.py` | Retire | An LLM doing a lookup table's job (review M3) |
+| `orchestration/plan_amendments.py`, `persistence/amendment_projections.py`, `validation/amendment_policy.py` | Retire | With `domain/amendments.py` |
+| `validation/coder_protocol.py` | Keep | The `candidate-protocol` gate |
+| `validation/handoff_manifest.py` | Keep | Rotation checkpoints |
+| `validation/issue_contracts.py` | Adapt | Scenario-ID citation (R14) |
+| `app/cli.py`, `app/bootstrap.py`, `app/configuration.py` | Adapt | The CLI, its composition root, and the config file (§4, §6, §7) |
+
+Skills under `.agents/skills/`: keep `milburn-long-running-coder` and `milburn-qa`;
+adapt `milburn-architecture` into `milburn-spec` and `milburn-coordination` into the
+Coordinator skill; retire `milburn-routing` and `milburn-planning`.
+
+## 12. MB-030 gap resolutions
+
+Source: `bootstrap/reviews/MB-030-gaps.md`, copied from the parked MB-030 slice.
+
+| Gap | Resolution |
+|---|---|
+| G1 exec vs tmux | Headless structured runs; tmux retired (A2) |
+| G2 controller actor | `controller` actor and commands (§3) |
+| G3 decision round trip | The Coordinator is the chat; `question` and `decision` commands record answers (§4) |
+| G4 no MCP client | `gh`/REST transport (§13 item 1) |
+| G5 schema-less results | Generated schemas, enforced where the harness supports it (R36, §9.1) |
+| G6 where specs live | On the integration branch (§5) |
+| G7 MB-013 stand-in | Resolved: MB-013 merged (#63); `candidate-protocol` uses it |
+| G8 double parsing | Consumers take the typed result from `collect` |
+| G9 skills not installed | Per-harness install with digest check (§9.1) |
+| G10 usage events | `AgentUsageObserved` and the mapping in §9.3 |
+| G11 packaging | Package data (§9.1) |
+| G12 inherited full access | Fixed for callers that pass a sandbox (#64); the sandbox becomes required (§9.1) |
+| G13 no process runtime | Fixed (#64); adapted to the run host (A1) |
+| G14 worktree root | `init` creates it |
+| G15 commentary messages | Fixed (#64) |
+| G16 no delivery | Integration branch and delivery modes (§5) |
+| G17 rework attempts | New attempt per round with explicit lease transfer (§8) |
+| G18 launch baseline | Config isolation, open item 3; launch size recorded (R37) |
+| G19 local ID collisions | Store-sequence IDs (§5) |
+| G20 Coder cannot commit | Fixed (#64); `git_write` in the task type (§6); hooks disabled for CLI Git (§4) |
+| G21 blocked `CoderResult` | Commits required only for `candidate` (§6) |
+| G22 user's Git identity | Per-attempt identity via `ProcessLaunch.env` (§9.1) |
+| G23 buffered output | Fixed in the slice branch; carry the flush into the CLI |
+
+## 13. Open items
+
+Items marked **Decided** were settled on 2026-11-04; the rest need validation
+before the task that depends on them starts.
+
+1. **GitHub transport. Decided:** `gh`/REST behind the existing GitHub contracts and
+   the effect journal. The MCP gateway (667 lines plus a tool-schema check, for about
+   six REST operations) is retired; delivery adds push, PR, checks, and merge.
+2. **Claude Code headless.** Validate against captured runs: structured-output or
+   schema flag, sandbox and permission modes for read-only and workspace-write,
+   `result.usage` fields, resume semantics, per-call vs cumulative usage.
+3. **Config isolation.** Test `--ignore-user-config` and per-attempt `CODEX_HOME`
+   for Codex, and the equivalent for Claude Code; measure the launch baseline after.
+4. **Coordinator guardrails.** Claude Code permission deny rules and Codex rules
+   that block direct `git push`, `gh pr merge`, and GitHub mutation from the
+   Coordinator's session; verify each harness honours them.
+5. **OpenSpec.** PRDv2 §12 item 4 checks; on failure, Milburn's own requirement and
+   scenario format with explicit IDs, keeping OpenSpec's file layout (review V-b).
+6. **Names. Decided:** as in §6, renameable as data.
+7. **Grill defaults.** Questions per turn and rounds before escalation.
+8. **Design rendering.** The browser engine for variant screenshots (PRDv2 V2-13).
+9. **Relayed user answers. Decided:** the CLI requires a verbatim quote and cannot
+   prove the user said it; accepted as a known limit.
+
+## 14. Required tests
+
+- Negative tests first for every gate, the QA gate, delivery, and adapter parsing
+  (boundary questions in `bootstrap/SINGLE_AGENT.md` still apply).
+- Fake harness adapters with parity tests against recorded real Codex and Claude
+  Code runs for launch, result, usage, resume, and stop.
+- A stage-table loader suite: unknown gate, unknown task type, unreachable stage,
+  undeclared cycle.
+- Delivery tests on a local bare remote for every mode, including conflict on
+  integrate and refused auto-merge.
+- One live end-to-end run per harness pairing (Codex Coder with Claude Code Tester,
+  and the reverse), recorded with usage, before the release is called done.
+
+## 15. Build order
+
+Walking skeleton first (review B3): one free-form request, one Coder task, one
+Tester on the other harness, `local-only` delivery, usage recorded. Then `pr`
+delivery, parallel tasks, the stage-table engine with "Fix a bug", OpenSpec and
+"Add a feature", design, and "Start from scratch" last. Each step ends with a live
+run.

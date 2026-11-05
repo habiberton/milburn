@@ -12,8 +12,9 @@ user. Otherwise, implement the approved design.
 
 ## Current operating mode: single-agent build
 
-**Stopped.** No build task starts until the rewritten `PRD.md` and `ARCH.md` are
-approved; see "Stopped" at the top of `bootstrap/SINGLE_AGENT.md`.
+**Stopped.** The rewritten `PRD.md` and `ARCH.md` are approved, but no build task
+starts until the task registry is re-planned from them; see "Stopped" at the top of
+`bootstrap/SINGLE_AGENT.md`.
 
 This section overrides the coordinator, worker, worktree, review, amendment, and
 rotation procedures below for the remaining core product tasks (MB-010 to

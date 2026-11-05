@@ -1,13 +1,14 @@
 # Single-agent build procedure
 
-## Stopped: no tasks until the rewritten PRD and ARCH are approved
+## Stopped: no tasks until the task registry is re-planned
 
 As of 2026-11-04 the build is stopped after MB-013 (PR #63, merge `6db08eb`). The
-product direction changed, and `PRD.md` and `ARCH.md` are being rewritten for user
-review. Until the user approves the rewrite and replaces this section:
+product direction changed, and the rewritten `PRD.md` and `ARCH.md` are approved.
+`bootstrap/tasks.json` and the procedure below still describe the old plan. Until
+the tasks are re-planned from the new specs and the user replaces this section:
 
-- Start no task. MB-014, MB-015, MB-016, MB-019, and MB-021 wait for the rewrite,
-  which re-scopes them.
+- Start no task. MB-014, MB-015, MB-016, MB-019, and MB-021 are re-scoped by the
+  issue disposition in `bootstrap/reviews/REVIEW-2026-11-04.md`.
 - Make no edits, branches, or pull requests for build tasks.
 - If you were started to build, report this section to the user and stop.
 
