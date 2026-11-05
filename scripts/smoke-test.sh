@@ -67,13 +67,16 @@ if [[ -f pyproject.toml ]]; then
   if [[ -f uv.lock ]] && command -v uv >/dev/null 2>&1; then
     uv run pytest --collect-only -q >/dev/null
     uv run pytest -q
-  elif python3 -c 'import pytest' >/dev/null 2>&1; then
-    python3 -m pytest --collect-only -q >/dev/null
-    python3 -m pytest -q
   else
-    echo "pyproject.toml exists but pytest is unavailable." >&2
-    echo "Install the project's development dependencies before continuing." >&2
-    exit 1
+    # Shared test environment (scripts/dev-env.sh) with this checkout's src/ on
+    # PYTHONPATH, so the same environment serves every worktree.
+    test_python=$("$repo_root/scripts/dev-env.sh" --print-python) || {
+      echo "The shared test environment could not be prepared; see scripts/dev-env.sh." >&2
+      exit 1
+    }
+    export PYTHONPATH="$repo_root/src${PYTHONPATH:+:$PYTHONPATH}"
+    "$test_python" -m pytest --collect-only -q >/dev/null
+    "$test_python" -m pytest -q
   fi
 else
   echo "Product test suite not created yet; bootstrap checks passed."
