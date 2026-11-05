@@ -836,6 +836,55 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
   `https://github.com/habiberton/milburn/pull/35`. The PR records full worker
   attribution, two-parent integration, acceptance/tests, every review cycle,
   F001-F011, risk, and `Closes #8`.
+- PR #35 merged through GitHub's two-parent merge method as
+  `dc81cb363a7fd89bfb6a348b56fabb00b83e78fc`. The root proved `origin/main`
+  contains PR tip `33b4dff`, integration `8167128`, and final candidate
+  `1deabba`, verified the merge parents, and fast-forwarded the primary checkout.
+- Post-merge MB-008 verification passed 39 unit tests, 1 local contract, smoke
+  with 414 passed/3 protected skips/3 subtests, amendment and feedback
+  validation, and `git diff --check`. Issue #8 is auto-closed in QA pending the
+  final done-label reconciliation.
+- Issue #8 transitioned from `milburn:qa` to `milburn:done` only after remote
+  ancestry, primary fast-forward, post-merge tests, and local completion records;
+  registry and GitHub now agree MB-008 is complete.
+- Corrected MB-009 candidate
+  `2e7cdda8b031b3d20613efb48613548ead5132f7` contains five verified builder
+  commits. Fix `576b74b` adds fenced later-attempt reuse of a preserved branch,
+  restartable retired evidence, and real/fake parity for simultaneous ownership,
+  fabricated bases, later attempts, and idempotent retirement. Root verification
+  passed 29 focused tests, all 55 runtime tests, smoke with 403 passed/3
+  protected skips/3 subtests, attribution, owned paths, and diff checks. Issue
+  #9 returned to `milburn:in-progress`; both fresh review axes must restart.
+- Fresh MB-009 Standards passed candidate `2e7cdda`, but Specification found
+  F004: retired evidence could authorize a preserved issue branch that had been
+  force-moved to an unrelated existing commit because reuse checked caller
+  base=head without correlating that head to the retired lease ancestry. Issue
+  #9 returned to `milburn:changes-requested`; the same worker is adding real and
+  fake non-ancestor rejection regressions. Both fresh axes restart afterward.
+- Final corrected MB-009 candidate
+  `c86708114bf1692414cbb379b571b17c54caf4b1` contains seven verified builder
+  commits. F004 fix `421da01` serializes the retired verified head and requires
+  recorded-base-to-retired-head-to-current-head ancestry before real or fake
+  reuse, while retaining exact caller base, detachment, process, path, dirty,
+  and ownership gates. Root verification passed 32 focused tests, all 58
+  runtime tests, smoke with 406 passed/3 protected skips/3 subtests,
+  attribution, owned paths, and diff checks. Issue #9 returned to
+  `milburn:in-progress`; both fresh review axes restart on this exact SHA.
+- Final MB-009 Specification passed candidate `c867081`, but Standards found
+  F005 in fake parity: a flat ancestor-membership set accepted a forged retired
+  head and recorded base that were independent parents of the current merge,
+  instead of proving both directed ancestry links. Issue #9 returned to
+  `milburn:changes-requested`; the worker is adding relationship-aware fake
+  ancestry and the merged-graph regression. Both review axes restart afterward.
+- Final corrected MB-009 candidate
+  `354a18a40694e6afe50b8f2e64d1329d00e6f467` contains nine verified builder
+  commits. F005 fix `0810330` gives the fake a directed transitive ancestry
+  relation so it separately proves both chain links and rejects independent
+  parents of the same merge, while valid linear and merge histories remain.
+  Root verification passed 35 focused tests, all 61 runtime tests, smoke with
+  409 passed/3 protected skips/3 subtests, attribution, owned paths, and diff
+  checks. Issue #9 returned to `milburn:in-progress`; both fresh review axes
+  restart on this exact SHA.
 - Fresh MB-017 reviews found two remaining reconciliation blockers. A source
   known only by one session could merge with an observation known only by a
   disjoint endpoint without positive shared identity, risking undercount; and
