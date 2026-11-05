@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from milburn.domain import DecisionRequest, UserDecision
+from milburn.domain import DecisionRequest, EventType, UserDecision
 from milburn.orchestration.coordinator import CoordinatorSessionManager
 from milburn.persistence.sqlite_store import SQLiteEventStore
 
@@ -18,8 +18,10 @@ class FakeTransport:
         self.wakes: list[str] = []
         self.deliveries: dict[str, tuple[str, UserDecision]] = {}
 
-    def wake_coordinator(self, notification_id: str) -> bool:
+    def wake_coordinator(self, attempt_id: str, endpoint: str, notification_id: str) -> bool:
         if not self.available:
+            return False
+        if (attempt_id, endpoint) != ("coordinator-1", "tmux:coordinator"):
             return False
         self.wakes.append(notification_id)
         return True
@@ -66,7 +68,7 @@ def answer(
         decision_id=decision_id,
         coordinator_attempt_id="coordinator-1",
         selected_option=selected,
-        answer="Use A",
+        answer="A",
         answered_by="operator-1",
         answered_at=NOW,
     )
@@ -83,6 +85,10 @@ def test_answer_guard_rejects_unpresented_ambiguous_and_wrong_choice(tmp_path) -
             service.answer(answer(selected=None))
         with pytest.raises(ValueError):
             service.answer(answer(selected="C"))
+        with pytest.raises(ValueError):
+            service.answer(UserDecision.from_dict({
+                **answer().to_dict(), "answer": "That sounds fine"
+            }))
         with pytest.raises(ValueError):
             service.answer(answer(decision_id="missing"))
         assert service.open_decisions() == (request(),)
@@ -157,6 +163,38 @@ def test_worker_delivery_failure_remains_queued_across_restart(tmp_path) -> None
         assert service.deliver_answer("decision-1")
         assert transport.deliveries["decision-1"] == ("coder-1", answer())
         service.acknowledge("decision-1", attempt_id="coder-1")
+
+
+def test_crash_after_doorbell_retries_one_durable_worker_inbox_item(tmp_path) -> None:
+    class FailDeliveredStore:
+        def __init__(self, delegate: SQLiteEventStore) -> None:
+            self.delegate = delegate
+            self.fail_once = True
+
+        def read_stream(self, stream: str, *, after_sequence: int = -1):
+            return self.delegate.read_stream(stream, after_sequence=after_sequence)
+
+        def append(self, stream: str, expected_sequence: int, events):
+            if self.fail_once and any(
+                event.event_type is EventType.STEERING_DELIVERED for event in events
+            ):
+                self.fail_once = False
+                raise OSError("crashed after doorbell")
+            return self.delegate.append(stream, expected_sequence, events)
+
+    with SQLiteEventStore(tmp_path / "events.db") as durable:
+        transport = FakeTransport()
+        service = manager(FailDeliveredStore(durable), transport)  # type: ignore[arg-type]
+        service.request_decision(request())
+        service.present("decision-1", coordinator_attempt_id="coordinator-1")
+        service.answer(answer())
+        assert service.worker_inbox("coder-1") == (answer(),)
+        with pytest.raises(OSError):
+            service.deliver_answer("decision-1")
+        restarted = manager(durable, transport)
+        assert restarted.worker_inbox("coder-1") == (answer(),)
+        assert restarted.deliver_answer("decision-1")
+        assert transport.deliveries == {"decision-1": ("coder-1", answer())}
 
 
 def test_coordinator_transport_failure_keeps_decision_unread(tmp_path) -> None:

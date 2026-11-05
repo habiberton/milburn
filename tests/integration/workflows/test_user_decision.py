@@ -16,10 +16,12 @@ class ScriptedTransport:
     def __init__(self) -> None:
         self.available = False
         self.wakes: list[str] = []
-        self.deliveries: list[tuple[str, str]] = []
+        self.deliveries: dict[str, str] = {}
 
-    def wake_coordinator(self, notification_id: str) -> bool:
+    def wake_coordinator(self, attempt_id: str, endpoint: str, notification_id: str) -> bool:
         if not self.available:
+            return False
+        if (attempt_id, endpoint) != ("coordinator-1", "tmux:coordinator"):
             return False
         self.wakes.append(notification_id)
         return True
@@ -29,7 +31,9 @@ class ScriptedTransport:
     ) -> bool:
         if not self.available:
             return False
-        self.deliveries.append((attempt_id, decision_id))
+        if decision_id in self.deliveries and self.deliveries[decision_id] != attempt_id:
+            raise ValueError("conflicting delivery")
+        self.deliveries[decision_id] = attempt_id
         return True
 
 
@@ -71,27 +75,27 @@ def test_unavailable_coordinator_ambiguous_answer_and_restart(tmp_path) -> None:
         ambiguous = UserDecision(
             decision_id="decision-77",
             coordinator_attempt_id="coordinator-1",
-            selected_option=None,
+            selected_option="minimal",
             answer="That sounds fine",
             answered_by="operator-1",
             answered_at=NOW,
         )
         with pytest.raises(ValueError):
             coordinator.answer(ambiguous)
-        assert transport.deliveries == []
+        assert transport.deliveries == {}
         assert coordinator.open_decisions() == (request,)
         coordinator.answer(
             UserDecision(
                 decision_id="decision-77",
                 coordinator_attempt_id="coordinator-1",
                 selected_option="minimal",
-                answer="Use the minimal implementation",
+                answer="minimal",
                 answered_by="operator-1",
                 answered_at=NOW,
             )
         )
         assert coordinator.deliver_answer("decision-77")
-        assert transport.deliveries == [("coder-77", "decision-77")]
+        assert transport.deliveries == {"decision-77": "coder-77"}
         coordinator.acknowledge("decision-77", attempt_id="coder-77")
         assert coordinator.accept_new_work("Start another task")
 

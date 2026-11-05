@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 import json
-from typing import Callable, Protocol
+from typing import Callable, Mapping, Protocol
 
 from milburn.domain import (
     CoordinatorNotification,
@@ -23,12 +23,15 @@ from .notifications import (
     event,
     notification_facts,
 )
+from milburn.runtime.tmux import RuntimeEndpoint, TmuxRuntimeProtocol
 
 
 class CoordinatorTransport(Protocol):
     """Injected delivery boundary; it has no launch, GitHub, or approval method."""
 
-    def wake_coordinator(self, notification_id: str) -> bool: ...
+    def wake_coordinator(
+        self, attempt_id: str, endpoint: str, notification_id: str
+    ) -> bool: ...
 
     def deliver_answer(
         self, attempt_id: str, decision_id: str, answer: UserDecision
@@ -126,13 +129,28 @@ class CoordinatorSessionManager:
             if record.state != "resolved"
         )
 
+    def worker_inbox(self, attempt_id: str) -> tuple[UserDecision, ...]:
+        """Durable, decision-keyed inbox for a worker; doorbells carry no payload."""
+        if not isinstance(attempt_id, str) or not attempt_id:
+            raise ValueError("worker attempt ID is required")
+        return tuple(
+            record.answer
+            for record in self._decisions(self._history()).values()
+            if record.request.source_attempt_id == attempt_id
+            and record.state in {"queued", "delivered"}
+            and record.answer is not None
+        )
+
     def wake_pending(self) -> int:
         """Ring the existing endpoint only; unread items stay durable until presented."""
-        if self.active_session() is None:
+        session = self.active_session()
+        if session is None:
             return 0
         count = 0
         for item in self.pending_notifications():
-            if self._transport.wake_coordinator(item.notification_id):
+            if self._transport.wake_coordinator(
+                session[0], session[1], item.notification_id
+            ):
                 count += 1
         return count
 
@@ -179,6 +197,8 @@ class CoordinatorSessionManager:
             raise ValueError("answer came from a different Coordinator attempt")
         if answer.selected_option is None or answer.selected_option not in record.request.options:
             raise ValueError("answer must select exactly one offered option")
+        if answer.answer.strip().casefold() != answer.selected_option.casefold():
+            raise ValueError("raw answer must explicitly name the selected option")
         self._append(history, (
             (EventType.USER_DECISION_RECEIVED, answer.decision_id, (
                 EventFact(name="decision_id", value=answer.decision_id),
@@ -304,3 +324,60 @@ class CoordinatorSessionManager:
         if record is None or record.state != state:
             raise ValueError(f"decision is unknown or not {state}")
         return record
+
+
+class TmuxCoordinatorTransport:
+    """Ring recorded tmux endpoints after their durable inbox item exists."""
+
+    def __init__(
+        self,
+        store: NotificationStore,
+        runtime: TmuxRuntimeProtocol,
+        coordinator_endpoint: RuntimeEndpoint,
+        *,
+        worker_endpoints: Mapping[str, RuntimeEndpoint],
+    ) -> None:
+        if coordinator_endpoint.role != "coordinator":
+            raise ValueError("primary endpoint must have Coordinator role")
+        for attempt_id, endpoint in worker_endpoints.items():
+            if attempt_id != endpoint.attempt_id or endpoint.role == "coordinator":
+                raise ValueError("worker endpoint key or role is invalid")
+        self._store = store
+        self._runtime = runtime
+        self._coordinator = coordinator_endpoint
+        self._workers = dict(worker_endpoints)
+        self._runtime.register_endpoint(coordinator_endpoint)
+        for worker_endpoint in self._workers.values():
+            self._runtime.register_endpoint(worker_endpoint)
+
+    def wake_coordinator(
+        self, attempt_id: str, endpoint: str, notification_id: str
+    ) -> bool:
+        if (attempt_id, endpoint) != (
+            self._coordinator.attempt_id, self._coordinator.pane_id
+        ):
+            raise ValueError("registered Coordinator endpoint does not match runtime")
+        history = self._store.read_stream(COORDINATOR_STREAM)
+        item = NotificationQueue._items(history).get(notification_id)
+        if item is None or not item.unread:
+            raise ValueError("notification is not in the durable inbox")
+        return self._runtime.send_doorbell(
+            self._coordinator, f"inbox:{notification_id}"
+        ).accepted
+
+    def deliver_answer(
+        self, attempt_id: str, decision_id: str, answer: UserDecision
+    ) -> bool:
+        endpoint = self._workers.get(attempt_id)
+        if endpoint is None:
+            return False
+        history = self._store.read_stream(COORDINATOR_STREAM)
+        record = CoordinatorSessionManager._decisions(history).get(decision_id)
+        if (
+            record is None or record.state != "queued"
+            or record.request.source_attempt_id != attempt_id or record.answer != answer
+        ):
+            raise ValueError("worker answer is not queued in the durable inbox")
+        return self._runtime.send_doorbell(
+            endpoint, f"inbox:{decision_id}"
+        ).accepted
