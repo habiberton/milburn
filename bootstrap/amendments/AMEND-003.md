@@ -33,8 +33,10 @@ below refer to the 18-step Root integration procedure in `AGENTS.md`.
   identity. It runs `validate.py --preflight` before committing and restores
   the touched files on failure.
 - `record-review <task> <attempt> <mode> <verdict>` stores the review mode, its
-  risk reason, the verdict, and the finding count in the task record so `land`
-  can check them without reading prose.
+  risk reason, the verdict, and that round's findings in the task record so
+  `land` can check them without reading prose. Each finding records an ID, the
+  boundary-question number it violates, the file and symbol, severity, and
+  round; this is also what the convergence rule below reads.
 - Judgment steps stay with the root: path exceptions (5), feedback briefs (6),
   acceptance-evidence sufficiency (7), interface compatibility and review-mode
   selection (9), and the independent review itself.
@@ -44,13 +46,38 @@ below refer to the 18-step Root integration procedure in `AGENTS.md`.
   verdict before `land`, and logs the mode. This amendment adds no path-based,
   diff-based, or tag-based tiering. A future planner step is expected to attach a
   risk score to each task, and a later amendment will make review selection
-  consume it. Rework is capped as follows: round 1 is a full exhaustive review;
-  after a fix, one delta re-review of the fix and its blast radius, and, if that
-  is clean, one full-pass confirmation on the final SHA. A blocking finding in
-  the delta re-review or the final pass goes to the user instead of starting
-  further automatic rounds. (Supersedes the earlier diff-based tiering proposal, which the user withdrew
+  consume it. Rework follows a convergence rule, not a fixed count (see
+  "Review rounds and escalation" below). (Supersedes the earlier diff-based tiering proposal, which the user withdrew
   in favor of planner-assigned risk scores. The script committing its own
   registry and progress updates remains confirmed.)
+
+Review rounds and escalation:
+
+- Round 1 is a full, exhaustive review. Each later round is a delta re-review of
+  the fix and its blast radius. When a round is clean, one full-pass
+  confirmation runs on the final SHA. The confirmation is itself a round.
+- Automatic rounds continue only while the work is converging. A round's
+  count is its number of blocking findings. The task goes to the user, with the
+  stuck reason recorded, when any of these holds:
+  1. A finding recurs: it matches an earlier finding recorded as fixed, by the
+     same boundary-question number and the same file and symbol.
+  2. The round has no fewer blocking findings than the most recent earlier round
+     that had findings. (A clean round followed by a confirmation pass that finds
+     issues is compared with the last round that had findings.)
+  3. The round introduces a new blocking finding in code the previous fix
+     touched.
+  4. Three fix rounds have already been run (hard backstop).
+- `integrate-candidate.sh record-review` computes the result (`continue` or
+  `escalate` with the triggering rule) from the recorded findings. The root may
+  escalate earlier but may not continue past an `escalate` result or the
+  backstop.
+- Escalation records a concrete blocker for that task in `state.md` and
+  `coordinator.md` and pauses only that task's path; other ready work continues
+  under the existing continuation gate.
+- Baseline for tuning: with re-review rounds as a rough proxy, 6 of the 13
+  recorded tasks needed three or more fix rounds and 9 needed two or more. The
+  backstop and rules are expected to be revisited from measured data after the
+  first tasks run under them.
 
 Context briefs (replace whole-repository startup reads):
 
@@ -129,8 +156,8 @@ Model assignment (initial, hardcoded in `bootstrap/config.json`):
 - Each session's model, effort, role, review mode, and outcome are logged so a later
   amendment can tune assignment from pass rates.
 - Out of scope for this amendment: cheaper first-attempt models and model
-  escalation after failed rounds. (The round cap above is a process limit that
-  does not depend on model choice.)
+  escalation after failed rounds. (The convergence rule above is a process limit
+  that does not depend on model choice.)
 
 Defect-prevention rules (from the 38 recorded findings in MB-001 to MB-022
 excluding MB-009: 37 blocking and 37 found in review; by the author's
@@ -145,8 +172,8 @@ keying, 4 fake/live parity gaps, 4 failure or retry paths):
 - Fake/live parity: any fake adapter must ship with fake/live parity tests that
   cover every lifecycle operation and terminal state the live adapter supports.
 - Delta re-review: after a fix, the re-review covers the fix and its blast
-  radius first. A full pass is run only once, at the end, on the final SHA, under
-  the round cap described under review-mode selection.
+  radius first. A full pass is run only once, at the end, on the final SHA. Rounds
+  continue or escalate under "Review rounds and escalation" below.
 
 Boundary questions (generic, shared by builders and reviewers):
 
