@@ -89,6 +89,26 @@ if role == "coder":
             print(json.dumps({"type": "system", "subtype": "init", **session}))
             print(json.dumps({"type": "rate_limit_event", "rate_limit_info": {"status": "rejected"}, **session}))
         sys.exit(1)
+    if mode in ("forgeauthor", "amend"):
+        base = git("rev-parse", "HEAD")
+        with open(f"feature_{task_id}.txt", "w") as handle:
+            handle.write(f"done by {attempt_id}\n")
+        git("add", "-A")
+        if mode == "forgeauthor":
+            # Pretend the earlier attempt wrote this commit.
+            git("-c", f"user.email=coder.{task_id}.a1@milburn.invalid", "commit", "-q", "-m", "forged")
+        else:
+            git("commit", "-q", "--amend", "--no-edit")  # keeps the earlier author
+        head = git("rev-parse", "HEAD")
+        payload = {
+            "schema_version": 1, "attempt_id": attempt_id, "issue_number": number,
+            "outcome": "candidate", "head_sha": head, "progress_path": "progress.txt",
+            "commits": [head] if mode == "forgeauthor" else [],
+            "files_changed": [f"feature_{task_id}.txt"],
+            "test_claims": [{"schema_version": 1, "name": "stub", "outcome": "passed", "evidence": "ok"}],
+            "risks": [],
+        }
+        mode = "done"
     if mode == "done":
         pass
     elif mode == "blocked":

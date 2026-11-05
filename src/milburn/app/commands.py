@@ -259,6 +259,9 @@ class Commands:
                 base = self._head(task.branch)
             else:
                 base = self._head(work.branch)
+            # Controller-observed head when this attempt starts; with the head
+            # observed at collect it attributes the candidate (ARCH §8 item 4).
+            dispatch_head = base
             if handoff is not None:
                 # The receiving attempt is judged on the whole chain's work,
                 # including commits the earlier harness made (review F1).
@@ -268,6 +271,10 @@ class Commands:
             role_config = self._role_config("tester", harness)
             candidate_sha = coder.collected["head_sha"]  # type: ignore[union-attr]
             head_harness = coder.collected.get("head_harness")  # type: ignore[union-attr]
+            if head_harness is None:
+                raise CommandRefused(
+                    "the candidate has no recorded head attribution; dispatch a new Coder attempt"
+                )
             if (
                 self.project.config.tester_independence == "other-than-coder"
                 and role_config.harness.value == head_harness
@@ -279,6 +286,7 @@ class Commands:
             worktree = self.project.worktree_root / f"{task_id}-qa-{attempt_id}"
             base = candidate_sha
             sandbox = "read-only"
+            dispatch_head = None
 
         endpoint_id = f"{task_id}-{attempt_id}"
         expected_type = "coder_result" if role == "coder" else "qa_report"
@@ -292,6 +300,7 @@ class Commands:
                 "worktree": str(worktree), "base_sha": base, "sandbox": sandbox,
                 "expected_result_type": expected_type, "candidate_sha": candidate_sha,
                 "handoff_from": handoff["from_attempt"] if handoff else None,
+                "dispatch_head": dispatch_head,
             },
         )
         items = [intent]
@@ -546,6 +555,18 @@ class Commands:
         }
         if attempt.role == "coder":
             record.update(self._check_candidate(task, attempt, result))
+            worktree = Path(attempt.worktree)
+            record["observed_head"] = (
+                agent_git(self.project, worktree, "rev-parse", "HEAD").stdout.strip()
+                if worktree.exists() else None
+            )
+            record["head_harness"] = _attribute_head(task, attempt, record["observed_head"])
+            if record.get("candidate_ok") and record["head_harness"] is None:
+                record["candidate_ok"] = False
+                record["candidate_reasons"] = record.get("candidate_reasons", []) + [
+                    "the candidate head cannot be traced to a recorded Coder attempt; "
+                    "independent QA cannot be assigned"
+                ]
         else:
             record.update(_qa_summary(result.task_result, attempt, task))
         items: list[tuple[EventType, dict[str, Any]]] = [(EventType.ATTEMPT_COLLECTED, record)]
@@ -621,24 +642,6 @@ class Commands:
         )
         return agent_git(self.project, worktree, "rev-parse", "HEAD").stdout.strip(), head
 
-    def _head_harness(self, task: Task, worktree: Path, head: str) -> str | None:
-        """The harness of the Coder attempt that authored ``head`` (ARCH §8 item 4).
-
-        Every Coder commit, and every Milburn commit of Coder leftovers, carries
-        the attempt identity ``coder.<task>.<attempt>@milburn.invalid``. After a
-        handoff the head may still be the earlier harness's commit, so the
-        harness is read from the author, not from the latest attempt.
-        """
-
-        email = agent_git(self.project, worktree, "log", "-1", "--format=%ae", head).stdout.strip()
-        match = re.fullmatch(rf"coder\.{re.escape(task.task_id)}\.(a\d+)@milburn\.invalid", email)
-        if not match:
-            return None
-        for attempt in task.attempts:
-            if attempt.attempt_id == match.group(1) and attempt.role == "coder":
-                return attempt.harness
-        return None
-
     def _check_candidate(self, task: Task, attempt: Attempt, result: Any) -> dict[str, Any]:
         """Mechanical candidate checks (the core of ``candidate-protocol``)."""
 
@@ -686,15 +689,8 @@ class Commands:
         unknown = sorted(set(payload.commits) - new_commits - set(malformed))
         if unknown:
             reasons.append(f"reported commits are not on the branch: {unknown}")
-        head_harness = self._head_harness(task, worktree, head)
-        if head_harness is None:
-            reasons.append(
-                "the candidate head was not written by a recorded Coder attempt of this task; "
-                "independent QA cannot be assigned"
-            )
         return {"candidate_ok": not reasons, "candidate_reasons": reasons,
-                "head_sha": head, "outcome": payload.outcome.value, "cli_commit": cli_commit,
-                "head_harness": head_harness}
+                "head_sha": head, "outcome": payload.outcome.value, "cli_commit": cli_commit}
 
     # ------------------------------------------------------------------ QA gate
 
@@ -916,6 +912,35 @@ def _qa_summary(parsed: Any, attempt: Attempt, task: Task) -> dict[str, Any]:
         "qa_candidate_sha": payload.candidate_sha,
         "qa_defects": list(payload.defects),
     }
+
+
+def _attribute_head(task: Task, current: Attempt, head: str | None) -> str | None:
+    """The harness whose attempt moved the head to ``head`` (ARCH §8 item 4).
+
+    Uses only controller-observed facts: each Coder attempt's head at dispatch
+    and at collect. A Coder controls commit authors (``--amend``, ``-c
+    user.email``), so authorship is never used. Walking back from the current
+    attempt, the head belongs to the latest attempt during which it changed;
+    an attempt that left it unchanged passes attribution to the one before.
+    A gap (the head moved between attempts) or a head older than every
+    attempt cannot be attributed.
+    """
+
+    if head is None:
+        return None
+    chain = [
+        a for a in task.attempts
+        if a.role == "coder" and a.attempt_id != current.attempt_id
+        and a.collected is not None and a.collected.get("launched") is not False
+    ] + [current]
+    target = head
+    for attempt in reversed(chain):
+        observed = head if attempt is current else (attempt.collected or {}).get("observed_head")
+        if observed != target or attempt.dispatch_head is None:
+            return None
+        if attempt.dispatch_head != target:
+            return attempt.harness
+    return None
 
 
 def _never_ran(attempt: Attempt) -> bool:
