@@ -1,5 +1,18 @@
 # Single-agent build procedure
 
+## Stopped: no tasks until the rewritten PRD and ARCH are approved
+
+As of 2026-11-04 the build is stopped after MB-013 (PR #63, merge `6db08eb`). The
+product direction changed, and `PRD.md` and `ARCH.md` are being rewritten for user
+review. Until the user approves the rewrite and replaces this section:
+
+- Start no task. MB-014, MB-015, MB-016, MB-019, and MB-021 wait for the rewrite,
+  which re-scopes them.
+- Make no edits, branches, or pull requests for build tasks.
+- If you were started to build, report this section to the user and stop.
+
+The procedure below is kept for when the build resumes; it does not apply now.
+
 One agent finishes the remaining core Milburn tasks alone. The coordinator and
 worker model is suspended, not deleted: no coordinator session, no worker
 worktrees or identities, no commit trailers, no plan-amendment freeze, no
@@ -9,7 +22,8 @@ apply).
 
 ## Scope and order
 
-Build these tasks in order. A task starts only when its dependencies are `done`.
+Suspended (see "Stopped" above). When resumed: build these tasks in order. A task
+starts only when its dependencies are `done`.
 
 | Layer | Tasks | Notes |
 |---|---|---|
