@@ -151,8 +151,14 @@ Root session rotation (replaces reliance on auto-compaction):
   sandbox and approval settings. The values are a user decision recorded in
   `bootstrap/config.json`; this amendment does not choose them. The original
   root session ran with approval policy `never` and a full-access sandbox.
-- Still unverified: whether subagent tools are available in `codex exec` runs
-  and whether workers survive a root session ending (see above).
+- Subagents in `codex exec`: user-supplied information (not independently
+  verified against the Codex documentation) is that current Codex CLI releases
+  support subagent workflows inside `codex exec`, and that subagents inherit the
+  parent run's tools, including configured MCP tools and shell access, under the
+  same sandbox policy. The launcher's sandbox and approval settings therefore
+  also bound every worker and reviewer. The implementation must confirm that
+  subagent tools are present in the first launched run before relying on them.
+- Still unverified: whether workers survive a root session ending (see above).
 
 Model assignment (initial, hardcoded in `bootstrap/config.json`):
 
