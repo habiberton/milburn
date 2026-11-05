@@ -364,3 +364,31 @@ def test_unexpected_errors_exit_4_with_one_line(repo: Path, monkeypatch, capsys)
     assert run("status") == 4
     err = capsys.readouterr().err.strip()
     assert err.count("\n") == 0 and "first line" in err
+
+
+def test_a_lost_integration_record_is_recovered_by_adopting_our_merge(
+    repo: Path, monkeypatch, capsys
+) -> None:
+    from milburn.app import state as state_module
+    from milburn.domain.events import EventType
+
+    build_candidate()
+    assert run("qa", "t1") == 0
+    assert run("collect", "t1", "--wait", "20") == 0
+    assert run("task", "complete", "t1") == 0
+    original = state_module.Ledger.append
+
+    def lose_integration(self, stream, expected, event_type, *args, **kwargs):
+        if event_type is EventType.TASK_INTEGRATED:
+            raise RuntimeError("store unavailable")
+        return original(self, stream, expected, event_type, *args, **kwargs)
+
+    monkeypatch.setattr(state_module.Ledger, "append", lose_integration)
+    assert run("integrate", "t1") == 4
+    monkeypatch.setattr(state_module.Ledger, "append", original)
+    merge = sh(repo, "git", "rev-parse", "milburn/w1/integration")
+    capsys.readouterr()
+    assert run("integrate", "t1") == 0
+    assert merge[:12] in capsys.readouterr().out
+    assert sh(repo, "git", "rev-parse", "milburn/w1/integration") == merge  # no second merge
+    assert run("deliver", "w1") == 0

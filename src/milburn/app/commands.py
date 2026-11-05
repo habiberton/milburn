@@ -164,6 +164,10 @@ class Commands:
                     actor="controller", correlation_id=work_item,
                 )
                 state = self._state()
+                try:
+                    self._ensure_work_item(state.work_items[work_item])
+                except ProjectError as error:
+                    raise EffectFailed(f"{work_item} is recorded but its branch failed: {error}") from error
             elif work_item not in state.work_items:
                 raise CommandRefused(f"unknown work item {work_item}")
             elif state.work_items[work_item].delivered:
@@ -294,6 +298,16 @@ class Commands:
             )
             endpoint = self._adapter(role_config.harness, self._runtime(endpoint_id)).launch(request)
         except Exception as error:
+            launch_file = self.project.run_dir / f"{endpoint_id}.launch.json"
+            if launch_file.exists():
+                from milburn.agents.codex_adapter import ProcessState
+
+                if self._runtime(endpoint_id).status(endpoint_id).state is ProcessState.RUNNING:
+                    # The host started; leave the attempt open for collect.
+                    raise EffectFailed(
+                        f"{task_id}/{attempt_id} started but its record is incomplete: {error}; "
+                        "collect it"
+                    ) from error
             # The attempt is closed on the record, so the task can be retried.
             self.ledger.append(
                 stream, self._seq(self._state(), stream), EventType.ATTEMPT_COLLECTED,
@@ -436,15 +450,22 @@ class Commands:
         branch, head, clean = self._worktree_state(worktree)
         if branch != task.branch:
             raise CommandRefused(f"the Coder left {worktree} on {branch}, not {task.branch}")
-        last = agent_git(self.project, worktree, "log", "-1", "--format=%ae%n%B").stdout
-        if clean and last.startswith(email) and marker in last:
+        last = agent_git(self.project, worktree, "log", "-1", "--format=%ae%n%ce%n%cn%n%B").stdout
+        lines = last.split("\n", 3)
+        made_by_milburn = (
+            len(lines) == 4 and lines[0] == email and lines[1] == "controller@milburn.invalid"
+            and lines[2] == "Milburn controller" and marker in lines[3]
+        )
+        if clean and made_by_milburn:
             return head, agent_git(self.project, worktree, "rev-parse", "HEAD^").stdout.strip()
         if clean:
             return None, head
         agent_git(self.project, worktree, "add", "-A")
         agent_git(
             self.project, worktree,
-            "-c", f"user.name={name}", "-c", f"user.email={email}",
+            "-c", f"author.name={name}", "-c", f"author.email={email}",
+            "-c", "committer.name=Milburn controller",
+            "-c", "committer.email=controller@milburn.invalid",
             "commit", "-q", "-m",
             f"{task.task_id}: {task.title}\n\n{marker}; the Coder's harness could not write Git.",
         )
@@ -552,16 +573,27 @@ class Commands:
                 reasons.append(f"the integration worktree is on {branch}, not {work.branch}")
             if not clean:
                 reasons.append("the integration worktree has uncommitted changes")
-            if head != expected or self._head(work.branch) != expected:
+            adopted = None
+            if head != expected and clean and branch == work.branch:
+                info = agent_git(self.project, worktree, "log", "-1", "--format=%P%n%ce", head).stdout.split("\n")
+                if (
+                    len(info) >= 2 and info[0].split() == [expected, candidate]
+                    and info[1] == "controller@milburn.invalid"
+                ):
+                    adopted = head  # our own merge, made before a crash lost its record
+            if adopted is None and (head != expected or self._head(work.branch) != expected):
                 reasons.append(f"{work.branch} is not at the recorded head {expected[:12]}")
             if reasons:
                 raise CommandRefused(reasons)
             identity = ("-c", "user.name=Milburn controller",
                         "-c", "user.email=controller@milburn.invalid")
             # Merge the recorded candidate SHA, never the moving branch name.
-            merged = agent_git(self.project, worktree, *identity, "merge", "--no-ff", "--no-edit",
-                               "-m", f"Merge {task_id}: {task.title}", candidate, check=False)
-            if merged.returncode != 0:
+            if adopted is None:
+                merged = agent_git(self.project, worktree, *identity, "merge", "--no-ff", "--no-edit",
+                                   "-m", f"Merge {task_id}: {task.title}", candidate, check=False)
+            else:
+                merged = None
+            if merged is not None and merged.returncode != 0:
                 agent_git(self.project, worktree, "merge", "--abort", check=False)
                 raise CommandRefused(
                     f"{task_id} does not merge cleanly into {work.branch}; "

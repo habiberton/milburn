@@ -111,6 +111,9 @@ def git(repository: Path, *arguments: str, check: bool = True) -> subprocess.Com
     """Run Git for the CLI with hooks and fsmonitor disabled (ARCH §4)."""
 
     empty_hooks = Path(os.devnull)
+    # Inherited GIT_* variables (identity, index file, directories) would
+    # override the explicit arguments below; the CLI never inherits them.
+    env = {name: value for name, value in os.environ.items() if not name.startswith("GIT_")}
     completed = subprocess.run(
         (
             "git", "-c", f"core.hooksPath={empty_hooks}", "-c", "core.fsmonitor=false",
@@ -120,6 +123,7 @@ def git(repository: Path, *arguments: str, check: bool = True) -> subprocess.Com
         capture_output=True,
         text=True,
         timeout=60,
+        env=env,
     )
     if check and completed.returncode != 0:
         raise ProjectError(

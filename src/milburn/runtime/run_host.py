@@ -239,6 +239,20 @@ class DetachedRunRuntime:
         except (OSError, json.JSONDecodeError, ValueError, AttributeError):
             return None
 
+    def _group_has_younger_members(self, host: ProcessIdentity) -> bool:
+        listed = subprocess.run(
+            ("pgrep", "-g", str(host.pid)), capture_output=True, text=True, timeout=10
+        )
+        host_started = _parse_start(host.started_at)
+        for token in listed.stdout.split():
+            member = self._inspector.identify(int(token))
+            if member is None or host_started is None:
+                continue
+            started = _parse_start(member.started_at)
+            if started is not None and started >= host_started:
+                return True
+        return False
+
     def _host_alive(self, paths: dict[str, Path]) -> bool:
         """True while the host or anything in its process group still runs.
 
@@ -253,6 +267,10 @@ class DetachedRunRuntime:
             observed = self._inspector.identify(identity.pid)
             if observed is not None and observed.matches(identity):
                 return True
+            # Identified host is gone. Its child may still run in its group,
+            # but only if the group still has members started no earlier than
+            # the host; otherwise the PID may have been reused.
+            return self._group_has_younger_members(identity)
         try:
             record = json.loads(paths["host"].read_text(encoding="utf-8"))
             pid = int(record["pid"])
@@ -263,6 +281,15 @@ class DetachedRunRuntime:
         except (ProcessLookupError, PermissionError):
             return False
         return True
+
+
+def _parse_start(value: str) -> float | None:
+    """Parse ``ps -o lstart`` output (``Wed Nov  4 23:13:55 2026``)."""
+
+    try:
+        return time.mktime(time.strptime(" ".join(value.split()), "%a %b %d %H:%M:%S %Y"))
+    except (ValueError, OverflowError):
+        return None
 
 
 def _host_main(run_dir: Path, endpoint: str) -> int:
