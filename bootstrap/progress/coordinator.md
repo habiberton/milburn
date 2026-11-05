@@ -958,6 +958,13 @@ ready.
   and candidate `354a18a` with `fork_turns: none`, model `gpt-5.6-sol`, medium
   effort, the four-class exhaustive enumeration gate, red tests before fixes,
   and authority for exactly one correction round.
+- MB-023/a01 returned corrected candidate
+  `915e9e98e666339b6075eb0d016c1ea6ab31c339` (implementation `cb5fae8` plus a
+  progress-only handoff correction). Root verification passed attribution for
+  both commits, owned paths, diff checks, 16 focused CLI tests, and smoke with
+  430 passed/3 protected skips/3 subtests. Recorded review mode remains Focused
+  because this is an isolated bootstrap runner with no product state,
+  persistence, recovery, or external side effect.
 
 - `scripts/smoke-test.sh` with the shared test environment: 29 tasks valid, 12
   feedback briefs valid, 3 amendment records valid, 414 passed, 3 skipped, 3
