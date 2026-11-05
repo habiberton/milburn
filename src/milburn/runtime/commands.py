@@ -9,6 +9,7 @@ import shlex
 import subprocess
 import tempfile
 from time import monotonic
+import re
 
 from .worktrees import WorktreeLease, WorktreeManagerProtocol, WorktreeError
 
@@ -24,6 +25,7 @@ class BoundedCommandResult:
     duration_seconds: float
     log_ref: Path
     excerpt: str
+    revision: str | None = None
 
     @property
     def passed(self) -> bool:
@@ -64,6 +66,7 @@ class BoundedCommandRunner:
             raise CommandExecutionError("timeout must be positive")
         if self._log_dir == lease.worktree or lease.worktree in self._log_dir.parents:
             raise CommandExecutionError("command logs must be outside the worktree")
+        before = self._head(lease.worktree)
         self._log_dir.mkdir(parents=True, exist_ok=True)
         start = monotonic()
         with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8", dir=self._log_dir,
@@ -81,13 +84,15 @@ class BoundedCommandRunner:
                 exit_code = 127
                 log.write(f"\nCommand could not start: {type(error).__name__}.\n")
         elapsed = monotonic() - start
+        after = self._head(lease.worktree)
         excerpt = ""
         if exit_code and self._max_excerpt_chars:
             with log_path.open("rb") as stream:
                 stream.seek(0, os.SEEK_END)
                 stream.seek(max(0, stream.tell() - self._max_excerpt_chars))
                 excerpt = stream.read().decode("utf-8", errors="replace")[-self._max_excerpt_chars:]
-        return BoundedCommandResult(command, exit_code, elapsed, log_path, excerpt)
+        return BoundedCommandResult(command, exit_code, elapsed, log_path, excerpt,
+                                    before if before == after else None)
 
     def run_tests(self, lease: WorktreeLease, pytest_args: tuple[str, ...], *, timeout: float = 300) -> BoundedCommandResult:
         if not isinstance(pytest_args, tuple) or any(not isinstance(arg, str) or not arg for arg in pytest_args):
@@ -95,4 +100,14 @@ class BoundedCommandRunner:
         script = lease.worktree / "scripts/run-tests.sh"
         if not script.is_file() or not os.access(script, os.X_OK):
             raise CommandExecutionError("assigned worktree lacks scripts/run-tests.sh")
-        return self.run(lease, (str(script), *pytest_args), timeout=timeout)
+        result = self.run(lease, (str(script), *pytest_args), timeout=timeout)
+        if result.revision is None:
+            raise CommandExecutionError("test run did not preserve one Git revision")
+        return result
+
+    @staticmethod
+    def _head(worktree: Path) -> str | None:
+        observed = subprocess.run(("git", "rev-parse", "HEAD"), cwd=worktree,
+                                  capture_output=True, text=True, check=False)
+        value = observed.stdout.strip()
+        return value if observed.returncode == 0 and re.fullmatch(r"[0-9a-f]{40}", value) else None

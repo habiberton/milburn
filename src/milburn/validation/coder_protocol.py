@@ -7,11 +7,13 @@ from datetime import datetime
 from pathlib import Path
 import json
 import os
+import shlex
 import re
 import subprocess
 
 from milburn.domain import CoderOutcome, CoderResult, IssueState
 from milburn.runtime.worktrees import WorktreeLease
+from milburn.runtime.commands import BoundedCommandResult
 
 _SHA = re.compile(r"[0-9a-f]{40}\Z")
 _HEADERS = ("Issue", "Branch", "Base revision", "Current head", "Last updated", "Agent attempt")
@@ -133,7 +135,8 @@ class GitCoderProbe:
 
 class CoderProtocolGuard:
     def __init__(self, git: GitCoderProbe, *, log_root: Path,
-                 required_commands: tuple[str, ...]) -> None:
+                 required_commands: tuple[str, ...],
+                 observed_tests: tuple[BoundedCommandResult, ...]) -> None:
         if (not isinstance(log_root, Path) or not log_root.is_absolute()
             or not isinstance(required_commands, tuple) or not required_commands
             or len(set(required_commands)) != len(required_commands)
@@ -142,6 +145,11 @@ class CoderProtocolGuard:
         self._git = git
         self._log_root = log_root
         self._required_commands = required_commands
+        if not isinstance(observed_tests, tuple) or any(
+            not isinstance(item, BoundedCommandResult) for item in observed_tests
+        ):
+            raise CoderProtocolError("controller-observed test results are required")
+        self._observed_tests = observed_tests
 
     def accept(self, result: CoderResult, lease: WorktreeLease, issue_state: IssueState) -> CoderResult:
         if not isinstance(result, CoderResult) or not isinstance(lease, WorktreeLease):
@@ -181,6 +189,9 @@ class CoderProtocolGuard:
             raise CoderProtocolError("candidate test evidence omits a required command")
         if not self._log_root.is_dir() or self._log_root.resolve().is_relative_to(lease.worktree.resolve()):
             raise CoderProtocolError("test evidence log root is unavailable or inside worktree")
+        observed = {shlex.join(item.command): item for item in self._observed_tests}
+        if len(observed) != len(self._observed_tests) or set(observed) != set(self._required_commands):
+            raise CoderProtocolError("controller-observed executions do not match required tests")
         validation_lines = set(progress.sections["Validation"].splitlines())
         for item in claims:
             if item.outcome != "passed":
@@ -198,6 +209,10 @@ class CoderProtocolGuard:
             if not isinstance(value["log_ref"], str):
                 raise CoderProtocolError("candidate test evidence log reference is invalid")
             log_path = Path(value["log_ref"])
+            receipt = observed.get(item.name)
+            if (receipt is None or receipt.exit_code != 0 or receipt.revision != result.head_sha
+                or receipt.log_ref != log_path):
+                raise CoderProtocolError("candidate claim lacks matching controller-observed command, exit, revision, or log")
             if (not log_path.is_absolute() or log_path.is_symlink()
                 or log_path.resolve(strict=False).parent != self._log_root.resolve()
                 or not log_path.is_file()):

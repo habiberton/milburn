@@ -134,10 +134,11 @@ class CoderCoordinator:
                 "completed: " + "; ".join(manifest.completed),
                 "remaining: " + "; ".join(manifest.remaining),
                 "test_evidence: " + "; ".join(
-                    f"{item.command} -> {item.result} at {item.revision}"
+                    f"{item.command} -> {item.result} passed={item.passed} at {item.revision}"
                     for item in manifest.test_evidence),
                 "uncertain_effects: " + "; ".join(
-                    f"{effect.effect_id} reconciled={effect.reconciled}"
+                    f"{effect.effect_id} {effect.description} reconciled={effect.reconciled} "
+                    f"evidence={effect.reconciliation_evidence or 'none'}"
                     for effect in manifest.uncertain_effects),
                 "open_decisions: " + "; ".join(manifest.open_decisions),
             ))

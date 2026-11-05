@@ -48,6 +48,9 @@ def test_replacement_uses_validated_durable_handoff_without_private_transcript(t
     assert "inbox_sequence: 4" in brief.content
     assert "effect-1" in brief.content
     assert "pytest tests/unit" in brief.content
+    assert "remote mutation timed out" in brief.content
+    assert "remote read showed no mutation" in brief.content
+    assert "passed=True" in brief.content
     assert "previous transcript" not in brief.content
     assert ("resume", item.lease.attempt_id) in manager.actions
 

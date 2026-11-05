@@ -6,6 +6,7 @@ from milburn.domain import AgentAttempt, AttemptState, IssueState, Role, SkillBi
 from milburn.integrations.github.contracts import Issue, RepositoryId
 from milburn.orchestration.coder import CoderAssignment, CoderCoordinator, CODER_ROLE_RULES
 from milburn.runtime.worktrees import GitWorktreeManager
+from milburn.runtime.commands import BoundedCommandRunner
 
 from tests.unit.validation.test_coder_protocol import workspace, commit_code, result, guard
 
@@ -37,3 +38,15 @@ def test_ready_issue_through_worktree_launch_and_candidate_guard(tmp_path):
                                                             IssueState.CODING)
     assert candidate.issue_number == 13
     assert candidate.head_sha != manager.inspect(lease).head_sha
+
+
+def test_controller_runner_receipt_binds_actual_command_and_git_revision(tmp_path):
+    lease = workspace(tmp_path)
+    manager = GitWorktreeManager()
+    manager.register(lease)
+    receipt = BoundedCommandRunner(tmp_path / "logs", worktrees=manager).run(
+        lease, ("python3", "-c", "print('1 passed')"))
+    assert receipt.exit_code == 0
+    assert receipt.revision == lease.base_sha
+    assert receipt.command == ("python3", "-c", "print('1 passed')")
+    assert receipt.log_ref.read_text().strip() == "1 passed"

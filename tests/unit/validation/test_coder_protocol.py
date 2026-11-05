@@ -6,6 +6,7 @@ import pytest
 
 from milburn.domain import CoderOutcome, CoderResult, EvidenceItem, IssueState
 from milburn.runtime.worktrees import WorktreeLease, WorktreeRequest
+from milburn.runtime.commands import BoundedCommandResult
 from milburn.validation.coder_protocol import CoderProtocolError, CoderProtocolGuard, GitCoderProbe, parse_progress
 
 
@@ -44,9 +45,15 @@ def claim(lease, candidate, command):
     }))
 
 
-def guard(lease):
+def guard(lease, *, candidate=None, observed_tests=None):
+    candidate = candidate or git(lease.worktree, "rev-parse", "HEAD^")
+    if observed_tests is None:
+        observed_tests = tuple(BoundedCommandResult(
+            tuple(command.split()), 0, 0.1, log_path(lease, candidate, command), "",
+            candidate,
+        ) for command in COMMANDS)
     return CoderProtocolGuard(GitCoderProbe(), log_root=lease.repository.parent / "logs",
-                              required_commands=COMMANDS)
+                              required_commands=COMMANDS, observed_tests=observed_tests)
 
 
 def result(lease, **changes):
@@ -178,7 +185,7 @@ def test_rejects_intermediate_code_changes_after_candidate_even_if_reverted(tmp_
     (lease.worktree / "src.py").write_text("feature\n")
     git(lease.worktree, "add", "src.py"); git(lease.worktree, "commit", "-qm", "Revert code")
     with pytest.raises(CoderProtocolError, match="after candidate"):
-        guard(lease).accept(result(lease, head_sha=candidate,
+        guard(lease, candidate=candidate).accept(result(lease, head_sha=candidate,
                                                       commits=(candidate,)), lease,
                                                  IssueState.CODING)
 
@@ -190,7 +197,7 @@ def test_rejects_not_passed_validation_claim(tmp_path):
     git(lease.worktree, "add", str(path.relative_to(lease.worktree)))
     git(lease.worktree, "commit", "-qm", "Record failed validation")
     with pytest.raises(CoderProtocolError, match="validation"):
-        guard(lease).accept(result(lease, head_sha=git(lease.worktree, "rev-parse", "HEAD~2"),
+        guard(lease, candidate=git(lease.worktree, "rev-parse", "HEAD~2")).accept(result(lease, head_sha=git(lease.worktree, "rev-parse", "HEAD~2"),
                                                      commits=(git(lease.worktree, "rev-parse", "HEAD~2"),)),
                                                lease, IssueState.CODING)
 
@@ -211,9 +218,15 @@ def test_rejects_invented_passing_test_log(tmp_path):
         "command": COMMANDS[0], "result": "1 passed", "revision": candidate,
         "log_ref": "/missing/result.log",
     }))
-    with pytest.raises(CoderProtocolError, match="log reference"):
+    with pytest.raises(CoderProtocolError, match="controller-observed"):
         guard(lease).accept(result(lease, test_claims=(invented, claim(lease, candidate, COMMANDS[1]))),
                                                lease, IssueState.CODING)
+
+
+def test_rejects_claim_without_matching_controller_observed_execution(tmp_path):
+    lease = workspace(tmp_path); commit_code(lease)
+    with pytest.raises(CoderProtocolError, match="observed"):
+        guard(lease, observed_tests=()).accept(result(lease), lease, IssueState.CODING)
 
 
 @pytest.mark.parametrize("change", [
@@ -252,6 +265,6 @@ def test_rejects_committed_progress_symlink_to_external_file(tmp_path):
     git(lease.worktree, "add", str(path.relative_to(lease.worktree)))
     git(lease.worktree, "commit", "-qm", "Link progress")
     with pytest.raises(CoderProtocolError, match="progress"):
-        guard(lease).accept(result(lease, head_sha=candidate,
+        guard(lease, candidate=candidate).accept(result(lease, head_sha=candidate,
                                                       commits=(candidate,)), lease,
                                                IssueState.CODING)
