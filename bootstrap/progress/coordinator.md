@@ -973,6 +973,14 @@ ready.
   protected skips/34 subtests. Focused review must explicitly assess the
   recorded implementation choice `maximum_rotations = 10`; launcher sandbox
   and approval remain null and fail closed.
+- MB-023 Focused review blocked candidate `915e9e9` on two exhaustive CLI
+  classes: `command -v` admits shell keywords and builtins that cannot execute
+  consistently across quiet/verbose modes, and unescaped control characters in
+  the displayed log path can break the required one-line summary. The same
+  worker will add negative regressions and a narrow correction. Per policy, a
+  blocking Focused result escalates the corrected candidate to fresh
+  Specification and Standards passes; MB-023-F001/F002 require durable feedback
+  proposals and regression evidence.
 
 - `scripts/smoke-test.sh` with the shared test environment: 29 tasks valid, 12
   feedback briefs valid, 3 amendment records valid, 414 passed, 3 skipped, 3

@@ -1157,14 +1157,14 @@
       "id": "MB-023",
       "wave": 2,
       "title": "Add a quiet command runner for smoke, preflight, and validators",
-      "status": "candidate",
+      "status": "in_progress",
       "github": {
         "issue_number": 41,
         "issue_url": "https://github.com/habiberton/milburn/issues/41",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_status_label": "milburn:changes-requested",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": [],
