@@ -414,7 +414,7 @@ Coordinator skill; retire `milburn-routing` and `milburn-planning`.
 
 ## 12. MB-030 gap resolutions
 
-Source: `bootstrap/reviews/MB-030-gaps.md`, copied from the parked MB-030 slice.
+Source: `docs/reviews/MB-030-gaps.md`, copied from the parked MB-030 slice.
 
 | Gap | Resolution |
 |---|---|
@@ -472,7 +472,7 @@ before the task that depends on them starts.
 ## 14. Required tests
 
 - Negative tests first for every gate, the QA gate, delivery, and adapter parsing
-  (boundary questions in `bootstrap/SINGLE_AGENT.md` still apply).
+  (boundary questions in `AGENTS.md`).
 - Fake harness adapters with parity tests against recorded real Codex and Claude
   Code runs for launch, result, usage, resume, and stop.
 - A stage-table loader suite: unknown gate, unknown task type, unreachable stage,

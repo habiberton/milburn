@@ -1,21 +1,14 @@
 # Milburn
 
-Milburn is a local-first control plane for coordinating specialized Codex
-agents. The repository is currently in its bootstrap phase: a root Codex agent
-temporarily coordinates isolated worker agents until Milburn can coordinate its
-own development.
+Milburn is an agent distro. You talk to one Coordinator, running in Claude Code or
+Codex, which dispatches role agents (Coder, Tester, and others) into parallel Git
+worktrees. The `milburn` CLI enforces what a script can check: worktree leases,
+independent QA with no self-approval, journaled GitHub effects, delivery, and one
+event store for token and session telemetry.
 
-The approved product and architecture specifications are:
+- [`PRD.md`](PRD.md): product requirements.
+- [`ARCH.md`](ARCH.md): architecture.
+- [`AGENTS.md`](AGENTS.md): how Milburn itself is built.
 
-- [`PRD.md`](PRD.md)
-- [`ARCH.md`](ARCH.md)
-
-To start the first build session:
-
-1. Run `scripts/bootstrap-repo.sh` once from the repository root.
-2. Launch a Codex task in the primary checkout with multi-agent support enabled.
-3. Use the prompt in [`bootstrap/ROOT_PROMPT.md`](bootstrap/ROOT_PROMPT.md).
-
-The operating process is documented in [`AGENTS.md`](AGENTS.md) and
-[`bootstrap/README.md`](bootstrap/README.md).
-
+Run the tests with `scripts/run-tests.sh` and the smoke test with
+`scripts/smoke-test.sh`.

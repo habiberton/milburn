@@ -4,7 +4,7 @@
 Replaces the v1 `PRD.md` and the v2 draft additions.
 
 **Sources:** the user's direction decisions in
-`bootstrap/reviews/REVIEW-2026-11-04.md` ("the review"). Older text is
+`docs/reviews/REVIEW-2026-11-04.md` ("the review"). Older text is
 cited as `PRDv1 §n` (`PRD.md` at `6db08eb`), `PRDv2 V2-n` and `ARCHv2 D2-n` (branch
 `design/v2-draft` at `d67063a`). Read a cited section with
 `git show <ref>:<file>`. The cited text applies only where this document says so.
