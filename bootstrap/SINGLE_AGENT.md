@@ -3,7 +3,7 @@
 One agent finishes the remaining core Milburn tasks alone. The coordinator and
 worker model is suspended, not deleted: no coordinator session, no worker
 worktrees or identities, no commit trailers, no plan-amendment freeze, no
-AMEND-003 scripts. Everything the agent needs is in this file, `tasks.json`,
+AMEND-003 scripts, and no subagents other than the review subagent. Everything the agent needs is in this file, `tasks.json`,
 `PRD.md`, `ARCH.md`, and `AGENTS.md` (Safety boundaries and testing rules still
 apply).
 
@@ -36,8 +36,9 @@ and follow it exactly. PRD.md and ARCH.md are approved; do not redesign them. If
 they contradict each other or a requirement is impossible, stop and ask me.
 
 Work through the tasks in the order given there, one task at a time, one pull
-request per task. Do not use the coordinator procedure in AGENTS.md. Do not
-launch subagents.
+request per task. Do not use the coordinator procedure in AGENTS.md. Launch
+subagents only as the fresh-context gpt-6-sol reviewer that bootstrap/SINGLE_AGENT.md
+requires for each task.
 ```
 
 ## First actions (once)
@@ -70,7 +71,7 @@ launch subagents.
      not create your own virtualenv or set `PYTHONPATH`.
 6. Commit coherent commits with the task prefix, for example
    `MB-010: add notification queue`. Normal `git commit`; no special trailers.
-7. Self-review (below) before opening the pull request.
+7. Independent review (below) before opening the pull request.
 8. Open one PR per task (see Landing).
 
 ### Boundary questions
@@ -87,37 +88,65 @@ launch subagents.
 6. For a fake or test double: does it enforce the same preconditions and terminal
    states as the real implementation?
 
-## Self-review (the same agent reviews its own work)
+## Independent review (fresh-context `gpt-6-sol` subagent)
 
-A review by the author shares the author's blind spots, so make it mechanical.
-Do it after the task's tests pass, before the pull request:
+The author shares its own blind spots, and in this project's history nearly every
+blocking defect was found by a reviewer, not by the builder's tests. So every task
+is reviewed by a separate subagent that starts with no conversation history. This
+is the only use of subagents in this build.
 
-1. **Checklist first.** Before rereading code, write into the progress file a
-   checklist from the acceptance criteria, the six boundary questions, and the
-   PRD and ARCH sections the task cites.
-2. **Read the diff, not your memory.** Run `git diff main...HEAD` and go through
-   it against the checklist, item by item. For each validator or guard, write the
-   weaker inputs that would pass it and confirm a test rejects each. For each
-   fake, list the parity cases.
-3. **Enumerate the class.** For every defect you find, search for every other
-   place the same pattern occurs and list them all before fixing any.
-4. **Record findings** in the progress file: ID, boundary-question number, file
-   and symbol, severity (blocking or meaningful), round.
-5. **Fix, then review the fix and its blast radius**, then do one full pass on
-   the final diff.
-6. **Stop and ask me** when a round has no fewer blocking findings than the last
-   round that had findings, when a finding recurs, when a fix adds a new blocking
-   finding in code it touched, or after three fix rounds.
+Spawn the reviewer after the task's tests pass and your own checks are done, before
+the pull request:
 
-Record every blocking finding you fixed in `bootstrap/feedback/<task-id>.md`
-using the format in `bootstrap/feedback/README.md`, and run
-`python3 bootstrap/feedback/validate.py`. The pull request states that review
-was by the same agent. I can ask for an independent review at any time.
+- **Spawn settings:** model `gpt-6-sol`, medium reasoning effort, `fork_turns: none`
+  (no inherited history). Fail closed: if the subagent tool or that model is not
+  available, **stop and ask me**. Never fall back to reviewing your own work
+  silently, and never spawn the reviewer with another model.
+- **Read-only.** The reviewer may not edit files, commit, push, open or update pull
+  requests, or merge. It returns findings only.
+- **The reviewer brief** (write it to `bootstrap/progress/tasks/<task-id>-review-<n>.md`
+  or pass it as the launch message) contains: task ID, title, and issue number; the
+  acceptance criteria; the base and candidate commits (`git diff main...HEAD`);
+  the PRD and ARCH sections the task cites, by file and line range; the six
+  boundary questions; and the required test commands. Label anything you say about
+  your own work as a *claim*, not as evidence, and do not paste your transcript or
+  your reasoning.
+- **What the reviewer must do:** read the diff against the acceptance criteria;
+  for every validator and guard, name the weaker inputs that would pass it and
+  check a test rejects them; for every fake, check parity with the real boundary;
+  **enumerate every occurrence of each defect class on the first pass**, not just
+  the first instance; run the tests with `scripts/run-tests.sh`.
+- **What it returns:** a list of findings, each with an ID, the boundary-question
+  number it violates (or the acceptance criterion), file and symbol, severity
+  (`blocking` or `meaningful`), and the round; or an explicit statement that it
+  found none.
+
+Rounds:
+
+1. **Round 1** is a full, exhaustive review of the whole diff.
+2. For each blocking finding, **fix it**, add the regression test, and enumerate
+   the class yourself before moving on.
+3. **Re-review** with a **new** fresh subagent (not the previous one), giving it
+   the prior findings and the fix commit range. It reviews the fixes and their
+   blast radius first.
+4. When a round comes back clean, run **one full confirmation pass** on the final
+   diff with another fresh subagent.
+5. **Stop and ask me** when a round has no fewer blocking findings than the last
+   round that had findings, when a finding recurs (same boundary question, file,
+   and symbol as one already fixed), when a fix adds a new blocking finding in code
+   it touched, or after three fix rounds.
+
+Record each round's findings in the progress file, and record every blocking
+finding in `bootstrap/feedback/<task-id>.md` using the format in
+`bootstrap/feedback/README.md`; run `python3 bootstrap/feedback/validate.py`. The
+pull request lists the reviewer model, the rounds, and the findings. A finding the
+user explicitly accepts stays open as deferred with a linked follow-up issue; you
+never accept one yourself.
 
 ## Landing
 
 - One pull request per task. Body: summary, acceptance-criterion evidence, test
-  commands and results, self-review findings and rounds, known risks, and
+  commands and results, the reviewer model with its rounds and findings, known risks, and
   `Closes #<issue>`.
 - Before opening it: `scripts/smoke-test.sh` passes, `git diff --check` is clean,
   `python3 bootstrap/amendments/validate.py` passes, and `tasks.json` marks the
@@ -143,7 +172,8 @@ was by the same agent. I can ask for an independent review at any time.
 - A contradiction between `PRD.md` and `ARCH.md`, or an impossible requirement.
 - Missing credentials, permissions, or an action that mutates GitHub beyond issue
   labels, pull requests, and the task's own issue.
-- The convergence limit in Self-review.
+- The convergence limit in Independent review, or the reviewer subagent or its model
+  being unavailable.
 - Anything that would change the architecture or the product scope.
 
 When every task in the table is `done`, update `bootstrap/progress/coordinator.md`
