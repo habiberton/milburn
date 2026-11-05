@@ -979,13 +979,25 @@ Decisions needed from the user before the affected paths can proceed:
 5. (Resolved 2026-11-04) `gpt-6-sol` confirmed as the reviewer model ID.
 6. MB-009 requires user authorization for another fix round after the fresh
    full reviews found new blocking retirement/replay and fake-parity defects.
+   (Resolved 2026-11-04) The user authorized exactly one further fix round on
+   MB-009/a01. Before changing implementation, the worker must enumerate every
+   occurrence of four classes: retired-evidence ordering across attempts,
+   preserved-branch recreation, re-preparing a retired lease, and fake
+   branch-conflict state shared across tasks. It must add one negative test per
+   class first and apply all six boundary questions to retired-lease,
+   preserved-branch, and fake-state code. The corrected candidate receives
+   delta Specification and Standards review of the fix/blast radius, followed
+   by one full-pass confirmation. Any blocking finding stops MB-009 for another
+   user decision; no further automatic round is authorized.
 
 ## Resume here
 
 1. Run the startup procedure. `scripts/reconcile.sh` does not exist yet, so
    reconcile by hand against `bootstrap/tasks.json` and GitHub.
-2. MB-009 is blocked on user authorization for another fix round after the
-   final full review found F006-F008 classes; preserve candidate `354a18a`.
+2. Resume MB-009/a01 from candidate `354a18a` for the one user-authorized fix
+   round with the four exhaustive defect classes and negative-test-first gate;
+   then run delta reviews and one full-pass confirmation. Stop that path on any
+   blocking review result and ask the user again.
 3. MB-025 and MB-023 are the active first tooling pair. Dispatch and integrate
    them independently; keep MB-024, MB-010, and MB-011 blocked until each is
    about to dispatch.
