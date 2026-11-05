@@ -11,7 +11,7 @@ from milburn.orchestration.controller import Controller
 from milburn.orchestration.routing import RouteEscalation, RouterCoordinator
 from milburn.orchestration.workflow import TransitionGuard
 from milburn.persistence.sqlite_store import SQLiteEventStore
-from tests.fakes.role_results import document, expectation
+from tests.fakes.role_results import document, expectation, seed_event
 
 
 NOW = datetime(2026, 11, 4, tzinfo=UTC)
@@ -27,10 +27,12 @@ def proposal(role: Role = Role.PLANNER) -> RoleRouteProposal:
 
 
 def coordinator(store: SQLiteEventStore) -> RouterCoordinator:
+    seed_event(store, EventType.REQUEST_ACCEPTED, facts={"request_id": "request-1"})
     ids = (f"event-{number}" for number in range(100))
     return RouterCoordinator(
         AgentResultParser(), TransitionGuard(),
         Controller(store, clock=lambda: NOW, event_ids=lambda: next(ids)),
+        store,
     )
 
 
@@ -38,7 +40,7 @@ def accept(service: RouterCoordinator, raw: str):
     return service.accept(
         raw, EXPECTED, feature_id="feature-1", request_id="request-1",
         current_state=FeatureState.RECEIVED,
-        command_id="command-1", expected_sequence=-1,
+        command_id="command-1", expected_sequence=0,
     )
 
 
@@ -55,7 +57,7 @@ def test_unknown_role_version_and_arbitrary_command_rejected_before_event(tmp_pa
         ):
             with pytest.raises(ValueError):
                 accept(service, raw)
-        assert store.read_all() == ()
+        assert len(store.read_all()) == 1
 
 
 def test_illegal_transition_and_stale_state_rejected_before_event(tmp_path) -> None:
@@ -68,9 +70,9 @@ def test_illegal_transition_and_stale_state_rejected_before_event(tmp_path) -> N
                 document(proposal(), EXPECTED), EXPECTED,
                 feature_id="feature-1", request_id="request-1",
                 current_state=FeatureState.IMPLEMENTATION,
-                command_id="command-1", expected_sequence=-1,
+                command_id="command-1", expected_sequence=0,
             )
-        assert store.read_all() == ()
+        assert len(store.read_all()) == 1
 
 
 def test_valid_route_records_proposal_after_approval(tmp_path) -> None:
@@ -78,9 +80,9 @@ def test_valid_route_records_proposal_after_approval(tmp_path) -> None:
         approved = accept(coordinator(store), document(proposal(), EXPECTED))
         assert approved.role is Role.PLANNER
         events = store.read_all()
-        assert len(events) == 1
-        assert events[0].event_type is EventType.ROLE_ROUTE_PROPOSED
-        assert events[0].correlation_id == "request-1"
+        assert len(events) == 2
+        assert events[-1].event_type is EventType.ROLE_ROUTE_PROPOSED
+        assert events[-1].correlation_id == "request-1"
 
 
 def test_decision_needed_escalates_without_granting_route(tmp_path) -> None:
@@ -91,4 +93,37 @@ def test_decision_needed_escalates_without_granting_route(tmp_path) -> None:
         outcome = accept(coordinator(store), document(model, EXPECTED))
         assert isinstance(outcome, RouteEscalation)
         assert outcome.request_id == "request-1"
-        assert len(store.read_all()) == 1
+        assert len(store.read_all()) == 2
+
+
+def test_route_uses_durable_state_and_ambiguous_illegal_role_escalates(tmp_path) -> None:
+    with SQLiteEventStore(tmp_path / "events.db") as store:
+        service = coordinator(store)
+        seed_event(store, EventType.DECISION_REQUIRED)
+        model = RoleRouteProposal.from_dict({
+            **proposal(Role.TESTER).to_dict(),
+            "current_state": "decision_needed",
+            "decision_needed": True,
+        })
+        outcome = service.accept(
+            document(model, EXPECTED), EXPECTED,
+            feature_id="feature-1", request_id="request-1",
+            current_state=FeatureState.DECISION_NEEDED,
+            command_id="command-1", expected_sequence=1,
+        )
+        assert isinstance(outcome, RouteEscalation)
+        assert store.read_all()[-1].event_type is EventType.ROLE_ROUTE_PROPOSED
+
+
+def test_false_caller_state_cannot_approve_route(tmp_path) -> None:
+    with SQLiteEventStore(tmp_path / "events.db") as store:
+        service = coordinator(store)
+        seed_event(store, EventType.FEATURE_COMPLETED)
+        with pytest.raises(ValueError):
+            service.accept(
+                document(proposal(), EXPECTED), EXPECTED,
+                feature_id="feature-1", request_id="request-1",
+                current_state=FeatureState.RECEIVED,
+                command_id="command-1", expected_sequence=1,
+            )
+        assert len(store.read_all()) == 2

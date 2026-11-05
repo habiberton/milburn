@@ -10,7 +10,10 @@ from milburn.domain import (
 )
 
 from .controller import Controller
-from .role_results import parse_role_result, record_result
+from .role_results import (
+    RoleEventReader, durable_feature_state, feature_events,
+    parse_role_result, record_result,
+)
 from .workflow import ApprovedRoute, TransitionGuard
 
 
@@ -23,11 +26,12 @@ class RouteEscalation:
 class RouterCoordinator:
     def __init__(
         self, parser: AgentResultParser, guard: TransitionGuard,
-        controller: Controller,
+        controller: Controller, reader: RoleEventReader,
     ) -> None:
         self._parser = parser
         self._guard = guard
         self._controller = controller
+        self._reader = reader
 
     def accept(
         self,
@@ -53,7 +57,17 @@ class RouterCoordinator:
             or expectation.correlation.task_id != feature_id
         ):
             raise ValueError("route does not match current request and feature state")
-        approved = self._guard.approve_route(payload)
+        events = feature_events(self._reader, feature_id)
+        if durable_feature_state(events) is not current_state:
+            raise ValueError("caller state does not match durable feature state")
+        if not any(
+            event.event_type is EventType.REQUEST_ACCEPTED
+            and any(fact.name == "request_id" and fact.value == request_id
+                    for fact in event.facts)
+            for event in events
+        ):
+            raise ValueError("route request was not durably accepted")
+        approved = None if payload.decision_needed else self._guard.approve_route(payload)
         record_result(
             self._controller, payload, expectation,
             command_type=CommandType.PROPOSE_ROLE_ROUTE,
@@ -65,4 +79,5 @@ class RouterCoordinator:
         )
         if payload.decision_needed:
             return RouteEscalation(request_id, payload.reason)
+        assert approved is not None
         return approved

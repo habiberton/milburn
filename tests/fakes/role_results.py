@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 
 from milburn.agents.result_parser import ResultCorrelation, ResultExpectation
-from milburn.domain import Role, VersionedModel
+from milburn.domain import DomainEvent, EventFact, EventType, Role, VersionedModel
+from milburn.persistence.sqlite_store import SQLiteEventStore
 
 
 def expectation(role: Role, result_type: str) -> ResultExpectation:
@@ -33,3 +35,21 @@ def document(
         "result_type": expected.result_type,
         "payload": payload,
     })
+
+
+def seed_event(
+    store: SQLiteEventStore, kind: EventType, *,
+    feature_id: str = "feature-1", facts: dict[str, str] | None = None,
+) -> None:
+    stream = f"feature:{feature_id}"
+    sequence = store.stream_sequence(stream)
+    store.append(stream, sequence, (DomainEvent(
+        event_id=f"seed-{feature_id}-{sequence + 1}",
+        stream=stream, sequence=sequence + 1, event_type=kind,
+        occurred_at=datetime(2026, 11, 4, tzinfo=UTC),
+        correlation_id=feature_id, causation_id=None,
+        facts=tuple(
+            EventFact(name=name, value=value)
+            for name, value in (facts or {}).items()
+        ),
+    ),))

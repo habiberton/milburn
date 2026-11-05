@@ -3,15 +3,100 @@
 from __future__ import annotations
 
 import json
-from typing import Iterable, Mapping
+from typing import Iterable, Mapping, Protocol
 
 from milburn.agents.result_parser import AgentResultParser, ResultExpectation
 from milburn.domain import (
-    CommandEnvelope, CommandType, DecisionRequest, EventFact, EventType,
-    Role, VersionedModel,
+    CommandEnvelope, CommandType, DecisionRequest, DomainEvent, EventFact, EventType,
+    FeatureState, PlanEnvelope, RequestEnvelope, Role, VersionedModel,
 )
 
 from .controller import Controller
+
+
+class RoleEventReader(Protocol):
+    def read_stream(
+        self, stream: str, *, after_sequence: int = -1
+    ) -> tuple[DomainEvent, ...]: ...
+
+    def read_all(self, *, after_position: int = 0) -> tuple[DomainEvent, ...]: ...
+
+
+def feature_events(reader: RoleEventReader, feature_id: str) -> tuple[DomainEvent, ...]:
+    return reader.read_stream(f"feature:{feature_id}")
+
+
+def durable_feature_state(events: tuple[DomainEvent, ...]) -> FeatureState | None:
+    """Rebuild the feature phase from authoritative lifecycle events."""
+    state: FeatureState | None = None
+    phases = {
+        EventType.REQUEST_ACCEPTED: FeatureState.RECEIVED,
+        EventType.PLAN_RECEIVED: FeatureState.ARCHITECTURE,
+        EventType.ARCHITECTURE_PACKAGE_RECEIVED: FeatureState.ISSUES_READY,
+        EventType.GITHUB_ISSUE_READY: FeatureState.ISSUES_READY,
+        EventType.CODER_ATTEMPT_STARTED: FeatureState.IMPLEMENTATION,
+        EventType.TESTING_REQUESTED: FeatureState.TESTING,
+        EventType.DECISION_REQUIRED: FeatureState.DECISION_NEEDED,
+        EventType.FEATURE_COMPLETED: FeatureState.COMPLETED,
+    }
+    for recorded in events:
+        state = phases.get(recorded.event_type, state)
+        facts = {fact.name: fact.value for fact in recorded.facts}
+        if "feature_state" in facts:
+            state = FeatureState(facts["feature_state"])
+    return state
+
+
+def require_accepted_request(
+    events: tuple[DomainEvent, ...], request: RequestEnvelope
+) -> None:
+    accepted = [event for event in events if event.event_type is EventType.REQUEST_ACCEPTED]
+    if len(accepted) != 1:
+        raise ValueError("feature must have exactly one accepted request")
+    facts = {fact.name: fact.value for fact in accepted[0].facts}
+    try:
+        durable = RequestEnvelope.from_dict(json.loads(facts["request"]))
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError("accepted request lacks a valid durable envelope") from error
+    if durable != request or facts.get("request_id") != request.request_id:
+        raise ValueError("Planner input does not match the accepted request")
+
+
+def require_accepted_plan(
+    events: tuple[DomainEvent, ...], plan: PlanEnvelope
+) -> None:
+    accepted = [event for event in events if event.event_type is EventType.PLAN_RECEIVED]
+    if len(accepted) != 1:
+        raise ValueError("feature must have exactly one accepted plan")
+    facts = {fact.name: fact.value for fact in accepted[0].facts}
+    try:
+        durable = PlanEnvelope.from_dict(json.loads(facts["result"]))
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError("accepted plan lacks a valid durable envelope") from error
+    if durable != plan:
+        raise ValueError("Architect input does not match the accepted plan")
+
+
+def used_decision_ids(reader: RoleEventReader) -> frozenset[str]:
+    """Collect IDs from all feature results and explicit decision events."""
+    ids: set[str] = set()
+    for recorded in reader.read_all():
+        facts = {fact.name: fact.value for fact in recorded.facts}
+        if "decision_id" in facts:
+            ids.add(facts["decision_id"])
+        if recorded.event_type not in {
+            EventType.PLAN_RECEIVED, EventType.ARCHITECTURE_PACKAGE_RECEIVED
+        }:
+            continue
+        if "result" not in facts:
+            continue
+        try:
+            payload = json.loads(facts["result"])
+            rows = payload.get("decisions_needed", payload.get("open_decisions", ()))
+            ids.update(row["decision_id"] for row in rows)
+        except (TypeError, ValueError, KeyError) as error:
+            raise ValueError("durable role result has malformed decision IDs") from error
+    return frozenset(ids)
 
 
 def parse_role_result(
@@ -110,10 +195,13 @@ def validate_decisions(
     *,
     feature_id: str,
     attempt_id: str,
+    used_ids: frozenset[str] = frozenset(),
 ) -> None:
     ids = [item.decision_id for item in decisions]
     if len(set(ids)) != len(ids):
         raise ValueError("decision IDs must be unique")
+    if any(identifier in used_ids for identifier in ids):
+        raise ValueError("decision ID was already used in this workflow")
     for item in decisions:
         if (
             item.feature_id != feature_id

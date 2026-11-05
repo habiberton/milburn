@@ -6,13 +6,22 @@ from milburn.agents.result_parser import AgentResultParser, ResultExpectation
 from milburn.domain import CommandType, EventType, PlanEnvelope, RequestEnvelope, Role
 
 from .controller import Controller
-from .role_results import parse_role_result, record_result, validate_decisions, validate_graph
+from .role_results import (
+    RoleEventReader, durable_feature_state, feature_events,
+    parse_role_result, record_result, require_accepted_request,
+    used_decision_ids, validate_decisions, validate_graph,
+)
+from milburn.domain import FeatureState
 
 
 class PlannerCoordinator:
-    def __init__(self, parser: AgentResultParser, controller: Controller) -> None:
+    def __init__(
+        self, parser: AgentResultParser, controller: Controller,
+        reader: RoleEventReader,
+    ) -> None:
         self._parser = parser
         self._controller = controller
+        self._reader = reader
 
     def accept(
         self,
@@ -26,6 +35,10 @@ class PlannerCoordinator:
         """Require a correlated, acyclic plan before appending PlanReceived."""
         if not isinstance(request, RequestEnvelope):
             raise ValueError("request must be a RequestEnvelope")
+        events = feature_events(self._reader, request.feature_id)
+        require_accepted_request(events, request)
+        if durable_feature_state(events) is not FeatureState.RECEIVED:
+            raise ValueError("Planner result is not allowed in this feature phase")
         payload = parse_role_result(
             self._parser, document, expectation,
             role=Role.PLANNER, result_type="plan_envelope",
@@ -46,6 +59,7 @@ class PlannerCoordinator:
             payload.decisions_needed,
             feature_id=request.feature_id,
             attempt_id=expectation.correlation.attempt_id,
+            used_ids=used_decision_ids(self._reader),
         )
         record_result(
             self._controller, payload, expectation,
