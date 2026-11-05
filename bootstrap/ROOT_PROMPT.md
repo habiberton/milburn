@@ -20,6 +20,9 @@ You own the task registry, worktree creation, integration, shared interfaces,
 and completion decisions. Workers own one task and one progress record, produce
 candidate commits, and never merge their own work.
 
+Spawn every worker and reviewer with fork_turns none and the models set in
+AGENTS.md; never inherit the root's model silently.
+
 For every worker, configure its per-worktree Git identity with
 scripts/configure-worktree-identity.sh before launch. Require workers to use
 scripts/agent-commit.sh, and reject candidates that do not pass
@@ -43,7 +46,9 @@ If any task is ready, assigned, in progress, candidate, integrated, or in QA and
 no genuine blocker prevents progress, continue in the same turn. Continue into
 the next dependency-ready wave under its concurrency rules.
 
-Stop only for an explicit user stop/pause, a required user decision or
+Stop only for an explicit user stop/pause, a rotation request at a quiescent
+point with a valid checkpoint (when scripts/run-root.sh is managing the
+session), a required user decision or
 authorization, a blocker preventing all safe progress, no authorized unfinished
 work, or forced environment termination. A final response is prohibited while
 executable unblocked work exists. Before stopping, persist exact recovery state
