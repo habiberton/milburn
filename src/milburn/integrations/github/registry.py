@@ -17,6 +17,16 @@ from milburn.validation.issue_contracts import issue_marker, render_issue_body, 
 from .contracts import CreateIssueCommand, GitHubGateway, Issue, RepositoryId, SetLabelsCommand
 
 _LABEL = re.compile(r"milburn:[a-z][a-z-]*\Z")
+_APPROVED_STATES = {
+    IssueState.DRAFT: "milburn:blocked",
+    IssueState.BLOCKED: "milburn:blocked",
+    IssueState.READY: "milburn:ready",
+    IssueState.CODING: "milburn:in-progress",
+    IssueState.QA: "milburn:qa",
+    IssueState.CHANGES_REQUESTED: "milburn:changes-requested",
+    IssueState.PASSED: "milburn:qa",
+    IssueState.DONE: "milburn:done",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,7 +49,10 @@ class LabelConfig:
             raise ValueError("invalid state label")
         if value["task"] in states.values():
             raise ValueError("task and state labels must differ")
-        return cls(value["task"], {IssueState(state): label for state, label in states.items()})
+        mapped = {IssueState(state): label for state, label in states.items()}
+        if value["task"] != "milburn:task" or mapped != _APPROVED_STATES:
+            raise ValueError("label config differs from the approved Milburn mapping")
+        return cls(value["task"], mapped)
 
     def labels_for(self, state: IssueState) -> tuple[str, str]:
         if not isinstance(state, IssueState):
@@ -87,6 +100,8 @@ class IssueRegistry:
             fence=fence, repository_id=self._repository, title=draft.title, body=body,
         )
         issue = self._gateway.create_issue(create)
+        if issue.state != "open":
+            raise ValueError("closed issue cannot be created or labeled ready")
         expected = self._labels.labels_for(state)
         if set(issue.labels) == set(expected):
             return issue

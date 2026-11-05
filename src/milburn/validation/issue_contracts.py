@@ -43,10 +43,18 @@ def validate_issue_draft(draft: IssueDraft) -> None:
 
 def render_issue_body(draft: IssueDraft, marker: str) -> str:
     validate_issue_draft(draft)
-    if not isinstance(marker, str) or not marker.startswith("milburn:") or "-->" in marker:
+    if (
+        not isinstance(marker, str)
+        or not re.fullmatch(
+            r"milburn:[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*:[A-Za-z0-9][A-Za-z0-9._-]*:"
+            + re.escape(draft.task_key), marker,
+        )
+    ):
         raise ValueError("invalid issue marker")
     sections = (
         ("Objective", (draft.objective,)),
+        ("Scope", tuple(f"In scope: {artifact}" for artifact in draft.expected_artifacts)
+         + tuple(f"Out of scope: {item}" for item in draft.non_goals)),
         ("Specifications", draft.spec_links),
         ("Acceptance criteria", draft.acceptance_criteria),
         ("Expected components", draft.expected_artifacts),

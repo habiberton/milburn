@@ -118,10 +118,16 @@ class InMemoryEffectJournal:
     def request(self, request: EffectRequest) -> EffectRecord:
         current = self._records.get(request.effect_id)
         if current is not None:
-            if current.request != request:
+            if (
+                current.request.fence.task_id != request.fence.task_id
+                or replace(current.request, fence=request.fence) != request
+            ):
                 raise EffectConflictError(
                     f"effect ID {request.effect_id!r} is already bound to another request"
                 )
+            if current.request.fence != request.fence:
+                current = replace(current, request=request)
+                self._store(current)
             return current
         marker_key = (request.repository_id, request.idempotency_marker)
         marker_effect = self._markers.get(marker_key)

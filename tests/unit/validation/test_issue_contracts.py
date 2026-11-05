@@ -38,8 +38,14 @@ def test_body_contains_all_required_sections_and_stable_identity():
     item = draft()
     marker = issue_marker("acme/milburn", "feature-1", item.task_key)
     body = render_issue_body(item, marker)
-    for text in ("Objective", "Specifications", "Acceptance criteria", "Expected components",
+    for text in ("Objective", "Scope", "Specifications", "Acceptance criteria", "Expected components",
                  "Dependencies", "Test instructions", "Risks", "Non-goals", "Required artifacts",
                  "API responds", "task-0", marker):
         assert text in body
     assert render_issue_body(item, marker) == body
+
+
+@pytest.mark.parametrize("marker", ["milburn:\nspoofed", "milburn:", "milburn:acme/milburn:feature:task<!--", "milburn:acme/milburn:feature:another-task"])
+def test_body_rejects_malformed_or_unrelated_marker(marker):
+    with pytest.raises(ValueError):
+        render_issue_body(draft(), marker)

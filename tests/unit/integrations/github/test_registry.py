@@ -85,6 +85,60 @@ def test_does_not_reset_later_lifecycle_label_on_replay():
     assert server.mutation_counts[UPDATE_ISSUE] == 1
 
 
+@pytest.mark.parametrize("labels", [[], ["milburn:task", "milburn:ready"]])
+def test_closed_issue_cannot_be_returned_or_labeled_ready(labels):
+    service, server = registry()
+    service.create(command(), draft(), FENCE, {})
+    server.issues[1]["state"] = "closed"
+    server.issues[1]["labels"] = labels
+    before = server.mutation_counts[UPDATE_ISSUE]
+    with pytest.raises(ValueError, match="closed"):
+        service.create(command(), draft(), FENCE, {})
+    assert server.mutation_counts[UPDATE_ISSUE] == before
+
+
+def test_replacement_attempt_reconciles_same_stable_creation_effect():
+    server = FakeGitHubMcpServer()
+    journal = InMemoryEffectJournal()
+    generations = InMemoryGenerationFence()
+    generations.activate(FENCE.task_id, FENCE.attempt_id, FENCE.generation)
+    service = IssueRegistry(GitHubMcpGateway(server.client, journal, generations),
+                            REPOSITORY, LabelConfig.load(Path("config/github-labels.yaml")))
+    server.client.script(CREATE_ISSUE, ScriptedOutcome.TIMEOUT_AFTER)
+    with pytest.raises(UncertainEffectError):
+        service.create(command(), draft(), FENCE, {})
+    replacement = EffectFence("feature-1", "architect-2", 1)
+    generations.activate(replacement.task_id, replacement.attempt_id, replacement.generation)
+    issue = service.create(replace(command(), attempt_id="architect-2"), draft(), replacement, {})
+    assert issue.number == 1
+    assert server.mutation_counts[CREATE_ISSUE] == 1
+
+
+def test_replacement_attempt_reconciles_label_effect():
+    server = FakeGitHubMcpServer()
+    journal = InMemoryEffectJournal()
+    generations = InMemoryGenerationFence()
+    generations.activate(FENCE.task_id, FENCE.attempt_id, FENCE.generation)
+    service = IssueRegistry(GitHubMcpGateway(server.client, journal, generations),
+                            REPOSITORY, LabelConfig.load(Path("config/github-labels.yaml")))
+    server.client.script(UPDATE_ISSUE, ScriptedOutcome.TIMEOUT_AFTER)
+    with pytest.raises(UncertainEffectError):
+        service.create(command(), draft(), FENCE, {})
+    replacement = EffectFence("feature-1", "architect-2", 1)
+    generations.activate(replacement.task_id, replacement.attempt_id, replacement.generation)
+    issue = service.create(replace(command(), attempt_id="architect-2"), draft(), replacement, {})
+    assert issue.number == 1
+    assert server.mutation_counts[UPDATE_ISSUE] == 1
+
+
+def test_label_config_rejects_renamed_approved_labels(tmp_path):
+    text = Path("config/github-labels.yaml").read_text().replace("milburn:ready", "milburn:almost-ready")
+    path = tmp_path / "labels.yaml"
+    path.write_text(text)
+    with pytest.raises(ValueError):
+        LabelConfig.load(path)
+
+
 def test_timeout_after_create_reconciles_without_duplicate():
     service, server = registry()
     server.client.script(CREATE_ISSUE, ScriptedOutcome.TIMEOUT_AFTER)
