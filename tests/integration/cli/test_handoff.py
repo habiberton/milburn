@@ -1,0 +1,125 @@
+"""Cross-harness handoff when a Coder's harness runs out (PRD R43, AC 15; ARCH §8.1)."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from tests.integration.cli.test_walking_skeleton import (  # noqa: F401 - fixture
+    _project, create_task, repo, run, sh,
+)
+
+pytestmark = pytest.mark.timeout(90)
+
+
+def claude_codes(repo: Path) -> None:
+    config = repo / ".milburn" / "config.toml"
+    text = config.read_text()
+    text = text.replace('[roles.coder]\nharness = "codex"', '[roles.coder]\nharness = "claude-code"')
+    text = text.replace('[roles.tester]\nharness = "claude-code"', '[roles.tester]\nharness = "codex"')
+    config.write_text(text)
+
+
+def exhaust_first_attempt(monkeypatch) -> None:
+    monkeypatch.setenv("FAKE_CODER_MODE_A1", "exhausted")
+    create_task()
+    assert run("dispatch", "t1") == 0
+    assert run("collect", "t1", "--wait", "20") == 0
+
+
+# --- refusals first -------------------------------------------------------------
+
+def test_handoff_needs_a_collected_coder_attempt(repo: Path, capsys) -> None:
+    create_task()
+    assert run("attempt", "handoff", "t1", "--harness", "claude-code") == 1
+    assert "no collected Coder attempt" in capsys.readouterr().err
+
+
+def test_an_unknown_end_needs_a_reason(repo: Path, monkeypatch, capsys) -> None:
+    exhaust_first_attempt(monkeypatch)  # Codex reports exhaustion only as prose: unknown
+    assert "run unknown" in capsys.readouterr().out
+    assert run("attempt", "handoff", "t1", "--harness", "claude-code") == 1
+    assert "give --reason" in capsys.readouterr().err
+
+
+def test_handoff_to_the_same_harness_is_refused(repo: Path, monkeypatch, capsys) -> None:
+    exhaust_first_attempt(monkeypatch)
+    capsys.readouterr()
+    assert run("attempt", "handoff", "t1", "--harness", "codex", "--reason", "limit") == 1
+    assert "another harness" in capsys.readouterr().err
+
+
+def test_handoff_without_a_progress_file_is_refused(repo: Path, monkeypatch, capsys) -> None:
+    exhaust_first_attempt(monkeypatch)
+    (_project(repo).worktree_root / "t1" / "progress.txt").unlink()
+    capsys.readouterr()
+    assert run("attempt", "handoff", "t1", "--harness", "claude-code", "--reason", "limit") == 1
+    assert "progress.txt is missing" in capsys.readouterr().err
+
+
+def test_a_checkpoint_that_is_not_an_ancestor_is_refused(repo: Path, monkeypatch, capsys) -> None:
+    exhaust_first_attempt(monkeypatch)
+    progress = _project(repo).worktree_root / "t1" / "progress.txt"
+    progress.write_text("Current head: " + "f" * 40 + "\n")
+    capsys.readouterr()
+    assert run("attempt", "handoff", "t1", "--harness", "claude-code", "--reason", "limit") == 1
+    assert "not an ancestor" in capsys.readouterr().err
+
+
+def test_handoff_while_the_old_run_is_alive_is_refused(repo: Path, monkeypatch, capsys) -> None:
+    monkeypatch.setenv("FAKE_SLEEP", "5")
+    create_task()
+    assert run("dispatch", "t1") == 0
+    capsys.readouterr()
+    assert run("attempt", "handoff", "t1", "--harness", "claude-code", "--reason", "x") == 1
+    assert "uncollected attempt" in capsys.readouterr().err
+
+
+def test_an_accepted_candidate_is_not_handed_off(repo: Path, capsys) -> None:
+    create_task()
+    assert run("dispatch", "t1") == 0
+    assert run("collect", "t1", "--wait", "20") == 0
+    capsys.readouterr()
+    assert run("attempt", "handoff", "t1", "--harness", "claude-code", "--reason", "x") == 1
+    assert "run QA instead" in capsys.readouterr().err
+
+
+# --- the handoff ----------------------------------------------------------------
+
+def test_codex_to_claude_code_handoff_keeps_the_work_and_moves_qa(repo: Path, monkeypatch, capsys) -> None:
+    exhaust_first_attempt(monkeypatch)
+    worktree = _project(repo).worktree_root / "t1"
+    assert (worktree / "feature_t1.txt").read_text() == "half done by a1\n"
+    capsys.readouterr()
+    assert run("attempt", "handoff", "t1", "--harness", "claude-code", "--reason", "Codex usage limit") == 0
+    out = capsys.readouterr().out
+    assert "from codex a1 to claude-code a2" in out
+    brief = (_project(repo).run_dir / "t1-a2.brief").read_text()
+    assert "HANDOFF: you continue attempt a1" in brief
+    assert "feature_t1.txt" in brief and "feature file started" in brief
+    assert run("collect", "t1", "--wait", "20") == 0
+    assert "result True" in capsys.readouterr().out
+    # The finishing harness is now the Coder harness: QA must move to Codex.
+    assert run("qa", "t1") == 1
+    assert "equals the Coder's" in capsys.readouterr().err
+    assert run("qa", "t1", "--harness", "codex") == 0
+    assert run("collect", "t1", "--wait", "20") == 0
+    assert run("task", "complete", "t1") == 0
+    assert run("integrate", "t1") == 0
+    assert run("deliver", "w1") == 0
+    assert sh(repo, "git", "show", "milburn/w1/integration:feature_t1.txt") == "done by a2"
+
+
+def test_claude_code_rate_limit_is_exhausted_and_hands_off_without_a_reason(
+    repo: Path, monkeypatch, capsys
+) -> None:
+    claude_codes(repo)
+    exhaust_first_attempt(monkeypatch)
+    assert "run exhausted" in capsys.readouterr().out
+    assert run("attempt", "handoff", "t1", "--harness", "codex") == 0
+    assert run("collect", "t1", "--wait", "20") == 0
+    assert "result True" in capsys.readouterr().out
+    assert run("qa", "t1", "--harness", "claude-code") == 0
+    assert run("collect", "t1", "--wait", "20") == 0
+    assert run("task", "complete", "t1") == 0

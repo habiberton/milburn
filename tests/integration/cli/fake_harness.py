@@ -4,7 +4,11 @@ Invoked as ``fake_harness.py codex|claude-code [harness flags...]`` with the
 rendered brief on stdin. It acts as the role named in the brief and prints the
 real stream format of the named harness. Behaviour knobs (environment):
 
-- FAKE_CODER_MODE: candidate (default) | nocommit | wronghead | blocked
+- FAKE_CODER_MODE: candidate (default) | nocommit | wronghead | blocked | exhausted
+  (FAKE_CODER_MODE_<ATTEMPT>, e.g. FAKE_CODER_MODE_A1, overrides it per attempt;
+  ``exhausted`` leaves work and progress uncommitted and ends the way each
+  harness reports running out: a rate-limit refusal for Claude Code, a prose
+  error event for Codex)
 - FAKE_TESTER_OUTCOME: passed (default) | changes_requested
 - FAKE_SLEEP: seconds to sleep before answering (to observe a running attempt)
 
@@ -53,7 +57,23 @@ def git(*args: str) -> str:
 
 
 if role == "coder":
-    mode = os.environ.get("FAKE_CODER_MODE", "candidate")
+    mode = os.environ.get(f"FAKE_CODER_MODE_{attempt_id.upper()}") or os.environ.get(
+        "FAKE_CODER_MODE", "candidate"
+    )
+    if mode == "exhausted":
+        base = git("rev-parse", "HEAD")
+        with open(f"feature_{task_id}.txt", "w") as handle:
+            handle.write(f"half done by {attempt_id}\n")
+        with open("progress.txt", "w") as handle:
+            handle.write(f"Current head: {base}\n\n{task_id} {attempt_id}: feature file started, not finished\n")
+        if harness == "codex":
+            print(json.dumps({"type": "thread.started", "thread_id": f"thread-{attempt_id}"}))
+            print(json.dumps({"type": "error", "message": "You've hit your usage limit."}))
+        else:
+            session = {"session_id": f"session-{attempt_id}"}
+            print(json.dumps({"type": "system", "subtype": "init", **session}))
+            print(json.dumps({"type": "rate_limit_event", "rate_limit_info": {"status": "rejected"}, **session}))
+        sys.exit(1)
     if mode == "blocked":
         payload = {
             "schema_version": 1, "attempt_id": attempt_id, "issue_number": number,

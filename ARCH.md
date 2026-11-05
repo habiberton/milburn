@@ -272,8 +272,13 @@ moves to the new attempt explicitly, and only the latest attempt may act (issue 
 
 ### 8.1 Cross-harness handoff (PRD R43)
 
-A handoff continues the **same attempt** in a **new session generation** on another
-harness. The task, worktree, branch, and lease stay unchanged.
+A handoff continues the same work in a new session on another harness. The task,
+worktree, branch, and lease stay unchanged. The CLI records every run as an
+attempt (`a1`, `a2`, ...); a handoff starts the next attempt with `handoff_from`
+naming the one it continues, and an `AttemptHandedOff` event holding the manifest
+and its digest. Command: `milburn attempt handoff <task> --harness <h> [--reason]`;
+`milburn qa <task> --harness <h>` moves QA when the finishing harness is the one
+QA was configured for.
 
 1. **Classify the exit.** `collect` asks the adapter to classify a run's end as
    `completed`, `exhausted` (out of tokens, rate-limited, quota), `failed`, or

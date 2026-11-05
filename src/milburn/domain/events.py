@@ -64,6 +64,8 @@ class EventType(StrEnum):
     TASK_COMPLETED = "TaskCompleted"
     TASK_INTEGRATED = "TaskIntegrated"
     WORK_ITEM_DELIVERED = "WorkItemDelivered"
+    SESSION_GENERATION_EXHAUSTED = "SessionGenerationExhausted"
+    ATTEMPT_HANDED_OFF = "AttemptHandedOff"
 
 
 @dataclass(frozen=True, slots=True)

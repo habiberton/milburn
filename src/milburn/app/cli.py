@@ -17,6 +17,7 @@ from pathlib import Path
 import sys
 
 from milburn import __version__
+from milburn.agents.harness import Harness
 
 READ_ONLY_COMMANDS = frozenset({"status", "usage"})
 
@@ -51,6 +52,15 @@ def build_parser() -> argparse.ArgumentParser:
     dispatch.add_argument("task")
     qa = sub.add_parser("qa", help="start a Tester attempt for a task's candidate")
     qa.add_argument("task")
+    qa.add_argument("--harness", choices=[h.value for h in Harness],
+                    help="run QA on this harness instead of the configured one")
+    attempt = sub.add_parser("attempt", help="manage a task's attempts")
+    attempt_sub = attempt.add_subparsers(dest="attempt_command", required=True)
+    handoff = attempt_sub.add_parser(
+        "handoff", help="continue a Coder's work on another harness (PRD R43)")
+    handoff.add_argument("task")
+    handoff.add_argument("--harness", required=True, choices=[h.value for h in Harness])
+    handoff.add_argument("--reason", help="why, when the run did not end exhausted")
     collect = sub.add_parser("collect", help="collect a task's latest attempt")
     collect.add_argument("task")
     collect.add_argument("--wait", type=float, default=0, help="seconds to wait for the run")
@@ -96,7 +106,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             elif args.command == "dispatch":
                 outcome = commands.dispatch(args.task, "coder")
             elif args.command == "qa":
-                outcome = commands.dispatch(args.task, "tester")
+                outcome = commands.dispatch(
+                    args.task, "tester", Harness(args.harness) if args.harness else None
+                )
+            elif args.command == "attempt":
+                outcome = commands.handoff(args.task, Harness(args.harness), args.reason)
             elif args.command == "collect":
                 outcome = commands.collect(args.task, args.wait)
             elif args.command == "integrate":
