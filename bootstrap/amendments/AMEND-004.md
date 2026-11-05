@@ -43,9 +43,9 @@ task.
 
 ## Registry and specification changes
 
-- Registry changes: mark MB-023 blocked while this amendment is pending; add an MB-023-only review exception and known-limitations record; retain its exact candidate SHA and dependencies.
+- Registry changes: mark MB-023 blocked while this amendment is pending; add an MB-023-only review exception and known-limitations record; retain its exact candidate SHA and dependencies; finalize `bootstrap/feedback/MB-023.md` with MB-023-F001/F002 as unresolved and linked to follow-up issues #49/#50.
 - Specification changes: none to PRD.md or ARCH.md; the effective amendment record is the narrow task-specific authority that supersedes only MB-023's automatic post-Focused escalation. AGENTS.md, bootstrap/README.md, and bootstrap/ROOT_PROMPT.md remain otherwise unchanged.
-- GitHub changes: issue #41 moves to `milburn:decision-needed` while pending, then returns to `milburn:qa` only after the effective amendment is remotely reconciled and the preserved candidate is integrated and tested.
+- GitHub changes: issue #41 moves to `milburn:decision-needed` while pending, then returns to `milburn:qa` only after the effective amendment is remotely reconciled and the preserved candidate is integrated and tested. Follow-up issue #49 tracks MB-023-F001 and #50 tracks MB-023-F002 after #41 closes; neither issue claims a fix.
 
 ## Effectiveness
 

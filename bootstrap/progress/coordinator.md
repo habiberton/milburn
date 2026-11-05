@@ -995,6 +995,12 @@ New dispatch is frozen by pending AMEND-004. MB-009/a01 is classified
   that can emit multiple lines or unpaired-surrogate tracebacks and malformed
   UTF-8 that escapes as a traceback. No MB-025 correction worker was active
   when AMEND-004 froze dispatch; preserve its candidate and findings.
+- AMEND-004 Specification review blocked planning candidate `474fd29` because
+  accepted unresolved MB-023 findings would lose durable tracking when #41
+  closes. Standards passed. Follow-up issues #49 and #50 now track F001 and
+  F002 respectively, and `bootstrap/feedback/MB-023.md` records both as
+  unresolved with no fabricated fix or regression evidence. Both amendment
+  review axes must re-review the corrected planning tip.
 
 - `scripts/smoke-test.sh` with the shared test environment: 29 tasks valid, 12
   feedback briefs valid, 3 amendment records valid, 414 passed, 3 skipped, 3
