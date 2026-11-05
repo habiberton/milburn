@@ -1172,7 +1172,7 @@
       "owner": "builder-MB-023-a01",
       "branch": "bootstrap/builder/MB-023/a01-quiet-runner",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-023-a01",
-      "base_sha": "62ef4b4",
+      "base_sha": "1b8d86a6802867771c122bfdd0af80d9533ff313",
       "candidate_sha": null,
       "progress_path": "bootstrap/progress/tasks/MB-023.md",
       "owned_paths": [
@@ -1254,7 +1254,7 @@
       "owner": "builder-MB-025-a01",
       "branch": "bootstrap/builder/MB-025/a01-bootstrap-config",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-025-a01",
-      "base_sha": "62ef4b4",
+      "base_sha": "1b8d86a6802867771c122bfdd0af80d9533ff313",
       "candidate_sha": null,
       "progress_path": "bootstrap/progress/tasks/MB-025.md",
       "owned_paths": [

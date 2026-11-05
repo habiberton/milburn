@@ -943,6 +943,10 @@ ready.
 - After each tooling script merges, create a small coordinator PR that
   activates only its matching `once it exists` rule in `AGENTS.md` and
   `bootstrap/ROOT_PROMPT.md`; never edit those files directly on `main`.
+- MB-025/a01 and MB-023/a01 worktrees were created from exact base
+  `1b8d86a6802867771c122bfdd0af80d9533ff313` at their recorded absolute paths.
+  Both identities were configured before dispatch as `Milburn Builder
+  [MB-025/a01]` and `Milburn Builder [MB-023/a01]`; the worktrees are clean.
 
 - `scripts/smoke-test.sh` with the shared test environment: 29 tasks valid, 12
   feedback briefs valid, 3 amendment records valid, 414 passed, 3 skipped, 3
