@@ -91,8 +91,8 @@ agent wrote in the shared Git directory never run with CLI authority.
 ## 5. Work items, branches, and delivery
 
 ```text
-default branch ── milburn/w<id> (integration) ──┬── milburn/w<id>/t<id> (task)
-                                                └── milburn/w<id>/t<id> (task)
+default branch ── milburn/w<id>/integration ──┬── milburn/w<id>/t<id> (task)
+                                              └── milburn/w<id>/t<id> (task)
 ```
 
 - **Creation.** A request that dispatches any task opens a work item. Its
@@ -146,7 +146,7 @@ result = "CoderResult"
 rules = "role_rules/coder"     # long-running Coder protocol (PRDv1 §9, built in MB-013)
 skills = ["milburn-long-running-coder"]
 sandbox = "workspace-write"
-git_write = true               # adds the common Git directory (G20)
+git_write = true               # see "Who commits" below
 qa = true
 
 [task_type.test]
@@ -160,8 +160,15 @@ harness = "other-than-coder"   # default; "any" turns it off (R8)
 Validation at load: unknown roles, missing skills or schemas, unknown sandboxes,
 and `git_write` without `workspace-write` are rejected.
 
-`CoderResult` allows `blocked` and `decision_needed` with no commits; commits are
-required only for `candidate` (G21).
+`CoderResult` allows any outcome with no commits (G21).
+
+**Who commits.** A Coder commits when its harness allows it (Claude Code does,
+with `git add` and `git commit` allowed). Codex keeps the Git directory
+read-only under `workspace-write`, including a worktree's resolved gitdir, so
+`--add-dir` cannot fix G20 (live run, 2026-11-04). `milburn collect` therefore
+commits whatever a Coder left in its worktree, under that attempt's identity,
+before the candidate checks run. The reported `head_sha` must equal the worktree
+HEAD the Coder saw; the candidate must add at least one commit.
 
 ## 7. Built-in processes
 
