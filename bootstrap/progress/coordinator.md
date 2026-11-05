@@ -906,6 +906,44 @@ ready.
 
 ## Current verification
 
+- Startup reconciliation on 2026-11-04 confirmed clean `main` at
+  `62ef4b404e5affeb97bfb09e33c5f17795606db2`, matching `origin/main`; live
+  GitHub issues and merged PRs matched the task registry, and no prior worker
+  process was active.
+- MB-009 candidate `354a18a40694e6afe50b8f2e64d1329d00e6f467`
+  again passed attribution for nine commits, 35 focused tests, the complete
+  candidate suite (409 passed, 3 protected skips, 3 subtests), owned-path and
+  diff checks. Its old worktree predates the shared runner; verification used
+  the primary checkout's `scripts/run-tests.sh` as AGENTS.md permits.
+- The mandated fresh MB-009 Specification and Standards reviews both blocked.
+  Specification found stale retired evidence can supersede later-attempt
+  history and missing preserved branches can be recreated without
+  reconciliation. Standards found a retired lease can be prepared again and
+  then falsely reported retired, plus fake branch-conflict checks leak across
+  repositories. The specific F001-F005 cases remain fixed; these are new
+  lifecycle/fake-parity classes. Under the approved 2026-11-04 decision, no
+  further MB-009 fix round may start without user authorization.
+- MB-009 is therefore blocked on a user decision and issue #9 carries
+  `milburn:decision-needed`. The independent process-tooling track remains
+  executable. Per the user's 2026-11-04 scheduling priority, MB-025 takes the
+  first slot and MB-023 the second; MB-024 remains blocked until it is about to
+  dispatch.
+- Tooling order is MB-025 first paired with MB-023; then MB-026 and MB-027
+  after MB-025; then MB-024 when a slot is free; MB-028 only after MB-023 and
+  MB-025 are merged and runs alone. MB-029 stays blocked until the user sets
+  both launcher permission values. Tooling takes the two worker slots before
+  Wave 3 tasks, although it does not change Wave 3 dependencies.
+- MB-010 and MB-011 are dependency-ready but remain registry/GitHub blocked
+  until each is actually about to dispatch, as do undispatched MB-024 and
+  MB-025 successors.
+- After MB-025, MB-026, and MB-027 are each remotely merged and reconciled,
+  stop at a quiescent point for a user-managed restart. Before stopping, run
+  MB-026's `migrate-history` dry run and report what it would move; do not use
+  `--apply` without explicit user authorization.
+- After each tooling script merges, create a small coordinator PR that
+  activates only its matching `once it exists` rule in `AGENTS.md` and
+  `bootstrap/ROOT_PROMPT.md`; never edit those files directly on `main`.
+
 - `scripts/smoke-test.sh` with the shared test environment: 29 tasks valid, 12
   feedback briefs valid, 3 amendment records valid, 414 passed, 3 skipped, 3
   subtests passed.
@@ -930,20 +968,22 @@ Decisions needed from the user before the affected paths can proceed:
    `scripts/run-root.sh`. Only MB-029 waits on this; it stays blocked until the
    user sets both values in `bootstrap/config.json`.
 5. (Resolved 2026-11-04) `gpt-6-sol` confirmed as the reviewer model ID.
+6. MB-009 requires user authorization for another fix round after the fresh
+   full reviews found new blocking retirement/replay and fake-parity defects.
 
 ## Resume here
 
 1. Run the startup procedure. `scripts/reconcile.sh` does not exist yet, so
    reconcile by hand against `bootstrap/tasks.json` and GitHub.
-2. The only open user decision is the launcher permissions (blocker 4); it
-   affects only MB-029.
-3. Finish MB-009 review on `354a18a`. Reviewers use `gpt-6-sol` with
-   `fork_turns: none`. If the next full round has a blocking finding, ask the
-   user before another fix round.
-4. After the issues exist: set MB-023, MB-024, and MB-025 ready (no
-   dependencies); then MB-026 and MB-027 after MB-025; MB-028 after MB-023 and
-   MB-025, run alone because it merges and pushes; MB-029 after MB-025 to
-   MB-027 and decision 4. Use at most two workers at first.
-5. Reconcile MB-010 and MB-011 (dependencies done, recorded blocked).
-6. As each tooling script lands, update the matching "once it exists" rules in
-   `AGENTS.md` and `bootstrap/ROOT_PROMPT.md`.
+2. MB-009 is blocked on user authorization for another fix round after the
+   final full review found F006-F008 classes; preserve candidate `354a18a`.
+3. MB-025 and MB-023 are the active first tooling pair. Dispatch and integrate
+   them independently; keep MB-024, MB-010, and MB-011 blocked until each is
+   about to dispatch.
+4. After MB-025 merges, dispatch MB-026 and MB-027 before other work. After all
+   three merge, run the `migrate-history` dry run, record exact state, and stop
+   quiescently for the user's manual restart.
+5. MB-028 waits for merged MB-023 and MB-025 and must run alone. MB-029 waits
+   for the unset launcher permissions.
+6. Land each matching `once it exists` activation in a small coordinator PR;
+   do not edit `AGENTS.md` or `bootstrap/ROOT_PROMPT.md` directly on `main`.
