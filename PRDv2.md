@@ -9,6 +9,10 @@ Requirement IDs here start with `V2-`.
 
 **Harness:** Codex first, as in v1. Nothing in this increment needs another harness.
 
+**Validation markers.** A note starting **Needs validation** marks something that rests on
+an assumption, an untested tool, or an unreviewed risk. Each must be resolved before this
+document is approved. Section 12 lists them with a way to validate each.
+
 ## 1. Intent
 
 v1 starts at a plan. A software factory should start earlier, at the idea, and
@@ -105,6 +109,7 @@ question has an identity, text, category, whether it is blocking, and a status:
   asks the user whether to proceed with recorded assumptions, defer, or stop. The
   grilling cannot continue indefinitely.
 
+  > **Needs validation:** the defaults (questions per turn, rounds before escalation) are guesses; tune them from real use.
 ### 4.3 Research
 
 - **V2-5. Read-only, controller-owned research.** Web search, page fetch, and
@@ -156,6 +161,7 @@ question has an identity, text, category, whether it is blocking, and a status:
   rendering service that uses a browser engine with real visual rendering. A browser
   without rendering is not acceptable for design evidence.
 
+  > **Needs validation:** which browser engine renders screenshots, and where it runs, is undecided; test fidelity at the narrow and wide viewports before choosing.
 ## 6. Living specs and change folders
 
 v1 writes `PRD.md` and `ARCH.md` once and says nothing about how they evolve, and
@@ -193,10 +199,12 @@ telemetry is on by default and is disabled with `OPENSPEC_TELEMETRY=0` or
   (validate, show, status), invokes the CLI. Every invocation disables telemetry,
   and subcommands that contact the network (the update check and feedback) are never
   called.
+  > **Needs validation:** the standalone OpenSpec build was not tested; the shape of `status --json` and `show --json` is not a documented contract; isolating its global config was not tested.
 - **V2-28. Milburn's schema.** Milburn ships a project schema `milburn-spec` in
   `openspec/schemas/`, forked from OpenSpec's `spec-driven` schema with the `tasks`
   artifact and the apply step removed: proposal, then specs and design. Tasks are
   GitHub issues (v1 §8), so there is one task list.
+  > **Needs validation:** OpenSpec labels its schema commands experimental, and spec quality from a real `propose` run with a model has not been assessed.
 - **V2-29. No OpenSpec skills in role workspaces.** OpenSpec's own skills, including
   the one that implements tasks, are not installed for any role. Agents use the
   Milburn-owned `milburn-spec` skill (section 7). No agent can run apply, archive, or
@@ -218,6 +226,7 @@ policy for third-party skills.
 - **V2-14. `milburn-discovery`.** The grill procedure (explore first, one decision at
   a time, recommend an answer for each question), research procedure, ledger commands,
   and the brief template.
+  > **Needs validation:** the license of the grilling skill used in this project's own build has not been checked before adapting its content.
 - **V2-15. `milburn-design`.** The diverge and converge procedures, variant and
   viewport rules, the design-spec template, and accessibility checks.
 - **V2-32. `milburn-spec`.** How to write the spec change in OpenSpec's format,
@@ -231,6 +240,7 @@ policy for third-party skills.
   or missing copy blocks launch (v1 §13.1 rule). Before vendoring, the upstream
   `LICENSE.txt` must be read and its terms confirmed to allow redistribution
   (open question 5).
+  > **Needs validation:** the upstream `LICENSE.txt` has not been read. Search results point to Apache-2.0, but confirm redistribution terms before vendoring.
 - **V2-17. Precedence.** A project's own design-system skill outranks `milburn-design`,
   which outranks `frontend-design`. The last guides greenfield work and projects with
   no design system. Skills guide judgment and never grant authority (v1 §13.1).
@@ -263,6 +273,7 @@ and not change for the second.
   format is not a documented contract); and observations of the environment that need
   no harness cooperation (commits, progress file changes, test runs, process liveness,
   CPU and memory). Terminal text is for human viewing only and is never evidence.
+  > **Needs validation:** none of the Codex sources was tested here: the `[otel]` export (sources disagree on metrics support), the session log (format is undocumented), the app-server notification protocol (not found), and `codex exec --json` usage semantics (secondary sources say usage is cumulative per thread). Whether a per-attempt Codex home directory works is also unconfirmed.
 - **V2-37. Assistant output.** Assistant prose is shown in the stream when the harness
   provides it. It is classified sensitive, passes through secret redaction before it is
   streamed or stored, and is kept in a transcript store separate from the event store,
@@ -271,6 +282,7 @@ and not change for the second.
   input to a controller decision, and it is never treated as evidence. Hidden reasoning
   is not captured; only output the harness presents as visible is shown. This relaxes
   v1's wording on transcripts for display purposes only (open question 13).
+  > **Needs validation:** this relaxes v1's transcript wording; redaction effectiveness is untested; the default retention is undecided.
 - **V2-38. Logs.** The controller writes structured logs with levels, correlation IDs
   (feature, issue, attempt, generation, effect), redaction, rotation, and retention.
   Events are durable facts; logs are diagnostics and may be dropped. Command output
@@ -289,6 +301,7 @@ and not change for the second.
   available and off by default. Milburn's own event schema is versioned independently
   of OpenTelemetry's generative-AI conventions, which are still at Development status,
   and is mapped only inside the exporter.
+  > **Needs validation:** OpenTelemetry's generative-AI conventions were reported at Development status; confirm the current status in the dedicated repository.
 - **V2-42. Alerts.** Alerts are events produced by deterministic rules: an attempt idle
   too long, no commits for too long, context above a threshold, non-converging
   rework, a backlog of uncertain effects, and a telemetry source down. An alert needing
@@ -308,6 +321,7 @@ and not change for the second.
 - **V2-45. Phone notifications.** Decisions and alerts are pushed to paired devices
   through a configurable provider. Notification text is minimal and carries no
   assistant output or secrets by default.
+  > **Needs validation:** **High risk, applies to V2-43 to V2-45.** Nothing in the remote and phone interface has been prototyped. The pairing method, TLS behind a tunnel, the push provider, the phone UI, the scope and re-authentication design, and the threat model all need a prototype and a security review.
 - **V2-46. Harness-neutral vocabulary.** The activity vocabulary has optional fields so
   a harness that owns its loop can emit the same events natively and add per-call
   latency, retries, tool timing, and exact usage. Nothing downstream changes.
@@ -321,6 +335,7 @@ and not change for the second.
   policy), and the transition guard enforces it. Discovery and Design are table
   entries. v1's behavior is the default table. This is the one structural change the
   increment needs from v1 (ARCHv2 §2).
+  > **Needs validation:** the cost of retrofitting a stage table into workflow code that is already built is not estimated.
 - **V2-20. v1 disciplines apply.** Fresh launches, bounded briefs with digests,
   context thresholds (v1 §12.4), bounded command output (§12.6), token telemetry
   (§12.1), and durable handoff (§12.2) apply to both new roles without exception.
@@ -403,7 +418,22 @@ OpenSpec project, OpenSpec's own apply and verify workflows, a hosted relay, mul
 access control, pricing and budgets, and any use of captured assistant output as
 handoff, feedback, or evidence input. They are candidates for later increments.
 
-## 12. Open questions
+## 12. Validation checklist
+
+| # | Item | Requirements | How to validate |
+|---|---|---|---|
+| 1 | Remote and phone interface | V2-43 to V2-45 | Prototype pairing, TLS through a tunnel, scoped access, and push; run a security review |
+| 2 | Codex telemetry sources | V2-35, V2-36 | Capture real runs and check each source against the event vocabulary; confirm per-attempt home directories |
+| 3 | Assistant-output handling | V2-37 | Test redaction against fixtures with secrets; decide retention; amend v1 wording |
+| 4 | OpenSpec pin | V2-27, V2-28 | Test the standalone build, JSON output shapes, config isolation, and a real `propose` run |
+| 5 | `frontend-design` license | V2-16 | Read the upstream `LICENSE.txt` |
+| 6 | Grilling-skill license | V2-14 | Read its license before adapting any content |
+| 7 | Rendering engine | V2-13 | Compare screenshots across engines at both viewports |
+| 8 | Stage-table retrofit cost | V2-19 | Estimate against the built workflow code |
+| 9 | OTel GenAI conventions status | V2-41 | Check the dedicated repository |
+| 10 | Question and round defaults | V2-4 | Measure on real discovery sessions |
+
+## 13. Open questions
 
 1. Role names: separate `Discoverer` and `Designer`, or fold discovery into the
    Planner and design into the Architect with new skills?

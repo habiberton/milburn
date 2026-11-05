@@ -2,6 +2,9 @@
 
 **Status:** Draft. Not approved. Does not change `ARCH.md` or any build task.
 
+**Validation markers.** A note starting **Needs validation** marks an assumption or an untested
+tool. They mirror the checklist in `PRDv2.md` §12.
+
 **Relationship to v1:** These are additions to `ARCH.md` (v1) that implement
 `PRDv2.md`. v1 stays authoritative for everything not named here. "v1 §5.7" means
 `ARCH.md`. Where this document and v1 conflict, stop and ask the user. Decision IDs
@@ -84,6 +87,8 @@ through Milburn commands. Facts verified against 1.16.0: MIT license; Node 22.12
 newer, or the standalone build; offline operation; writes confined to the project;
 telemetry on by default and disabled by environment variable.
 
+> **Needs validation:** the standalone build, the JSON output shapes, and global-config isolation are untested; see PRDv2 §12 item 4.
+
 ### D2-7. Monitoring is a projection of the event store
 
 The stream, logs views, metrics, traces, and alerts hold no authoritative state. They
@@ -103,12 +108,16 @@ test, and process observations for every agent. A custom harness later implement
 same vocabulary natively. Unverified: the Codex app-server notification protocol, whether
 a per-process Codex home directory can be set, and whether metrics export is supported.
 
+> **Needs validation:** see PRDv2 §12 item 2; each Codex source must be tested against recorded real runs.
+
 ### D2-9. Remote access is authenticated, scoped, and never a second authority
 
 The monitor interface serves read and limited control, but every control action becomes
 an ordinary controller command, validated by the same policy as a local one. Remote
 access is an opt-in exposure of a localhost service through a tunnel or private network
 that the user provisions; Milburn includes no relay.
+
+> **Needs validation:** **high risk.** Nothing here has been prototyped; see PRDv2 §12 item 1.
 
 ## 3. State machines
 
@@ -195,6 +204,8 @@ class RenderService(Protocol):
 Controller-owned. Uses a browser engine with real rendering. A headless engine without
 visual rendering is rejected for design evidence. A fake implementation serves tests.
 
+> **Needs validation:** the browser engine is undecided; see PRDv2 §12 item 7.
+
 ### 4.7 Design binding validation
 
 Extends the v1 issue validation (v1 §5.7). When the feature required Design, an
@@ -276,6 +287,8 @@ The event envelope gains optional first-class fields so consumers can filter wit
 parsing facts: `feature_id`, `issue`, `attempt_id`, `generation`, `role`, `level`,
 `source`, `fidelity`. The change is additive and migrated.
 
+> **Needs validation:** every source adapter must be validated against real captured runs, and the per-attempt home directory approach confirmed (PRDv2 §12 item 2).
+
 ### 4.12 MonitorServer
 
 A local HTTP service, bound to loopback by default, with versioned routes:
@@ -293,6 +306,8 @@ backfills. Control routes translate to controller commands and return the contro
 verdict unchanged. Fields are filtered by scope: assistant output is sent only to
 devices with `view_prose`. Non-loopback binds require TLS.
 
+> **Needs validation:** not prototyped; routes, scopes, and TLS behavior need a prototype and a security review (PRDv2 §12 item 1).
+
 ### 4.13 DevicePairing and AccessPolicy
 
 Pairing issues a device a revocable token (stored hashed) after a one-time code or QR
@@ -302,6 +317,8 @@ and `steer` require recent re-authentication or explicit confirmation. Every rem
 request appends `RemoteActionRecorded` with the device ID. Revocation closes the
 device's open streams.
 
+> **Needs validation:** the pairing flow and re-authentication design need a prototype and a security review (PRDv2 §12 item 1).
+
 ### 4.14 TranscriptStore
 
 Holds redacted assistant output, separate from the event store, keyed by attempt and
@@ -310,6 +327,8 @@ purge job that records `TranscriptPurged`. Nothing reads it except the monitor s
 and only for devices holding `view_prose`. It has no path into handoff manifests,
 defect feedback, usage records, briefs, or controller decisions. A redaction failure
 drops the segment and records a marker; it never stores unredacted text.
+
+> **Needs validation:** redaction effectiveness and the retention default are untested (PRDv2 §12 item 3).
 
 ### 4.15 Metrics, traces, and exporters
 
