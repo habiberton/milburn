@@ -8,6 +8,7 @@ prompt from stdin and then exits, so steering is refused rather than faked.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from pathlib import Path
 import subprocess
 from typing import IO, Callable
@@ -66,19 +67,35 @@ class SubprocessCodexRuntime:
                 stdout=stdout_file,
                 stderr=stderr_file,
                 text=True,
+                env={**os.environ, **dict(spec.env)} if spec.env else None,
             )
         except OSError:
             stdout_file.close()
             stderr_file.close()
             raise
-        assert process.stdin is not None
-        try:
-            process.stdin.write(spec.stdin)
-        finally:
-            process.stdin.close()
+        # Register before writing the brief: a child that exits before reading
+        # all of stdin must still be tracked, collectable, and stoppable.
         self._runs[endpoint] = _Run(
             process, stdout_path, stderr_path, stdout_file, stderr_file
         )
+        assert process.stdin is not None
+        try:
+            process.stdin.write(spec.stdin)
+        except BrokenPipeError:
+            pass
+        except BaseException:
+            # The caller never receives this endpoint, so stop and forget the
+            # run rather than leave an unreachable live process.
+            self.interrupt(endpoint)
+            run = self._runs.pop(endpoint)
+            run.stdout_file.close()
+            run.stderr_file.close()
+            raise
+        finally:
+            try:
+                process.stdin.close()
+            except BrokenPipeError:
+                pass
         return endpoint
 
     def steer(self, endpoint: str, message: str) -> Ack:

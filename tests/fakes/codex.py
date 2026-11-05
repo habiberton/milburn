@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+from typing import Callable
+from pathlib import Path
+import tempfile
 
 from milburn.agents.codex_adapter import (
     Ack,
@@ -21,11 +24,27 @@ from milburn.agents.codex_adapter import (
 )
 
 
+TERMINALS = ("completed", "exhausted", "error", "truncated")
+
+
 @dataclass(frozen=True, slots=True)
 class ScriptedCodexRun:
+    """One scripted run.
+
+    ``terminal`` picks how the stream ends: ``completed`` (a normal end, with
+    the result document if any), ``exhausted`` (the harness's quota refusal,
+    where it has one), ``error`` (a reported error), or ``truncated`` (the
+    stream stops early, as when a run is killed).
+    """
+
     result_document: str | None
     exit_code: int = 0
     stderr: str = ""
+    terminal: str = "completed"
+
+    def __post_init__(self) -> None:
+        if self.terminal not in TERMINALS:
+            raise ValueError(f"terminal must be one of {TERMINALS}")
 
 
 @dataclass(slots=True)
@@ -38,7 +57,15 @@ class _ActiveRun:
 class FakeCodexRuntime:
     """A process boundary that consumes one scripted run per launch."""
 
-    def __init__(self, scripts: tuple[ScriptedCodexRun, ...]) -> None:
+    def __init__(
+        self,
+        scripts: tuple[ScriptedCodexRun, ...],
+        *,
+        render: Callable[[ScriptedCodexRun], str] | None = None,
+        prefix: str = "fake-codex",
+    ) -> None:
+        self._render = render or _codex_jsonl
+        self._prefix = prefix
         self._remaining = list(scripts)
         self._runs: dict[str, _ActiveRun] = {}
         self.launches: list[ProcessLaunch] = []
@@ -49,7 +76,7 @@ class FakeCodexRuntime:
     def launch(self, spec: ProcessLaunch) -> str:
         if not self._remaining:
             raise AssertionError("no scripted Codex run remains")
-        endpoint = f"fake-codex-{len(self.launches) + 1}"
+        endpoint = f"{self._prefix}-{len(self.launches) + 1}"
         self.launches.append(spec)
         self._runs[endpoint] = _ActiveRun(self._remaining.pop(0))
         return endpoint
@@ -84,16 +111,18 @@ class FakeCodexRuntime:
         run = self._require(endpoint)
         run.state = ProcessState.EXITED
         if run.interrupted:
+            # Like the real runtime, a killed run leaves the partial stream it
+            # wrote before the signal.
             return ProcessCollection(
                 state=ProcessState.EXITED,
                 exit_code=-15,
-                stdout="",
+                stdout=self._render(ScriptedCodexRun(None, terminal="truncated")),
                 stderr="scripted process interrupted",
             )
         return ProcessCollection(
             state=ProcessState.EXITED,
             exit_code=run.script.exit_code,
-            stdout=_codex_jsonl(run.script.result_document),
+            stdout=self._render(run.script),
             stderr=run.script.stderr,
         )
 
@@ -117,9 +146,15 @@ class FakeCodexRuntime:
 class FakeCodexAdapter:
     """Public fake with the same lifecycle as ``CodexAdapter``."""
 
-    def __init__(self, scripts: tuple[ScriptedCodexRun, ...]) -> None:
+    def __init__(
+        self, scripts: tuple[ScriptedCodexRun, ...], *, schema_dir: Path | None = None
+    ) -> None:
         self.runtime = FakeCodexRuntime(scripts)
-        self._adapter = CodexAdapter(self.runtime, executable="fake-codex")
+        self._adapter = CodexAdapter(
+            self.runtime,
+            executable="fake-codex",
+            schema_dir=schema_dir or Path(tempfile.mkdtemp(prefix="milburn-schemas-")),
+        )
 
     def launch(self, request: LaunchRequest) -> AgentEndpoint:
         return self._adapter.launch(request)
@@ -140,23 +175,34 @@ class FakeCodexAdapter:
         return self._adapter.retire(endpoint)
 
 
-def _codex_jsonl(result_document: str | None) -> str:
-    """Render the semantic event shape emitted by ``codex exec --json``."""
+def _codex_jsonl(script: ScriptedCodexRun) -> str:
+    """Render the event shape emitted by ``codex exec --json``.
+
+    Codex has no structured quota signal, so ``exhausted`` renders as the prose
+    ``error`` event a real usage-limit failure produces.
+    """
 
     events: list[dict[str, object]] = [
         {"type": "thread.started", "thread_id": "fake-thread"},
         {"type": "turn.started"},
     ]
-    if result_document is not None:
-        events.append(
-            {
-                "type": "item.completed",
-                "item": {
-                    "id": "fake-item",
-                    "type": "agent_message",
-                    "text": result_document,
-                },
-            }
-        )
-    events.append({"type": "turn.completed", "usage": {}})
+    if script.terminal == "truncated":
+        pass
+    elif script.terminal == "exhausted":
+        events.append({"type": "error", "message": "usage limit reached"})
+    elif script.terminal == "error":
+        events.append({"type": "turn.failed", "error": {"message": "failed"}})
+    else:
+        if script.result_document is not None:
+            events.append(
+                {
+                    "type": "item.completed",
+                    "item": {
+                        "id": "fake-item",
+                        "type": "agent_message",
+                        "text": script.result_document,
+                    },
+                }
+            )
+        events.append({"type": "turn.completed", "usage": {"input_tokens": 1, "output_tokens": 1}})
     return "\n".join(json.dumps(event) for event in events) + "\n"
