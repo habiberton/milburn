@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable, Protocol
+from typing import Callable, Mapping, Protocol
 
 from milburn.domain import (
     CommandEnvelope,
@@ -28,6 +28,8 @@ class EventStore(Protocol):
         stream: str,
         expected_sequence: int,
         events: tuple[DomainEvent, ...],
+        *,
+        guard_sequences: Mapping[str, int] | None = None,
     ) -> tuple[DomainEvent, ...]: ...
 
 
@@ -68,6 +70,7 @@ class Controller:
         request_effect: Callable[[], object] | None = None,
         stream: str | None = None,
         facts: tuple[EventFact, ...] = (),
+        guard_sequences: Mapping[str, int] | None = None,
     ) -> CommandReceipt:
         """Record one authorized command before crossing an external boundary."""
 
@@ -101,6 +104,12 @@ class Controller:
                 *facts,
             ),
         )
-        self._event_store.append(target_stream, expected_sequence, (intent,))
+        if guard_sequences:
+            self._event_store.append(
+                target_stream, expected_sequence, (intent,),
+                guard_sequences=guard_sequences,
+            )
+        else:
+            self._event_store.append(target_stream, expected_sequence, (intent,))
         result = request_effect() if request_effect is not None else None
         return CommandReceipt(intent=intent, effect_result=result)

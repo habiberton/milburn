@@ -770,8 +770,8 @@
         "issue_url": "https://github.com/habiberton/milburn/issues/10",
         "status_source": "github",
         "assignment_source": "github",
-        "last_observed_state": "open",
-        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_state": "closed",
+        "last_observed_status_label": "milburn:done",
         "last_observed_assignees": []
       },
       "dependencies": ["MB-005", "MB-006", "MB-007", "MB-017", "MB-018"],
@@ -803,30 +803,30 @@
       "pull_request": {
         "number": 59,
         "url": "https://github.com/habiberton/milburn/pull/59",
-        "merge_commit_sha": null
+        "merge_commit_sha": "6b9b09682062bc290a1938aa345d418df5646a89"
       }
     },
     {
       "id": "MB-011",
       "wave": 3,
       "title": "Implement Planner, Classifier/Router, and Architect coordination",
-      "status": "blocked",
+      "status": "done",
       "github": {
         "issue_number": 11,
         "issue_url": "https://github.com/habiberton/milburn/issues/11",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:blocked",
+        "last_observed_status_label": "milburn:in-progress",
         "last_observed_assignees": []
       },
       "dependencies": ["MB-006", "MB-007", "MB-017", "MB-018"],
       "parallel_group": "wave-3-coordination",
       "owner": null,
-      "branch": null,
+      "branch": "product/MB-011-role-coordination",
       "worktree": null,
-      "base_sha": null,
-      "candidate_sha": null,
+      "base_sha": "6b9b09682062bc290a1938aa345d418df5646a89",
+      "candidate_sha": "f991a16",
       "progress_path": "bootstrap/progress/tasks/MB-011.md",
       "owned_paths": [
         "src/milburn/orchestration/planning.py",
@@ -849,7 +849,12 @@
       "required_tests": [
         "scripts/run-tests.sh tests/unit/orchestration/test_planning.py tests/unit/orchestration/test_routing.py tests/unit/orchestration/test_architecture.py -q",
         "scripts/smoke-test.sh"
-      ]
+      ],
+      "pull_request": {
+        "number": 60,
+        "url": "https://github.com/habiberton/milburn/pull/60",
+        "merge_commit_sha": null
+      }
     },
     {
       "id": "MB-012",
