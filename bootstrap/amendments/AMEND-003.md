@@ -125,12 +125,32 @@ Root session rotation (replaces reliance on auto-compaction):
   `validate.py --preflight` is clean, no judgment step is half-done (an
   unrecorded review verdict or a partly written feedback brief), and the
   integration script is between phases (`status` reports the phase).
-- Workers in flight: until a live test shows workers survive a root session
-  ending, rotation happens only when no worker or reviewer is running (drain
-  then rotate). In the observed run there were 13 gaps with no subagent running
-  (8 of at least 2 minutes, about 20% of the span). If workers are shown to
-  survive, rotation may occur with workers running, and the new root
-  re-attaches them from `state.md`.
+- Workers in flight: user-supplied information (not independently verified
+  against the Codex documentation) is that spawned workers do not run
+  independently of the root. When the root finishes normally, Codex waits for
+  its workers and closes them; if the root session is interrupted or ended,
+  unfinished workers are interrupted, not detached. Their transcripts may stay
+  resumable, but they stop executing. Deleting a root session also deletes its
+  descendant sessions. Rotation therefore always drains first:
+  1. When context use reaches the rotation threshold, the root stops
+     dispatching new workers and reviewers.
+  2. It waits for every in-flight worker and reviewer to return, then
+     integrates or records each result.
+  3. At the resulting quiescent point it writes the checkpoint and rotates.
+  In the observed run there were 13 gaps with no subagent running (8 of at
+  least 2 minutes, about 20% of the span), so natural drain points occur often.
+- Drain limit: if context use reaches the point where auto-compaction would
+  trigger before the drain completes, normal compaction applies and rotation
+  waits for the next quiescent point. The root never ends a session with
+  workers running.
+- Unexpected termination: if a root session ends abnormally, workers are treated
+  as interrupted. The next root's reconcile finds their worktrees, branches, and
+  progress files, and restarts each as a new generation from its brief and
+  progress summary; transcripts are not relied on. Root session logs must not be
+  deleted while descendant records are needed for the token report.
+- Independent background jobs (separate `codex exec` processes or
+  app-server/SDK threads with their own lifecycle) are not adopted: `AGENTS.md`
+  forbids imitating delegation with unmanaged background processes.
 - Checkpoint: before rotating the root writes `state.md` (in-flight workers,
   what each is awaited for, pending decisions, resume action), commits it, and
   stops with rotation as the stated reason.
@@ -158,7 +178,6 @@ Root session rotation (replaces reliance on auto-compaction):
   same sandbox policy. The launcher's sandbox and approval settings therefore
   also bound every worker and reviewer. The implementation must confirm that
   subagent tools are present in the first launched run before relying on them.
-- Still unverified: whether workers survive a root session ending (see above).
 
 Model assignment (initial, hardcoded in `bootstrap/config.json`):
 
