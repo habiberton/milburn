@@ -866,8 +866,8 @@
         "issue_url": "https://github.com/habiberton/milburn/issues/12",
         "status_source": "github",
         "assignment_source": "github",
-        "last_observed_state": "open",
-        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_state": "closed",
+        "last_observed_status_label": "milburn:done",
         "last_observed_assignees": []
       },
       "dependencies": ["MB-008", "MB-011"],
@@ -900,30 +900,30 @@
       "pull_request": {
         "number": 61,
         "url": "https://github.com/habiberton/milburn/pull/61",
-        "merge_commit_sha": null
+        "merge_commit_sha": "e4b49871d5ca549f3b5f374b486d6f1731f1cc1e"
       }
     },
     {
       "id": "MB-013",
       "wave": 3,
       "title": "Implement the long-running Coder workflow and protocol guard",
-      "status": "blocked",
+      "status": "done",
       "github": {
         "issue_number": 13,
         "issue_url": "https://github.com/habiberton/milburn/issues/13",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:blocked",
+        "last_observed_status_label": "milburn:in-progress",
         "last_observed_assignees": []
       },
       "dependencies": ["MB-005", "MB-006", "MB-007", "MB-009", "MB-012", "MB-017", "MB-018"],
       "parallel_group": null,
       "owner": null,
-      "branch": null,
+      "branch": "product/MB-013-coder-protocol",
       "worktree": null,
-      "base_sha": null,
-      "candidate_sha": null,
+      "base_sha": "e4b49871d5ca549f3b5f374b486d6f1731f1cc1e",
+      "candidate_sha": "8770e94",
       "progress_path": "bootstrap/progress/tasks/MB-013.md",
       "owned_paths": [
         "src/milburn/orchestration/coder.py",
@@ -945,7 +945,12 @@
       "required_tests": [
         "scripts/run-tests.sh tests/unit/orchestration/test_coder.py tests/unit/validation/test_coder_protocol.py tests/integration/workflows/test_coder_attempt.py tests/recovery/test_coder_resume.py -q",
         "scripts/smoke-test.sh"
-      ]
+      ],
+      "pull_request": {
+        "number": 63,
+        "url": "https://github.com/habiberton/milburn/pull/63",
+        "merge_commit_sha": null
+      }
     },
     {
       "id": "MB-014",

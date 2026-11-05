@@ -8,6 +8,16 @@ from hashlib import sha256
 from milburn.domain import Role, SkillBinding
 
 
+CODER_BOUNDARY_QUESTIONS = (
+    "1. For every check: what could pass it while the real condition is false? Add a negative test.",
+    "2. For every accepted input or record: is every field and variant validated or explicitly ignored?",
+    "3. For every public entry point: can a caller bypass its guard?",
+    "4. For every identifier used as a key: is it unique across its whole scope?",
+    "5. For every state change or external effect: are preconditions checked first and failures consistent?",
+    "6. For every test double: does it enforce the same preconditions and terminal states as the live adapter?",
+)
+
+
 class BriefError(ValueError):
     """Base class for invalid launch-brief input."""
 
@@ -99,9 +109,14 @@ class BriefRenderer:
                 f"required_skills exceeds limit {self._bounds.max_skills}"
             )
 
+        role_rules = brief.role_rules
+        if brief.role is Role.CODER:
+            missing = tuple(question for question in CODER_BOUNDARY_QUESTIONS if question not in role_rules)
+            if missing:
+                role_rules += "\nBoundary questions:\n" + "\n".join(missing)
         sections = (
             ("Objective", brief.objective),
-            ("Mandatory role rules", brief.role_rules),
+            ("Mandatory role rules", role_rules),
             ("Task context", brief.task_context),
             ("Repository instructions", brief.repository_instructions),
             ("Required result contract", brief.result_contract),
@@ -137,7 +152,7 @@ class BriefRenderer:
         return RenderedBrief(
             content=content,
             digest=_digest(content),
-            rules_digest=_digest(brief.role_rules),
+            rules_digest=_digest(role_rules),
             skill_bindings=brief.skill_bindings,
         )
 
