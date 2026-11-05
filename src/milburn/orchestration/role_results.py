@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+from hashlib import sha256
+from pathlib import Path
+import re
 from typing import Iterable, Mapping, Protocol
 
 from milburn.agents.result_parser import AgentResultParser, ResultExpectation
@@ -22,8 +25,27 @@ class RoleEventReader(Protocol):
     def read_all(self, *, after_position: int = 0) -> tuple[DomainEvent, ...]: ...
 
 
+ROLE_RESULT_STREAM = "role-results"
+
+
 def feature_events(reader: RoleEventReader, feature_id: str) -> tuple[DomainEvent, ...]:
-    return reader.read_stream(f"feature:{feature_id}")
+    """Read feature events and serialized role results in durable append order."""
+    return tuple(
+        event for event in reader.read_all()
+        if event.stream == f"feature:{feature_id}"
+        or (
+            event.stream == ROLE_RESULT_STREAM
+            and any(fact.name == "feature_id" and fact.value == feature_id
+                    for fact in event.facts)
+        )
+    )
+
+
+def artifact_digest(path: Path) -> str:
+    """Return an exact baseline marker for a root spec file."""
+    if not path.is_file():
+        return "absent"
+    return sha256(path.read_bytes()).hexdigest()
 
 
 def durable_feature_state(events: tuple[DomainEvent, ...]) -> FeatureState | None:
@@ -64,7 +86,7 @@ def require_accepted_request(
 
 def require_accepted_plan(
     events: tuple[DomainEvent, ...], plan: PlanEnvelope
-) -> None:
+) -> DomainEvent:
     accepted = [event for event in events if event.event_type is EventType.PLAN_RECEIVED]
     if len(accepted) != 1:
         raise ValueError("feature must have exactly one accepted plan")
@@ -75,6 +97,25 @@ def require_accepted_plan(
         raise ValueError("accepted plan lacks a valid durable envelope") from error
     if durable != plan:
         raise ValueError("Architect input does not match the accepted plan")
+    return accepted[0]
+
+
+def require_changed_specs(
+    plan_event: DomainEvent, root: Path,
+) -> None:
+    facts = {fact.name: fact.value for fact in plan_event.facts}
+    for name, field in (("PRD.md", "prd_base_digest"),
+                        ("ARCH.md", "arch_base_digest")):
+        baseline = facts.get(field)
+        if baseline is None or not (
+            baseline == "absent" or re.fullmatch(r"[0-9a-f]{64}", baseline)
+        ):
+            raise ValueError("accepted plan lacks valid spec baselines")
+        path = root / name
+        if path.is_symlink() or not path.is_file() or not path.read_text(encoding="utf-8").strip():
+            raise ValueError(f"{name} must exist with content before acceptance")
+        if artifact_digest(path) == baseline:
+            raise ValueError(f"{name} has not changed since the accepted plan")
 
 
 def used_decision_ids(reader: RoleEventReader) -> frozenset[str]:
@@ -129,6 +170,8 @@ def record_result(
     correlation_id: str,
     command_id: str,
     expected_sequence: int,
+    stream: str | None = None,
+    extra_facts: tuple[EventFact, ...] = (),
 ) -> None:
     """Use the controller's role and intent policy after all result checks."""
     command = CommandEnvelope(
@@ -144,10 +187,13 @@ def record_result(
         command,
         intent_type=event_type,
         expected_sequence=expected_sequence,
+        stream=stream,
         facts=(
+            EventFact(name="feature_id", value=feature_id),
             EventFact(name="attempt_id", value=expectation.correlation.attempt_id),
             EventFact(name="result_type", value=expectation.result_type),
             EventFact(name="result", value=json.dumps(payload.to_dict(), sort_keys=True)),
+            *extra_facts,
         ),
     )
 

@@ -11,8 +11,8 @@ from milburn.domain import (
 
 from .controller import Controller
 from .role_results import (
-    RoleEventReader, durable_feature_state, feature_events,
-    parse_role_result, record_result, require_accepted_plan,
+    ROLE_RESULT_STREAM, RoleEventReader, durable_feature_state, feature_events,
+    parse_role_result, record_result, require_accepted_plan, require_changed_specs,
     used_decision_ids, validate_decisions, validate_graph,
 )
 from milburn.domain import FeatureState
@@ -42,7 +42,7 @@ class ArchitectCoordinator:
         if not isinstance(plan, PlanEnvelope):
             raise ValueError("accepted plan is required")
         events = feature_events(self._reader, plan.feature_id)
-        require_accepted_plan(events, plan)
+        plan_event = require_accepted_plan(events, plan)
         if durable_feature_state(events) is not FeatureState.ARCHITECTURE:
             raise ValueError("Architect result is not allowed in this feature phase")
         payload = parse_role_result(
@@ -55,10 +55,7 @@ class ArchitectCoordinator:
             raise ValueError("architecture belongs to another feature")
         if payload.prd_artifact != "PRD.md" or payload.arch_artifact != "ARCH.md":
             raise ValueError("architecture must name root PRD.md and ARCH.md artifacts")
-        for name in ("PRD.md", "ARCH.md"):
-            path = self._root / name
-            if not path.is_file() or not path.read_text(encoding="utf-8").strip():
-                raise ValueError(f"{name} must exist with content before acceptance")
+        require_changed_specs(plan_event, self._root)
         for draft in payload.issue_drafts:
             if not any(link in {"PRD.md", "ARCH.md"} for link in draft.spec_links):
                 raise ValueError("each issue draft must reference a produced spec")
@@ -84,5 +81,6 @@ class ArchitectCoordinator:
             correlation_id=plan.feature_id,
             command_id=command_id,
             expected_sequence=expected_sequence,
+            stream=ROLE_RESULT_STREAM,
         )
         return payload

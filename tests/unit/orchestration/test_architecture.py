@@ -2,6 +2,7 @@
 
 from datetime import UTC, datetime
 import json
+from hashlib import sha256
 from pathlib import Path
 
 import pytest
@@ -50,8 +51,12 @@ def package(
 
 def coordinator(store: SQLiteEventStore, root: Path) -> ArchitectCoordinator:
     seed_event(store, EventType.REQUEST_ACCEPTED, facts={"request_id": "request-1"})
+    (root / "PRD.md").write_text("# Old product\n")
+    (root / "ARCH.md").write_text("# Old architecture\n")
     seed_event(store, EventType.PLAN_RECEIVED, facts={
         "result": json.dumps(plan().to_dict(), sort_keys=True),
+        "prd_base_digest": sha256((root / "PRD.md").read_bytes()).hexdigest(),
+        "arch_base_digest": sha256((root / "ARCH.md").read_bytes()).hexdigest(),
     })
     (root / "PRD.md").write_text("# Product\n")
     (root / "ARCH.md").write_text("# Architecture\n")
@@ -67,7 +72,7 @@ def coordinator(store: SQLiteEventStore, root: Path) -> ArchitectCoordinator:
 def accept(service: ArchitectCoordinator, item: ArchitecturePackage):
     return service.accept(
         document(item, EXPECTED), EXPECTED, plan(), known_task_keys=(),
-        command_id="command-1", expected_sequence=1,
+        command_id="command-1", expected_sequence=-1,
     )
 
 
@@ -82,7 +87,7 @@ def test_unknown_version_role_and_extra_payload_rejected_before_event(tmp_path) 
             with pytest.raises(ValueError):
                 service.accept(
                     raw, EXPECTED, plan(), known_task_keys=(),
-                    command_id="command-1", expected_sequence=1,
+                    command_id="command-1", expected_sequence=-1,
                 )
         assert len(store.read_all()) == 2
 
@@ -120,7 +125,7 @@ def test_existing_task_dependency_allowed_but_key_collision_rejected(tmp_path) -
         accepted = service.accept(
             document(package_with_existing, EXPECTED), EXPECTED, plan(),
             known_task_keys=("existing-1",), command_id="command-1",
-            expected_sequence=1,
+            expected_sequence=-1,
         )
         assert accepted.issue_drafts[0].dependencies == ("existing-1",)
 
@@ -130,7 +135,7 @@ def test_existing_task_dependency_allowed_but_key_collision_rejected(tmp_path) -
             service.accept(
                 document(package(drafts=(draft("existing-1"),)), EXPECTED),
                 EXPECTED, plan(), known_task_keys=("existing-1",),
-                command_id="command-1", expected_sequence=1,
+                command_id="command-1", expected_sequence=-1,
             )
         assert len(store.read_all()) == 2
 
@@ -166,6 +171,32 @@ def test_artifacts_must_exist_and_drafts_link_to_them(tmp_path) -> None:
         assert len(store.read_all()) == 2
 
 
+def test_preexisting_specs_unrelated_to_current_plan_are_rejected(tmp_path) -> None:
+    with SQLiteEventStore(tmp_path / "events.db") as store:
+        service = coordinator(store, tmp_path)
+        (tmp_path / "PRD.md").write_text("# Old product\n")
+        (tmp_path / "ARCH.md").write_text("# Old architecture\n")
+        with pytest.raises(ValueError):
+            accept(service, package())
+        (tmp_path / "PRD.md").write_text("# Product\n")
+        with pytest.raises(ValueError):
+            accept(service, package())
+        assert len(store.read_all()) == 2
+
+
+def test_symlinked_spec_cannot_masquerade_as_root_artifact(tmp_path) -> None:
+    with SQLiteEventStore(tmp_path / "events.db") as store:
+        service = coordinator(store, tmp_path)
+        nested = tmp_path / "nested"
+        nested.mkdir()
+        (nested / "PRD.md").write_text("# Other product\n")
+        (tmp_path / "PRD.md").unlink()
+        (tmp_path / "PRD.md").symlink_to(nested / "PRD.md")
+        with pytest.raises(ValueError):
+            accept(service, package())
+        assert len(store.read_all()) == 2
+
+
 def test_architecture_requires_durable_matching_plan(tmp_path) -> None:
     with SQLiteEventStore(tmp_path / "events.db") as store:
         service = coordinator(store, tmp_path)
@@ -175,7 +206,7 @@ def test_architecture_requires_durable_matching_plan(tmp_path) -> None:
         with pytest.raises(ValueError):
             service.accept(
                 document(package(), EXPECTED), EXPECTED, changed,
-                known_task_keys=(), command_id="command-1", expected_sequence=1,
+                known_task_keys=(), command_id="command-1", expected_sequence=-1,
             )
         assert len(store.read_all()) == 2
 

@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from milburn.agents.result_parser import AgentResultParser, ResultExpectation
-from milburn.domain import CommandType, EventType, PlanEnvelope, RequestEnvelope, Role
+from milburn.domain import CommandType, EventFact, EventType, PlanEnvelope, RequestEnvelope, Role
 
 from .controller import Controller
 from .role_results import (
-    RoleEventReader, durable_feature_state, feature_events,
+    ROLE_RESULT_STREAM, RoleEventReader, artifact_digest,
+    durable_feature_state, feature_events,
     parse_role_result, record_result, require_accepted_request,
     used_decision_ids, validate_decisions, validate_graph,
 )
@@ -17,11 +20,12 @@ from milburn.domain import FeatureState
 class PlannerCoordinator:
     def __init__(
         self, parser: AgentResultParser, controller: Controller,
-        reader: RoleEventReader,
+        reader: RoleEventReader, *, repository_root: Path,
     ) -> None:
         self._parser = parser
         self._controller = controller
         self._reader = reader
+        self._root = repository_root
 
     def accept(
         self,
@@ -69,5 +73,10 @@ class PlannerCoordinator:
             correlation_id=request.request_id,
             command_id=command_id,
             expected_sequence=expected_sequence,
+            stream=ROLE_RESULT_STREAM,
+            extra_facts=(
+                EventFact(name="prd_base_digest", value=artifact_digest(self._root / "PRD.md")),
+                EventFact(name="arch_base_digest", value=artifact_digest(self._root / "ARCH.md")),
+            ),
         )
         return payload
