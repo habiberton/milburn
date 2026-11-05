@@ -89,9 +89,10 @@ class CoordinatorSessionManager:
     def request_decision(self, request: DecisionRequest) -> None:
         if not isinstance(request, DecisionRequest):
             raise ValueError("request must be a DecisionRequest")
-        if len(set(request.options)) != len(request.options):
-            raise ValueError("decision options must be unique")
-        if request.recommendation is not None and request.recommendation not in request.options:
+        normalized_options = [option.strip().casefold() for option in request.options]
+        if len(set(normalized_options)) != len(normalized_options):
+            raise ValueError("decision options must be unique after normalization")
+        if request.recommendation is not None and request.recommendation.strip().casefold() not in normalized_options:
             raise ValueError("recommendation must be an offered option")
         history = self._history()
         if request.decision_id in self._decisions(history):
@@ -137,7 +138,7 @@ class CoordinatorSessionManager:
             record.answer
             for record in self._decisions(self._history()).values()
             if record.request.source_attempt_id == attempt_id
-            and record.state in {"queued", "delivered"}
+            and record.state == "delivered"
             and record.answer is not None
         )
 
@@ -188,6 +189,37 @@ class CoordinatorSessionManager:
             EventFact(name="coordinator_attempt_id", value=coordinator_attempt_id),
         )),))
 
+    def present_notification(
+        self, notification_id: str, *, coordinator_attempt_id: str,
+        presentation_id: str,
+    ) -> None:
+        """Record a user-facing result/failure presentation through the manager."""
+        for value, name in (
+            (notification_id, "notification ID"),
+            (coordinator_attempt_id, "Coordinator attempt ID"),
+            (presentation_id, "presentation ID"),
+        ):
+            if not isinstance(value, str) or not value or value != value.strip():
+                raise ValueError(f"{name} is required")
+        history = self._history()
+        active = self._session(history)
+        if active is None or active[0] != coordinator_attempt_id:
+            raise ValueError("only the registered Coordinator may present a notification")
+        item = NotificationQueue._items(history).get(notification_id)
+        if item is None or not item.unread or item.kind == "decision":
+            raise ValueError("notification is unknown, read, or a decision")
+        if any(
+            any(fact.name == "presentation_id" and fact.value == presentation_id
+                for fact in recorded.facts)
+            for recorded in history
+        ):
+            raise ValueError("presentation ID already exists")
+        self._append(history, ((EventType.COORDINATOR_NOTIFICATION_READ, item.correlation_id, (
+            EventFact(name="notification_id", value=notification_id),
+            EventFact(name="coordinator_attempt_id", value=coordinator_attempt_id),
+            EventFact(name="presentation_id", value=presentation_id),
+        )),))
+
     def answer(self, answer: UserDecision) -> None:
         if not isinstance(answer, UserDecision):
             raise ValueError("answer must be a UserDecision")
@@ -197,7 +229,7 @@ class CoordinatorSessionManager:
             raise ValueError("answer came from a different Coordinator attempt")
         if answer.selected_option is None or answer.selected_option not in record.request.options:
             raise ValueError("answer must select exactly one offered option")
-        if answer.answer.strip().casefold() != answer.selected_option.casefold():
+        if answer.answer.strip().casefold() != answer.selected_option.strip().casefold():
             raise ValueError("raw answer must explicitly name the selected option")
         self._append(history, (
             (EventType.USER_DECISION_RECEIVED, answer.decision_id, (
@@ -217,17 +249,20 @@ class CoordinatorSessionManager:
         if not isinstance(decision_id, str) or not decision_id:
             raise ValueError("decision ID is required")
         history = self._history()
-        record = self._required(history, decision_id, "queued")
+        record = self._decisions(history).get(decision_id)
+        if record is None or record.state not in {"queued", "delivered"}:
+            raise ValueError("decision is not awaiting delivery")
         if record.answer is None:
             raise ValueError("queued decision has no validated answer")
+        if record.state == "queued":
+            self._append(history, ((EventType.STEERING_DELIVERED, decision_id, (
+                EventFact(name="decision_id", value=decision_id),
+                EventFact(name="source_attempt_id", value=record.request.source_attempt_id),
+            )),))
         if not self._transport.deliver_answer(
             record.request.source_attempt_id, decision_id, record.answer
         ):
             return False
-        self._append(history, ((EventType.STEERING_DELIVERED, decision_id, (
-            EventFact(name="decision_id", value=decision_id),
-            EventFact(name="source_attempt_id", value=record.request.source_attempt_id),
-        )),))
         return True
 
     def acknowledge(self, decision_id: str, *, attempt_id: str) -> None:
@@ -374,7 +409,7 @@ class TmuxCoordinatorTransport:
         history = self._store.read_stream(COORDINATOR_STREAM)
         record = CoordinatorSessionManager._decisions(history).get(decision_id)
         if (
-            record is None or record.state != "queued"
+            record is None or record.state != "delivered"
             or record.request.source_attempt_id != attempt_id or record.answer != answer
         ):
             raise ValueError("worker answer is not queued in the durable inbox")

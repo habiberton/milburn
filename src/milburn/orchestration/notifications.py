@@ -95,43 +95,6 @@ class NotificationQueue:
             )
         )
 
-    def mark_read(self, notification_id: str, *, coordinator_attempt_id: str) -> None:
-        if not isinstance(notification_id, str) or not notification_id:
-            raise ValueError("notification ID is required")
-        if not isinstance(coordinator_attempt_id, str) or not coordinator_attempt_id:
-            raise ValueError("Coordinator attempt ID is required")
-        history = self._store.read_stream(COORDINATOR_STREAM)
-        registered = [
-            {fact.name: fact.value for fact in recorded.facts}.get("coordinator_attempt_id")
-            for recorded in history
-            if recorded.event_type is EventType.COORDINATOR_SESSION_STARTED
-        ]
-        if registered != [coordinator_attempt_id]:
-            raise ValueError("only the registered Coordinator may present a notification")
-        item = self._items(history).get(notification_id)
-        if item is None or not item.unread:
-            raise ValueError("notification is unknown or already read")
-        if item.kind == "decision":
-            raise ValueError("decision notifications are read only by presentation")
-        sequence = history[-1].sequence
-        self._store.append(
-            COORDINATOR_STREAM,
-            sequence,
-            (
-                event(
-                    EventType.COORDINATOR_NOTIFICATION_READ,
-                    sequence=sequence + 1,
-                    correlation_id=item.correlation_id,
-                    clock=self._clock,
-                    event_ids=self._event_ids,
-                    facts=(
-                        EventFact(name="notification_id", value=notification_id),
-                        EventFact(name="coordinator_attempt_id", value=coordinator_attempt_id),
-                    ),
-                ),
-            ),
-        )
-
     @staticmethod
     def _items(history: tuple[DomainEvent, ...]) -> dict[str, CoordinatorNotification]:
         items: dict[str, CoordinatorNotification] = {}

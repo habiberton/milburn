@@ -30,12 +30,13 @@ def queue(store: SQLiteEventStore) -> NotificationQueue:
     return NotificationQueue(store, clock=lambda: NOW, event_ids=lambda: next(ids))
 
 
-def register_coordinator(store: SQLiteEventStore) -> None:
+def register_coordinator(store: SQLiteEventStore) -> CoordinatorSessionManager:
     ids = (f"session-event-{i}" for i in range(100))
     manager = CoordinatorSessionManager(
         store, object(), clock=lambda: NOW, event_ids=lambda: next(ids)
     )
     manager.register_session("coordinator-1", endpoint="tmux:coordinator")
+    return manager
 
 
 def test_duplicate_notification_id_with_different_correlation_is_rejected(tmp_path) -> None:
@@ -59,10 +60,12 @@ def test_duplicate_notification_id_with_different_correlation_is_rejected(tmp_pa
 def test_unknown_or_already_read_notification_cannot_be_marked_read(tmp_path) -> None:
     with SQLiteEventStore(tmp_path / "events.db") as store:
         service = queue(store)
+        assert not hasattr(service, "mark_read")
+        manager = register_coordinator(store)
         with pytest.raises(ValueError):
-            service.mark_read("missing", coordinator_attempt_id="coordinator-1")
+            manager.present_notification("missing", coordinator_attempt_id="coordinator-1", presentation_id="message-1")
         with pytest.raises(ValueError):
-            service.mark_read([], coordinator_attempt_id="coordinator-1")  # type: ignore[arg-type]
+            manager.present_notification([], coordinator_attempt_id="coordinator-1", presentation_id="message-1")  # type: ignore[arg-type]
         result = CoordinatorNotification(
             notification_id="result-1",
             kind="result",
@@ -74,11 +77,13 @@ def test_unknown_or_already_read_notification_cannot_be_marked_read(tmp_path) ->
         )
         service.queue(result)
         with pytest.raises(ValueError):
-            service.mark_read("result-1", coordinator_attempt_id="forged")
-        register_coordinator(store)
-        service.mark_read("result-1", coordinator_attempt_id="coordinator-1")
+            manager.present_notification("result-1", coordinator_attempt_id="forged", presentation_id="message-1")
         with pytest.raises(ValueError):
-            service.mark_read("result-1", coordinator_attempt_id="coordinator-1")
+            manager.accept_new_work("Start another task")
+        manager.present_notification("result-1", coordinator_attempt_id="coordinator-1", presentation_id="message-1")
+        with pytest.raises(ValueError):
+            manager.present_notification("result-1", coordinator_attempt_id="coordinator-1", presentation_id="message-2")
+        assert manager.accept_new_work("Start another task")
         assert service.unread() == ()
 
 
@@ -103,8 +108,9 @@ def test_decision_notification_cannot_be_read_without_presentation(tmp_path) -> 
     with SQLiteEventStore(tmp_path / "events.db") as store:
         service = queue(store)
         service.queue(notification())
+        manager = register_coordinator(store)
         with pytest.raises(ValueError):
-            service.mark_read("notice-1", coordinator_attempt_id="coordinator-1")
+            manager.present_notification("notice-1", coordinator_attempt_id="coordinator-1", presentation_id="message-1")
         assert service.unread() == (notification(),)
 
 
@@ -129,8 +135,8 @@ def test_unread_notifications_survive_restart_in_priority_order(tmp_path) -> Non
         assert tuple(item.notification_id for item in service.unread()) == (
             "notice-2", "notice-1"
         )
-        register_coordinator(store)
-        service.mark_read("notice-2", coordinator_attempt_id="coordinator-1")
+        manager = register_coordinator(store)
+        manager.present_notification("notice-2", coordinator_attempt_id="coordinator-1", presentation_id="message-1")
     with SQLiteEventStore(database) as store:
         assert tuple(item.notification_id for item in queue(store).unread()) == (
             "notice-1",
