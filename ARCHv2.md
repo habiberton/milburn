@@ -84,6 +84,32 @@ through Milburn commands. Facts verified against 1.16.0: MIT license; Node 22.12
 newer, or the standalone build; offline operation; writes confined to the project;
 telemetry on by default and disabled by environment variable.
 
+### D2-7. Monitoring is a projection of the event store
+
+The stream, logs views, metrics, traces, and alerts hold no authoritative state. They
+read the event store (v1 §11) and rebuild by replay. What the store lacks is agent
+activity, which a new ingest layer adds by normalizing harness-specific sources into
+one vocabulary (D2-8). PRDv2 §8 holds the requirements.
+
+### D2-8. Activity comes from sources in a fixed fidelity order
+
+`ActivityIngest` accepts, in order of preference: a structured stream or telemetry the
+harness exposes; the harness's session log, version-gated because its format is not a
+documented contract; and environment observations that need no harness cooperation.
+Terminal text is display only and never becomes an event. Each event records its source
+and fidelity. For Codex this means `codex exec --json` for non-interactive runs, the
+`[otel]` export and the session log for agents hosted in tmux, and git, progress-file,
+test, and process observations for every agent. A custom harness later implements the
+same vocabulary natively. Unverified: the Codex app-server notification protocol, whether
+a per-process Codex home directory can be set, and whether metrics export is supported.
+
+### D2-9. Remote access is authenticated, scoped, and never a second authority
+
+The monitor interface serves read and limited control, but every control action becomes
+an ordinary controller command, validated by the same policy as a local one. Remote
+access is an opt-in exposure of a localhost service through a tunnel or private network
+that the user provisions; Milburn includes no relay.
+
 ## 3. State machines
 
 Feature state (extends v1 §4):
@@ -226,6 +252,87 @@ Tester brief (v1 §5.12) lists the cited scenarios, and the `QAReport` maps evid
 scenario IDs. After the Tester passes and the pull request merges, the controller calls
 `archive`; until then the living specs are unchanged.
 
+### 4.11 ActivityIngest and event envelope
+
+Source adapters normalize into `AgentActivityEvent`:
+
+```python
+class ActivitySource(Protocol):
+    name: str
+    fidelity: Fidelity            # structured | session_log | environment
+    def poll(self, endpoint: AgentEndpoint, cursor: SourceCursor)
+        -> tuple[tuple[AgentActivityEvent, ...], SourceCursor]: ...
+```
+
+Implementations: `ExecJsonSource` (parses `codex exec --json` lines), `OtelSource` (a
+local receiver or file exporter), `SessionLogSource` (version-gated parser of the
+harness log), and `EnvironmentSource` (git, progress file, tests, process stats). For an
+agent hosted in tmux, the controller launches Codex with a Milburn-managed home
+directory per attempt, so the exporter configuration and log location are
+deterministic. A source that fails or lags records `TelemetrySourceDegraded` and lowers
+fidelity; it never blocks the agent.
+
+The event envelope gains optional first-class fields so consumers can filter without
+parsing facts: `feature_id`, `issue`, `attempt_id`, `generation`, `role`, `level`,
+`source`, `fidelity`. The change is additive and migrated.
+
+### 4.12 MonitorServer
+
+A local HTTP service, bound to loopback by default, with versioned routes:
+
+```text
+GET  /v1/events?cursor=&feature=&attempt=&role=&level=   server-sent events, resumable
+GET  /v1/attempts                                         current status board
+GET  /v1/metrics                                          Prometheus text, off by default
+POST /v1/decisions/{id}/answer                            scope: decide
+POST /v1/attempts/{id}/steer | interrupt | retire         scope: steer
+```
+
+Streams read from the store by global position, so a reconnect with `Last-Event-ID`
+backfills. Control routes translate to controller commands and return the controller's
+verdict unchanged. Fields are filtered by scope: assistant output is sent only to
+devices with `view_prose`. Non-loopback binds require TLS.
+
+### 4.13 DevicePairing and AccessPolicy
+
+Pairing issues a device a revocable token (stored hashed) after a one-time code or QR
+exchange on the local machine. `AccessPolicy` maps tokens to scopes (`view`,
+`view_prose`, `decide`, `steer`); `admin` is never granted remotely by default. `decide`
+and `steer` require recent re-authentication or explicit confirmation. Every remote
+request appends `RemoteActionRecorded` with the device ID. Revocation closes the
+device's open streams.
+
+### 4.14 TranscriptStore
+
+Holds redacted assistant output, separate from the event store, keyed by attempt and
+sequence, with configured retention (off, session only, or N days) enforced by a
+purge job that records `TranscriptPurged`. Nothing reads it except the monitor server,
+and only for devices holding `view_prose`. It has no path into handoff manifests,
+defect feedback, usage records, briefs, or controller decisions. A redaction failure
+drops the segment and records a marker; it never stores unredacted text.
+
+### 4.15 Metrics, traces, and exporters
+
+`MetricsProjection` replays events into the PRDv2 §8 metric set with a fixed label
+schema. `TraceProjection` builds a trace per feature with spans for stages and
+attempts. `OtlpExporter` and the Prometheus endpoint translate Milburn's versioned
+schema to external names inside the exporter only, because OpenTelemetry's generative-AI
+conventions are still at Development status.
+
+### 4.16 AlertEngine and notifications
+
+`AlertEngine` evaluates pure rules over projections and appends `AlertRaised` and
+`AlertCleared`. A `NotificationProvider` interface (web push and webhook
+implementations) delivers decisions and alerts to paired devices with minimal text. An
+alert needing a person also becomes a `DecisionRequest` through the existing
+Coordinator path (v1 §12.1).
+
+### 4.17 LogPipeline
+
+Structured JSON logging for the controller process with correlation IDs, levels, a
+redaction filter shared with the transcript path, rotation, and retention. Logs are
+diagnostics and never a source of truth.
+
 ## 5. Data contracts
 
 ```text
@@ -250,6 +357,14 @@ SpecRef            capability_path
 SpecItemId         capability_path, requirement, scenario (optional)
 SpecIdAlias        old_id, new_id, archived_change
 ValidationResult   target, ok, issues (message, location)
+AgentActivityEvent id, attempt_id, generation, kind (turn, tool_call, assistant_output,
+                   usage, compaction, context, retry, error), source, fidelity,
+                   occurred_at, duration_ms?, tool?, command_summary?, exit_status?,
+                   tokens?, context_tokens?, text_ref?, unavailable_fields
+TranscriptSegment  id, attempt_id, sequence, text_ref, redaction_version, retained_until
+DeviceRegistration id, label, token_hash, scopes, paired_at, last_seen, revoked_at?
+AlertRule          id, condition, threshold, scope, notify
+MetricDefinition   name, source_events, labels, aggregation, schema_version
 ```
 
 ## 6. Events
@@ -269,6 +384,10 @@ SpecToolPinned(version, digest) · SpecProjectScaffolded · SpecChangeCreated
 SpecProposalRendered(brief_id, ledger_digest) · SpecValidated(target, ok)
 IssueDraftRejected(spec_binding) · SpecArchived(change) · SpecArchiveFailed(reason)
 SpecIdAliased(old, new)
+AgentActivityObserved(kind, source, fidelity) · TelemetrySourceDegraded(source, reason)
+TelemetrySourceRestored · TranscriptSegmentStored · TranscriptPurged(before)
+DevicePaired(device) · DeviceRevoked(device) · RemoteActionRecorded(device, command)
+AlertRaised(rule) · AlertCleared(rule) · NotificationSent(device, kind)
 ```
 
 All use v1's event rules: append-only, idempotent identities, deterministic replay.
@@ -314,6 +433,13 @@ vendored skill lacks one.
 | Network subcommand or disallowed subcommand attempted | Refused by the allow-list and recorded as a defect |
 | Archive fails after merge | `SpecArchiveFailed`; retried idempotently by reconcile; never silently skipped |
 | Upgrade breaks schema or parsing | The compatibility tests fail and the upgrade is blocked |
+| Telemetry source down, or session-log format unrecognized | `TelemetrySourceDegraded`; fidelity drops to environment observations; the agent is not stalled |
+| Ingest backlog | Sources are sampled or coalesced and the event says so; the controller never blocks on monitoring |
+| Duplicate delivery to a consumer | Stable event IDs; the consumer de-duplicates |
+| Redaction failure | The segment is dropped with a marker; unredacted text is never stored or sent |
+| Device revoked mid-stream | The stream closes and later requests are refused |
+| Remote client unreachable | Notifications queue with expiry; no controller action waits on the client |
+| Clock skew between sources | Order by global position, not timestamps |
 
 ## 9. Security
 
@@ -324,6 +450,14 @@ digest-pinned. The new roles hold no GitHub, process, or filesystem authority be
 their own feature directory. The OpenSpec binary is pinned by digest, runs as a child
 of the controller with telemetry disabled and no network need, and its output is
 treated as untrusted, bounded data.
+
+Remote monitoring adds an exposed surface. Threats and controls: stolen device token
+(revocable, stored hashed, short-lived access tokens, scope limits, re-authentication
+for control); secret leakage through the stream or transcripts (redaction at ingest,
+`view_prose` scope, minimal notifications); network exposure (loopback by default,
+TLS required elsewhere, origin checks, rate limits, no relay); and confused-deputy
+control (remote commands pass the same controller policy and are audited). Tunnel
+guidance, not a built-in tunnel, covers reachability.
 
 ## 10. Required tests
 
@@ -351,6 +485,20 @@ treated as untrusted, bounded data.
 - Issue binding: missing ID rejected, valid ID accepted, aliased old ID resolves.
 - Archive runs only after Tester pass and merge, and not for an abandoned feature.
 - Init fails on a missing or mismatched pinned build.
+- Stream: ordered delivery, cursor resume, de-duplication by event ID, and per-filter
+  results identical across clients.
+- Ingest: each source adapter against recorded fixtures; fidelity and unavailable fields
+  tagged; a degraded source records an event; terminal text never produces an event.
+- Redaction fixtures with secrets in prose, commands, and paths; redaction failure drops
+  the segment; retention purge honored.
+- Scope matrix: `view`, `view_prose`, `decide`, and `steer` against every route;
+  confirmation required for control; revoked device closes its stream; every remote
+  action audited; remote commands refused with the controller's local reason.
+- Pairing and token tests, including hashed storage, expiry, and replay.
+- Metrics and traces replay identically; label sets contain no IDs.
+- Alert rules as pure functions with positive and negative cases.
+- A fake harness emitting richer events changes no consumer.
+- Real Codex sources as opt-in contract tests.
 
 ## 11. Impact on v1
 
@@ -366,12 +514,18 @@ treated as untrusted, bounded data.
 | §8 role rule system | Three new skills, vendored-skill support |
 | §3.5 Workspace | The `openspec/` directory is controller-managed |
 | PRD §8.2 issue content | Acceptance criteria cite scenario IDs |
+| §6.1, §6.2 adapter observation boundaries | Extended to activity events and context size |
+| §11 event envelope and streams | Optional first-class correlation fields; new event families |
+| §15 observability | Becomes the monitor, logs, metrics, alerts, and remote design above |
+| §14 security model | Remote access threats and controls |
+| Usage observations (MB-017) | Add call latency and context size as optional fields |
 | §10, §11 contracts, events | Additions in sections 5 and 6 above |
 | §16 source tree, §17 tests | New modules and tests |
 
 Build-task impact: MB-011 (Planner, Router, Architect), MB-007 (skill validation for
-vendored skills), MB-014 (Tester), and the stage-table refactor, which is cheapest to
-do before the workflow code is finished.
+vendored skills), MB-014 (Tester), MB-015 (supervisor, alerts, reconcile), MB-016
+(operator CLI and reports), and the stage-table refactor, which is cheapest to do before
+the workflow code is finished.
 
 ## 12. Open questions
 
@@ -393,3 +547,11 @@ do before the workflow code is finished.
     Pin it with contract tests.
 11. OpenSpec marks schema commands as experimental. What is the fallback if the schema
     format changes?
+12. Does the monitor server run inside the controller process or as a separate process
+    reading the store? Separate isolates remote exposure from the controller.
+13. How is Codex telemetry received: a local OTLP receiver, a file exporter, or only the
+    session log? None was tested here.
+14. Per-attempt Codex home directories: confirm they are supported and do not break
+    login.
+15. Web push versus a webhook for the first notification provider.
+16. Retention default and redaction rules: who maintains the secret patterns?

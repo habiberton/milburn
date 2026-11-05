@@ -237,7 +237,84 @@ policy for third-party skills.
 - **V2-18. Skill format.** Skills use the open `SKILL.md` Agent Skills format, which
   Codex and Claude Code both read, so an Anthropic skill needs no conversion.
 
-## 8. Cross-cutting requirements
+## 8. Observability and remote monitoring
+
+v1 records events and token usage (§12.1) but defines no live stream, logs, metrics, or
+remote view. This increment adds them. Codex owns each agent's model-and-tool loop, so
+what Milburn can see of an agent's activity depends on what Codex exposes. A future
+custom harness owns its loop and can report more. The design must work with the first
+and not change for the second.
+
+- **V2-33. One spine.** The durable event store is the only source. The live stream,
+  log views, metrics, and traces are projections or exports of it. Monitoring holds no
+  state of its own, so replay after restart rebuilds all of it.
+- **V2-34. Live stream.** Events are delivered in global order, are resumable from a
+  cursor, are delivered at least once with stable event IDs for de-duplication, and
+  backfill from the store after a disconnect. Consumers can filter by feature, issue,
+  attempt, role, and level. The command line, the terminal board, and the remote
+  interface all read the same stream.
+- **V2-35. Agent activity events.** A family of `AgentActivityObserved` events records
+  what an agent does between checkpoints: turns, tool calls (tool, command summary,
+  exit status, duration), assistant output, usage, compaction, context size, retries,
+  and errors. Each event names its source and fidelity. Missing detail stays explicitly
+  unavailable and is never inferred.
+- **V2-36. Source fidelity order.** Milburn prefers, in order: a structured stream or
+  telemetry the harness exposes; the harness's session log (version-gated, since its
+  format is not a documented contract); and observations of the environment that need
+  no harness cooperation (commits, progress file changes, test runs, process liveness,
+  CPU and memory). Terminal text is for human viewing only and is never evidence.
+- **V2-37. Assistant output.** Assistant prose is shown in the stream when the harness
+  provides it. It is classified sensitive, passes through secret redaction before it is
+  streamed or stored, and is kept in a transcript store separate from the event store,
+  with a configured retention (off, session only, or retained for a set number of days).
+  It is never copied into a handoff manifest, defect feedback, usage records, or any
+  input to a controller decision, and it is never treated as evidence. Hidden reasoning
+  is not captured; only output the harness presents as visible is shown. This relaxes
+  v1's wording on transcripts for display purposes only (open question 13).
+- **V2-38. Logs.** The controller writes structured logs with levels, correlation IDs
+  (feature, issue, attempt, generation, effect), redaction, rotation, and retention.
+  Events are durable facts; logs are diagnostics and may be dropped. Command output
+  stays in referenced log files (v1 §12.6).
+- **V2-39. Metrics.** Metrics derive deterministically from events. They cover flow
+  time per stage and gate, launch-to-first-activity, attempt duration, effect latency
+  and uncertain-effect rate, rework rounds and escalation rate, first-attempt QA pass
+  rate, tokens by role, model, and attempt (including cache-hit ratio, launch context
+  size, peak context, compactions, and replacements), and counts of unknown, stopped,
+  and failed attempts. Labels are low-cardinality (role, stage, model, outcome); task
+  and attempt IDs appear on events and traces, not as metric labels. Pricing and
+  budgets remain out of scope (v1 §5).
+- **V2-40. Traces.** A feature is a trace, and its stages and attempts are spans,
+  built from events after the fact. No live instrumentation of agents is required.
+- **V2-41. Optional export.** An OTLP exporter and a Prometheus-format endpoint are
+  available and off by default. Milburn's own event schema is versioned independently
+  of OpenTelemetry's generative-AI conventions, which are still at Development status,
+  and is mapped only inside the exporter.
+- **V2-42. Alerts.** Alerts are events produced by deterministic rules: an attempt idle
+  too long, no commits for too long, context above a threshold, non-converging
+  rework, a backlog of uncertain effects, and a telemetry source down. An alert needing
+  a person reaches them through the Coordinator decision path and as a push
+  notification.
+- **V2-43. Remote and phone access.** Milburn serves an authenticated, TLS-protected
+  monitoring interface that works on a phone. It binds to the local machine by default.
+  Remote access is an explicit opt-in through a secure tunnel or private network that
+  the user provisions. Milburn requires no hosted relay and runs none.
+- **V2-44. Device pairing and scopes.** Each remote device is paired and holds a
+  revocable token. Scopes are `view`, `view_prose` (assistant output), `decide`
+  (answer decisions), and `steer` (steer, interrupt, retire). `admin` is never granted
+  remotely by default. A `decide` or `steer` action needs recent re-authentication or
+  explicit confirmation. Every remote action is an audited event naming the device, and
+  the controller validates every remote command exactly as it validates a local one.
+  Remote access never bypasses controller authority.
+- **V2-45. Phone notifications.** Decisions and alerts are pushed to paired devices
+  through a configurable provider. Notification text is minimal and carries no
+  assistant output or secrets by default.
+- **V2-46. Harness-neutral vocabulary.** The activity vocabulary has optional fields so
+  a harness that owns its loop can emit the same events natively and add per-call
+  latency, retries, tool timing, and exact usage. Nothing downstream changes.
+- **V2-47. Monitoring never blocks work.** Ingest pressure or a failing source lowers
+  fidelity and records an event. It never stalls an agent or the controller.
+
+## 9. Cross-cutting requirements
 
 - **V2-19. Declarative stages.** The sequence of stages is defined as data (role,
   required skills, allowed connectors, input and output contracts, gate, and skip
@@ -250,7 +327,7 @@ policy for third-party skills.
 - **V2-21. No new authority.** Neither new role gets GitHub mutation, process
   control, or the ability to pass its own gate.
 
-## 9. Acceptance criteria (additions)
+## 10. Acceptance criteria (additions)
 
 The increment is accepted when:
 
@@ -294,15 +371,39 @@ The increment is accepted when:
     init, or any subcommand outside the read-only set.
 20. Changing the pinned OpenSpec version runs the compatibility tests, and a failure
     blocks the change.
+21. The live stream is ordered, resumes from a cursor after disconnect without loss or
+    duplication visible to a de-duplicating consumer, and applies the same filters on
+    every client.
+22. Activity events carry source and fidelity, show missing detail as unavailable, and
+    are never derived from terminal text.
+23. Assistant output is redacted before it is streamed or stored, honors the configured
+    retention, is absent from handoffs, feedback, usage, and decision inputs, and
+    appears only for devices holding `view_prose`.
+24. Metrics replay identically after restart and use only low-cardinality labels; the
+    usage metrics include launch context size, cache-hit ratio, and compaction counts.
+25. Each alert rule fires on its condition and not otherwise, and an alert needing a
+    person arrives through the Coordinator decision path and a push notification.
+26. Remote access is off until enabled, requires TLS for any non-local address, and
+    needs no hosted relay.
+27. A device with `view` cannot answer a decision or steer; a `decide` or `steer` action
+    without recent re-authentication or confirmation is refused; every remote action
+    is an audited event with the device ID; a revoked device's stream closes.
+28. A remote command that the controller would refuse locally is refused remotely with
+    the same reason.
+29. A failing telemetry source or an overloaded ingest records a degraded-fidelity event
+    and does not stall any agent.
+30. Replacing the harness with a fake that emits richer events changes no consumer.
 
-## 10. Not in this increment
+## 11. Not in this increment
 
 Persona-based user testing, a bug-intake loop from monitoring, parallel Coders,
 LLM-judge scoring of plans and specs, per-agent computers, inboxes, or phones,
 automatic deploy, additional harnesses, forking OpenSpec, importing an existing
-OpenSpec project, and OpenSpec's own apply and verify workflows. They are candidates for later increments.
+OpenSpec project, OpenSpec's own apply and verify workflows, a hosted relay, multi-user
+access control, pricing and budgets, and any use of captured assistant output as
+handoff, feedback, or evidence input. They are candidates for later increments.
 
-## 11. Open questions
+## 12. Open questions
 
 1. Role names: separate `Discoverer` and `Designer`, or fold discovery into the
    Planner and design into the Architect with new skills?
@@ -327,3 +428,14 @@ OpenSpec project, and OpenSpec's own apply and verify workflows. They are candid
     tracked so references from old issues keep resolving?
 12. OpenSpec's schema commands are experimental. What is the fallback if its schema
     format changes?
+13. v1 lists copying private transcripts as a non-goal and says feedback holds no
+    transcript. V2-37 allows displaying and retaining assistant output under controls.
+    Should the v1 wording be amended when these documents merge?
+14. Default retention for the transcript store, and whether the default is off.
+15. Push provider: web push, a webhook to a notification service, or both?
+16. Recommended tunnel or private-network setup for remote access, and how pairing is
+    done on a phone (code, QR, passkey).
+17. How does Milburn receive Codex telemetry: a local OTLP receiver, a file exporter, or
+    only the session log? None was tested.
+18. Is the harness's session log stable enough to rely on, and what is the support
+    policy when its format changes?
