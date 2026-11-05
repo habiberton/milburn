@@ -860,7 +860,7 @@
       "id": "MB-012",
       "wave": 3,
       "title": "Implement the GitHub issue registry and idempotent issue creation",
-      "status": "in_progress",
+      "status": "done",
       "github": {
         "issue_number": 12,
         "issue_url": "https://github.com/habiberton/milburn/issues/12",
@@ -876,7 +876,7 @@
       "branch": "product/MB-012-issue-registry",
       "worktree": null,
       "base_sha": "2a8f68a2f9643e5238331195315283d799cfd857",
-      "candidate_sha": null,
+      "candidate_sha": "d015245",
       "progress_path": "bootstrap/progress/tasks/MB-012.md",
       "owned_paths": [
         "src/milburn/integrations/github/registry.py",
