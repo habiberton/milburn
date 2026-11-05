@@ -30,10 +30,10 @@ that the transition guard (v1 §5.3) evaluates:
 
 | Stage | Role | Required skills | Connectors | Input | Output | Gate | Skip |
 |---|---|---|---|---|---|---|---|
-| discovery | Discoverer | `milburn-discovery` | research gateway (read) | request, repo summary | `DiscoveryBrief`, ledger | grill gate | policy or user |
+| discovery | Discoverer | `milburn-discovery` | research gateway (read) | request, repo summary | `DiscoveryBrief` (rendered as the change's `proposal.md`), ledger | grill gate | policy or user |
 | planning | Planner | `milburn-planning` | none | `DiscoveryBrief` | plan | plan accepted | none |
 | design | Designer | `milburn-design`, `frontend-design` (vendored), project design system | render service | plan, brief, references | `DesignVariantSet`, `DesignSpec` | design approval | not user-facing, or user |
-| architecture | Architect | v1 skills | none | plan, brief, `DesignSpec` | specs, issue drafts | v1 plus design binding | none |
+| architecture | Architect | v1 skills, `milburn-spec` | spec tool (controller-owned; read-only wrapper for the agent) | plan, brief, `DesignSpec` | specs, spec change, issue drafts | v1 plus design binding, spec validation, requirement-ID citation | none |
 | implementation, testing | v1 | v1 | v1 | v1 | v1 | v1 | none |
 
 The default table with Discovery and Design disabled reproduces v1 exactly (V2 AC 12).
@@ -72,6 +72,17 @@ with its license, upstream source and commit, retrieval date, and digest. Milbur
 existing skill validation (v1 §8.4) computes and records the digest at launch. Nothing
 is fetched at launch. A skill with no confirmed redistributable license is not
 vendored.
+
+### D2-6. OpenSpec is a pinned, controller-owned external tool, not a fork
+
+Milburn uses OpenSpec's layout and CLI for the target repository's specs (PRDv2 §6).
+It is not forked. Everything Milburn needs differently is expressed through a project
+schema, configuration, and a wrapper. The controller installs or verifies a pinned
+build at init and records its version and digest. No role runs the CLI directly: the
+controller calls it through `SpecToolGateway`, and agents get a read-only subset
+through Milburn commands. Facts verified against 1.16.0: MIT license; Node 22.12 or
+newer, or the standalone build; offline operation; writes confined to the project;
+telemetry on by default and disabled by environment variable.
 
 ## 3. State machines
 
@@ -172,6 +183,49 @@ acceptance references. The `QAReport` gains an optional list of design differenc
 with a spec section, a viewport, and an evidence reference. Differences are evidence;
 completion policy remains controller-owned.
 
+### 4.9 SpecToolGateway
+
+```python
+class SpecToolGateway(Protocol):
+    def scaffold(self, repo: RepositoryPath) -> ScaffoldResult: ...
+    def new_change(self, name: ChangeName, schema: SchemaName) -> ChangeRef: ...
+    def status(self, change: ChangeRef) -> ArtifactGraph: ...
+    def validate(self, target: ChangeRef | SpecRef) -> ValidationResult: ...
+    def show_deltas(self, change: ChangeRef) -> tuple[Delta, ...]: ...
+    def archive(self, change: ChangeRef) -> ArchiveResult: ...
+```
+
+`OpenSpecCliGateway` runs the pinned binary as a child process with a fixed
+environment (`OPENSPEC_TELEMETRY=0`, `DO_NOT_TRACK=1`), the repository root as working
+directory, a subcommand allow-list, a timeout, an output size cap, and JSON parsing for
+`status --json` and `show --json`. `scaffold`, `new_change`, and `archive` are
+controller-only. Agents reach `status`, `validate`, and `show_deltas` through Milburn
+commands that wrap the gateway. Results and file digests are recorded as events. A fake
+gateway serves tests.
+
+`scaffold` runs `openspec init --tools none`, installs the `milburn-spec` schema
+bundle into `openspec/schemas/milburn-spec/`, and sets it as the default in
+`openspec/config.yaml`.
+
+### 4.10 Spec IDs, proposal rendering, and issue binding
+
+OpenSpec has no numeric IDs. Milburn derives them from names:
+`<capability-path>#<requirement name>` and `<capability-path>#<requirement name>#<scenario name>`.
+Derivation uses the parsed deltas from `show_deltas`, rejects duplicates within a
+capability, and treats a RENAMED delta as an explicit alias: on archive the controller
+records the old-to-new mapping so earlier issue references still resolve.
+
+The controller renders the approved `DiscoveryBrief` into `proposal.md` using the
+`milburn-spec` proposal template (why, what changes, capabilities, impact), with the
+ledger digest recorded in the change. The Architect then writes the spec deltas and
+the design note.
+
+Issue validation (v1 §5.7) is extended: an `IssueDraft` must cite at least one derived
+ID that exists in the change's deltas, and a citation of a missing ID is rejected. The
+Tester brief (v1 §5.12) lists the cited scenarios, and the `QAReport` maps evidence to
+scenario IDs. After the Tester passes and the pull request merges, the controller calls
+`archive`; until then the living specs are unchanged.
+
 ## 5. Data contracts
 
 ```text
@@ -190,6 +244,12 @@ DesignSpec         id, feature_id, version, section_ids, tokens, components, sta
                    responsive, accessibility, copy, source_decision_id, digest
 StageDefinition    stage, role, required_skills, connectors, input_contract,
                    output_contract, gate, skip_policy
+SpecToolPin        version, digest, platform, installed_at
+ChangeRef          name, schema, path
+SpecRef            capability_path
+SpecItemId         capability_path, requirement, scenario (optional)
+SpecIdAlias        old_id, new_id, archived_change
+ValidationResult   target, ok, issues (message, location)
 ```
 
 ## 6. Events
@@ -205,6 +265,10 @@ DesignRequiredDecided(authority) · DesignSkipped(authority, reason)
 DesignVariantSetSubmitted · DesignRendered(screenshot digests)
 DesignSelectionRecorded(decision_ref) · DesignApproved(decision_ref)
 DesignSpecSubmitted · IssueDraftRejected(design_binding)
+SpecToolPinned(version, digest) · SpecProjectScaffolded · SpecChangeCreated
+SpecProposalRendered(brief_id, ledger_digest) · SpecValidated(target, ok)
+IssueDraftRejected(spec_binding) · SpecArchived(change) · SpecArchiveFailed(reason)
+SpecIdAliased(old, new)
 ```
 
 All use v1's event rules: append-only, idempotent identities, deterministic replay.
@@ -217,6 +281,12 @@ Role-to-skill binding (extends v1 §8.2):
 |---|---|
 | Discoverer | `milburn-discovery` |
 | Designer | `milburn-design`, `frontend-design` (vendored), project design system when present |
+| Architect (added) | `milburn-spec` |
+
+`milburn-spec` carries the spec change format (requirement and scenario syntax, delta
+operations), the read-only validation loop, and guardrails adapted from OpenSpec's
+explore skill under the MIT notice. OpenSpec's own skills are never installed in role
+workspaces.
 
 `milburn-discovery` carries the grill procedure, the research procedure, ledger
 commands, and the brief template. `milburn-design` carries the diverge and converge
@@ -238,6 +308,12 @@ vendored skill lacks one.
 | Render failure | `DesignRendered` not recorded; the set cannot be presented; retried with the same effect ID |
 | Vendored skill digest mismatch or missing | Designer launch blocked with a clear error |
 | Round caps reached | `DecisionRequest` to the user, never a silent proceed |
+| Pinned OpenSpec build missing, or version or digest mismatch | Init and every spec stage fail closed with a clear error; no fallback to another build |
+| `validate` reports issues | Exact messages returned to the Architect; the stage cannot pass |
+| CLI timeout or crash mid-write | Change folder treated as unverified and re-validated; partial files kept for inspection |
+| Network subcommand or disallowed subcommand attempted | Refused by the allow-list and recorded as a defect |
+| Archive fails after merge | `SpecArchiveFailed`; retried idempotently by reconcile; never silently skipped |
+| Upgrade breaks schema or parsing | The compatibility tests fail and the upgrade is blocked |
 
 ## 9. Security
 
@@ -245,7 +321,9 @@ The research gateway applies an egress allow-list and size and rate limits, and 
 with no credentials. Retrieved content and user reference images are stored locally
 and are never sent to a role except as bounded, labeled artifacts. Vendored skills are
 digest-pinned. The new roles hold no GitHub, process, or filesystem authority beyond
-their own feature directory.
+their own feature directory. The OpenSpec binary is pinned by digest, runs as a child
+of the controller with telemetry disabled and no network need, and its output is
+treated as untrusted, bounded data.
 
 ## 10. Required tests
 
@@ -264,6 +342,15 @@ their own feature directory.
 - `RenderService` contract tests with a fake; real-browser rendering as an opt-in
   contract test.
 - Scripted-agent workflow from request to approved `DesignSpec` with no live model.
+- `SpecToolGateway` contract tests against the fake always, and against the real pinned
+  CLI as an opt-in test.
+- Every CLI spawn carries the telemetry environment variables; allow-list tests reject
+  apply, archive, init, and network subcommands from the agent wrapper.
+- `milburn-spec` schema validates, has no `tasks` artifact and no apply block.
+- ID derivation: duplicates rejected, RENAMED creates an alias, odd names handled.
+- Issue binding: missing ID rejected, valid ID accepted, aliased old ID resolves.
+- Archive runs only after Tester pass and merge, and not for an abandoned feature.
+- Init fails on a missing or mismatched pinned build.
 
 ## 11. Impact on v1
 
@@ -273,10 +360,12 @@ their own feature directory.
 | §5.3 transition guard | Reads the stage table |
 | §5.4 Router | Also proposes `design_required` and discovery skip |
 | §5.5 Planner | Input is the `DiscoveryBrief` |
-| §5.6 Architect | Input adds the `DesignSpec`; issue drafts cite it |
-| §5.7 issue validation | Adds design binding |
-| §5.12 Tester | Brief and report gain design references |
-| §8 role rule system | Two new skills, vendored-skill support |
+| §5.6 Architect | Input adds the `DesignSpec`; writes the spec change; issue drafts cite design and requirement IDs |
+| §5.7 issue validation | Adds design binding and spec-ID citation |
+| §5.12 Tester | Brief and report gain design references and scenario mapping |
+| §8 role rule system | Three new skills, vendored-skill support |
+| §3.5 Workspace | The `openspec/` directory is controller-managed |
+| PRD §8.2 issue content | Acceptance criteria cite scenario IDs |
 | §10, §11 contracts, events | Additions in sections 5 and 6 above |
 | §16 source tree, §17 tests | New modules and tests |
 
@@ -294,3 +383,13 @@ do before the workflow code is finished.
 5. Should user reference images live in the repository or only under the Milburn home?
 6. Does the Discoverer's grill procedure adapt the grilling skill used in this
    project's own build? That needs a license check first.
+7. Standalone OpenSpec build or Node 22.12 or newer for the pin? The standalone build was
+   not tested.
+8. Name-derived requirement IDs: how robust are they to long-lived projects, and is an
+   alias table enough for renames?
+9. Run the CLI with an isolated config directory to guarantee its global config is never
+   read or written? No stray writes were seen in testing, but the global config exists.
+10. The shape of `status --json` and `show --json` is not a documented contract.
+    Pin it with contract tests.
+11. OpenSpec marks schema commands as experimental. What is the fallback if the schema
+    format changes?
