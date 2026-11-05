@@ -1008,6 +1008,31 @@ before changes. Dispatch has resumed under the narrow MB-023 exception.
   `milburn:in-progress`; MB-023 is again a candidate for normal integration
   under its effective exception. Dispatch resumes after the reconciliation PR
   containing this effectiveness record merges and is read back.
+- Reconciliation PR #53 merged as two-parent commit `d59f7f1`; remote read-back
+  proved both its tip and merge are in `origin/main`, the primary checkout
+  fast-forwarded, and amendment/feedback preflight is clear.
+- MB-009/a01 returned authorized corrected candidate
+  `e8d6c3c0c97e3f58cb9d9e9db6635610a7170cd9` from prior `354a18a`. Root
+  verification passed attribution for all 14 commits, owned paths, diff checks,
+  47 focused tests, all 73 runtime tests, and the full suite with 421 passed/3
+  protected skips/3 subtests. Delta Specification and Standards reviews must
+  cover fix `d1b94b8` and the full A-D blast radius; if clean, both axes run one
+  final full-pass confirmation. Any blocking result returns to the user.
+- MB-025 Focused review BLOCK on candidate `687cd80`: F001 covers embedded
+  newlines/unpaired surrogates across all accepted string fields and one-value
+  CLI output; F002 covers malformed UTF-8 escaping as a traceback. The same
+  worker will add public CLI negative regressions and narrow corrections;
+  corrected MB-025 escalates to fresh Specification and Standards passes.
+- Effective AMEND-004 preserved MB-023 candidate `915e9e9`. The coordinator
+  non-squash merged it as two-parent integration `eeda92f`, retaining the
+  worker commits and resolving only the task progress conflict. Integrated
+  verification passed 16 focused tests, smoke with 430 passed/3 protected
+  skips/3 subtests, feedback/amendment validators, and diff checks. Issue #41
+  is `milburn:qa`; the single evidence-bearing task PR remains.
+- The coordinator pushed MB-023 integration tip `d228f21` and opened single
+  task PR #54. Its body records worker/candidate/integration SHAs, acceptance
+  and tests, the Focused blocking verdict, effective AMEND-004 authority,
+  unresolved risks #49/#50, feedback link, and `Closes #41`.
 
 - `scripts/smoke-test.sh` with the shared test environment: 29 tasks valid, 12
   feedback briefs valid, 3 amendment records valid, 414 passed, 3 skipped, 3
