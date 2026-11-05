@@ -93,3 +93,12 @@ MB-023 shipped. The lessons they encoded are now Milburn requirements: PRD
 sections 12.4 to 12.7, acceptance criteria 27 to 31, ARCH 5.17, and added
 acceptance criteria on MB-013, MB-014, MB-015, MB-016, MB-019, and MB-021.
 v1 stays Codex-only; multi-harness lessons are recorded under deferred work.
+
+## 2026-11-04 — Reviews use a fresh-context gpt-6-sol subagent
+
+This supersedes the same-agent review in the single-agent decision above. Each core
+task is reviewed by a read-only subagent on `gpt-6-sol` at medium effort with
+`fork_turns: none`, spawned by the build agent. If the subagent tool or that model
+is unavailable the agent stops and asks; it does not fall back to self-review.
+Re-reviews use a new subagent, and the convergence limits in
+`bootstrap/SINGLE_AGENT.md` still end in a question to the user.

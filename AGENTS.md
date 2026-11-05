@@ -16,7 +16,8 @@ This section overrides the coordinator, worker, worktree, review, amendment, and
 rotation procedures below for the remaining core product tasks (MB-010 to
 MB-016, MB-019, MB-021). One agent builds them alone, one pull request per task,
 following `bootstrap/SINGLE_AGENT.md`. Do not act as the bootstrap coordinator, do
-not launch subagents, and do not use `bootstrap/ROOT_PROMPT.md`. The process
+launch subagents only as the fresh-context `gpt-6-sol` reviewer that
+`bootstrap/SINGLE_AGENT.md` requires, and do not use `bootstrap/ROOT_PROMPT.md`. The process
 tooling tasks MB-024 to MB-029 are parked.
 
 Still in force: the sources of truth, the approved PRD and ARCH, the Safety
