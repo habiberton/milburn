@@ -93,7 +93,9 @@
         "assignment_source": "github",
         "last_observed_state": "open",
         "last_observed_status_label": "milburn:done",
-        "last_observed_assignees": ["habiberton"]
+        "last_observed_assignees": [
+          "habiberton"
+        ]
       },
       "dependencies": [],
       "parallel_group": null,
@@ -141,9 +143,13 @@
         "assignment_source": "github",
         "last_observed_state": "closed",
         "last_observed_status_label": "milburn:done",
-        "last_observed_assignees": ["habiberton"]
+        "last_observed_assignees": [
+          "habiberton"
+        ]
       },
-      "dependencies": ["MB-001"],
+      "dependencies": [
+        "MB-001"
+      ],
       "parallel_group": null,
       "owner": "builder-MB-002-a01",
       "branch": "bootstrap/builder/MB-002/a01-domain-contracts",
@@ -185,9 +191,13 @@
         "assignment_source": "github",
         "last_observed_state": "closed",
         "last_observed_status_label": "milburn:done",
-        "last_observed_assignees": ["habiberton"]
+        "last_observed_assignees": [
+          "habiberton"
+        ]
       },
-      "dependencies": ["MB-002"],
+      "dependencies": [
+        "MB-002"
+      ],
       "parallel_group": null,
       "owner": "builder-MB-003-a01",
       "branch": "bootstrap/builder/MB-003/a01-event-store",
@@ -231,9 +241,13 @@
         "assignment_source": "github",
         "last_observed_state": "closed",
         "last_observed_status_label": "milburn:done",
-        "last_observed_assignees": ["habiberton"]
+        "last_observed_assignees": [
+          "habiberton"
+        ]
       },
-      "dependencies": ["MB-003"],
+      "dependencies": [
+        "MB-003"
+      ],
       "parallel_group": null,
       "owner": "builder-MB-004-a01",
       "branch": "bootstrap/builder/MB-004/a01-workflow-controller",
@@ -281,9 +295,13 @@
         "assignment_source": "github",
         "last_observed_state": "closed",
         "last_observed_status_label": "milburn:done",
-        "last_observed_assignees": ["habiberton"]
+        "last_observed_assignees": [
+          "habiberton"
+        ]
       },
-      "dependencies": ["MB-004"],
+      "dependencies": [
+        "MB-004"
+      ],
       "parallel_group": null,
       "owner": "builder-MB-020-a01",
       "branch": "bootstrap/builder/MB-020/a01-feedback-briefs",
@@ -337,9 +355,14 @@
         "assignment_source": "github",
         "last_observed_state": "closed",
         "last_observed_status_label": "milburn:done",
-        "last_observed_assignees": ["habiberton"]
+        "last_observed_assignees": [
+          "habiberton"
+        ]
       },
-      "dependencies": ["MB-004", "MB-020"],
+      "dependencies": [
+        "MB-004",
+        "MB-020"
+      ],
       "parallel_group": "wave-2-boundaries",
       "owner": "builder-MB-005-a01",
       "branch": "bootstrap/builder/MB-005/a01-tmux-runtime",
@@ -386,9 +409,14 @@
         "assignment_source": "github",
         "last_observed_state": "closed",
         "last_observed_status_label": "milburn:done",
-        "last_observed_assignees": ["habiberton"]
+        "last_observed_assignees": [
+          "habiberton"
+        ]
       },
-      "dependencies": ["MB-004", "MB-020"],
+      "dependencies": [
+        "MB-004",
+        "MB-020"
+      ],
       "parallel_group": "wave-2-boundaries",
       "owner": "builder-MB-006-a01",
       "branch": "bootstrap/builder/MB-006/a01-codex-adapter",
@@ -437,9 +465,16 @@
         "assignment_source": "github",
         "last_observed_state": "closed",
         "last_observed_status_label": "milburn:done",
-        "last_observed_assignees": ["habiberton"]
+        "last_observed_assignees": [
+          "habiberton"
+        ]
       },
-      "dependencies": ["MB-002", "MB-003", "MB-006", "MB-022"],
+      "dependencies": [
+        "MB-002",
+        "MB-003",
+        "MB-006",
+        "MB-022"
+      ],
       "parallel_group": null,
       "owner": "builder-MB-017-a01",
       "branch": "bootstrap/builder/MB-017/a01-token-usage",
@@ -494,9 +529,17 @@
         "assignment_source": "github",
         "last_observed_state": "closed",
         "last_observed_status_label": "milburn:done",
-        "last_observed_assignees": ["habiberton"]
+        "last_observed_assignees": [
+          "habiberton"
+        ]
       },
-      "dependencies": ["MB-002", "MB-003", "MB-006", "MB-017", "MB-022"],
+      "dependencies": [
+        "MB-002",
+        "MB-003",
+        "MB-006",
+        "MB-017",
+        "MB-022"
+      ],
       "parallel_group": null,
       "owner": "builder-MB-018-a01",
       "branch": "bootstrap/builder/MB-018/a01-session-handoffs",
@@ -550,9 +593,14 @@
         "assignment_source": "github",
         "last_observed_state": "closed",
         "last_observed_status_label": "milburn:done",
-        "last_observed_assignees": ["habiberton"]
+        "last_observed_assignees": [
+          "habiberton"
+        ]
       },
-      "dependencies": ["MB-004", "MB-020"],
+      "dependencies": [
+        "MB-004",
+        "MB-020"
+      ],
       "parallel_group": null,
       "owner": "builder-MB-022-a01",
       "branch": "bootstrap/builder/MB-022/a01-plan-amendment-gate",
@@ -621,9 +669,15 @@
         "assignment_source": "github",
         "last_observed_state": "closed",
         "last_observed_status_label": "milburn:done",
-        "last_observed_assignees": ["habiberton"]
+        "last_observed_assignees": [
+          "habiberton"
+        ]
       },
-      "dependencies": ["MB-004", "MB-020", "MB-022"],
+      "dependencies": [
+        "MB-004",
+        "MB-020",
+        "MB-022"
+      ],
       "parallel_group": "wave-2-boundaries",
       "owner": "builder-MB-007-a01",
       "branch": "bootstrap/builder/MB-007/a01-skill-catalog",
@@ -674,9 +728,15 @@
         "assignment_source": "github",
         "last_observed_state": "closed",
         "last_observed_status_label": "milburn:done",
-        "last_observed_assignees": ["habiberton"]
+        "last_observed_assignees": [
+          "habiberton"
+        ]
       },
-      "dependencies": ["MB-004", "MB-020", "MB-022"],
+      "dependencies": [
+        "MB-004",
+        "MB-020",
+        "MB-022"
+      ],
       "parallel_group": "wave-2-boundaries",
       "owner": "builder-MB-008-a01",
       "branch": "bootstrap/builder/MB-008/a01-github-mcp",
@@ -725,9 +785,15 @@
         "assignment_source": "github",
         "last_observed_state": "closed",
         "last_observed_status_label": "milburn:done",
-        "last_observed_assignees": ["habiberton"]
+        "last_observed_assignees": [
+          "habiberton"
+        ]
       },
-      "dependencies": ["MB-004", "MB-020", "MB-022"],
+      "dependencies": [
+        "MB-004",
+        "MB-020",
+        "MB-022"
+      ],
       "parallel_group": "wave-2-boundaries",
       "owner": "builder-MB-009-a01",
       "branch": "bootstrap/builder/MB-009/a01-worktree-manager",
@@ -774,7 +840,13 @@
         "last_observed_status_label": "milburn:done",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-005", "MB-006", "MB-007", "MB-017", "MB-018"],
+      "dependencies": [
+        "MB-005",
+        "MB-006",
+        "MB-007",
+        "MB-017",
+        "MB-018"
+      ],
       "parallel_group": "wave-3-coordination",
       "owner": null,
       "branch": "product/MB-010-coordinator-session",
@@ -816,11 +888,16 @@
         "issue_url": "https://github.com/habiberton/milburn/issues/11",
         "status_source": "github",
         "assignment_source": "github",
-        "last_observed_state": "open",
-        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_state": "closed",
+        "last_observed_status_label": "milburn:done",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-006", "MB-007", "MB-017", "MB-018"],
+      "dependencies": [
+        "MB-006",
+        "MB-007",
+        "MB-017",
+        "MB-018"
+      ],
       "parallel_group": "wave-3-coordination",
       "owner": null,
       "branch": "product/MB-011-role-coordination",
@@ -853,29 +930,32 @@
       "pull_request": {
         "number": 60,
         "url": "https://github.com/habiberton/milburn/pull/60",
-        "merge_commit_sha": null
+        "merge_commit_sha": "2a8f68a2f9643e5238331195315283d799cfd857"
       }
     },
     {
       "id": "MB-012",
       "wave": 3,
       "title": "Implement the GitHub issue registry and idempotent issue creation",
-      "status": "blocked",
+      "status": "in_progress",
       "github": {
         "issue_number": 12,
         "issue_url": "https://github.com/habiberton/milburn/issues/12",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:blocked",
+        "last_observed_status_label": "milburn:in-progress",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-008", "MB-011"],
+      "dependencies": [
+        "MB-008",
+        "MB-011"
+      ],
       "parallel_group": null,
       "owner": null,
-      "branch": null,
+      "branch": "product/MB-012-issue-registry",
       "worktree": null,
-      "base_sha": null,
+      "base_sha": "2a8f68a2f9643e5238331195315283d799cfd857",
       "candidate_sha": null,
       "progress_path": "bootstrap/progress/tasks/MB-012.md",
       "owned_paths": [
@@ -912,7 +992,15 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-005", "MB-006", "MB-007", "MB-009", "MB-012", "MB-017", "MB-018"],
+      "dependencies": [
+        "MB-005",
+        "MB-006",
+        "MB-007",
+        "MB-009",
+        "MB-012",
+        "MB-017",
+        "MB-018"
+      ],
       "parallel_group": null,
       "owner": null,
       "branch": null,
@@ -956,7 +1044,9 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-013"],
+      "dependencies": [
+        "MB-013"
+      ],
       "parallel_group": "wave-4-assurance",
       "owner": null,
       "branch": null,
@@ -1000,7 +1090,10 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-003", "MB-014"],
+      "dependencies": [
+        "MB-003",
+        "MB-014"
+      ],
       "parallel_group": null,
       "owner": null,
       "branch": null,
@@ -1056,7 +1149,12 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-010", "MB-013", "MB-017", "MB-018"],
+      "dependencies": [
+        "MB-010",
+        "MB-013",
+        "MB-017",
+        "MB-018"
+      ],
       "parallel_group": null,
       "owner": null,
       "branch": null,
@@ -1110,7 +1208,12 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-010", "MB-012", "MB-013", "MB-019"],
+      "dependencies": [
+        "MB-010",
+        "MB-012",
+        "MB-013",
+        "MB-019"
+      ],
       "parallel_group": "wave-4-assurance",
       "owner": null,
       "branch": null,
@@ -1154,7 +1257,11 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-014", "MB-015", "MB-021"],
+      "dependencies": [
+        "MB-014",
+        "MB-015",
+        "MB-021"
+      ],
       "parallel_group": null,
       "owner": null,
       "branch": null,
@@ -1198,7 +1305,9 @@
         "assignment_source": "github",
         "last_observed_state": "closed",
         "last_observed_status_label": "milburn:done",
-        "last_observed_assignees": ["habiberton"]
+        "last_observed_assignees": [
+          "habiberton"
+        ]
       },
       "dependencies": [],
       "parallel_group": "wave-2-process-tooling",
@@ -1301,7 +1410,9 @@
         "assignment_source": "github",
         "last_observed_state": "open",
         "last_observed_status_label": "milburn:in-progress",
-        "last_observed_assignees": ["habiberton"]
+        "last_observed_assignees": [
+          "habiberton"
+        ]
       },
       "dependencies": [],
       "parallel_group": "wave-2-process-tooling",
@@ -1344,7 +1455,9 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-025"],
+      "dependencies": [
+        "MB-025"
+      ],
       "parallel_group": "wave-2-process-tooling",
       "owner": null,
       "branch": null,
@@ -1388,7 +1501,9 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-025"],
+      "dependencies": [
+        "MB-025"
+      ],
       "parallel_group": "wave-2-process-tooling",
       "owner": null,
       "branch": null,
@@ -1430,7 +1545,10 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-023", "MB-025"],
+      "dependencies": [
+        "MB-023",
+        "MB-025"
+      ],
       "parallel_group": "wave-2-process-tooling",
       "owner": null,
       "branch": null,
@@ -1474,7 +1592,11 @@
         "last_observed_status_label": "milburn:blocked",
         "last_observed_assignees": []
       },
-      "dependencies": ["MB-025", "MB-026", "MB-027"],
+      "dependencies": [
+        "MB-025",
+        "MB-026",
+        "MB-027"
+      ],
       "parallel_group": "wave-2-process-tooling",
       "owner": null,
       "branch": null,

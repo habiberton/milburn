@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from hashlib import sha256
 import json
+import re
 from typing import Any, TypeVar
 
 from milburn.integrations.mcp import (
@@ -209,7 +210,8 @@ class GitHubMcpGateway:
                 issues,
                 body=lambda issue: issue.body,
                 semantic_match=lambda issue: (
-                    issue.title == command.title and issue.body == body
+                    issue.title == command.title
+                    and _creation_body_preserved(issue.body, body)
                 ),
                 command=command,
                 arguments=arguments,
@@ -519,6 +521,23 @@ def _with_marker(body: str, encoded: str) -> str:
     if encoded in body:
         return body
     return f"{body.rstrip()}\n\n{encoded}"
+
+
+def _creation_body_preserved(observed: str, created: str) -> bool:
+    """Allow only subsequent gateway effect markers after the original issue body."""
+    if observed == created:
+        return True
+    prefix = created + "\n\n"
+    if not observed.startswith(prefix):
+        return False
+    suffixes = observed[len(prefix):].split("\n\n")
+    return all(
+        re.fullmatch(
+            r"<!-- milburn-effect:[A-Za-z0-9._:/-]+;effect-id:[A-Za-z0-9._:/-]+;digest:[0-9a-f]{64} -->",
+            suffix,
+        ) is not None
+        for suffix in suffixes
+    )
 
 
 def _one_marked(

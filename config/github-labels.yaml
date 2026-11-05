@@ -1,0 +1,13 @@
+{
+  "task": "milburn:task",
+  "states": {
+    "draft": "milburn:blocked",
+    "blocked": "milburn:blocked",
+    "ready": "milburn:ready",
+    "coding": "milburn:in-progress",
+    "qa": "milburn:qa",
+    "changes_requested": "milburn:changes-requested",
+    "passed": "milburn:qa",
+    "done": "milburn:done"
+  }
+}
