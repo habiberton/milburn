@@ -249,6 +249,31 @@ evidence and mechanisms).
 - **R38. Review by risk.** Independent QA is required for every task with a result
   that changes code. Extra review passes are chosen by risk, not applied to every
   task, because each pass costs a full launch.
+- **R43. Cross-harness handoff when a harness runs out.** When a role agent's run
+  ends because its harness is out of tokens, rate-limited, or otherwise unavailable,
+  the work continues on another harness without loss:
+  1. The CLI records the attempt's session generation as `exhausted`, with the
+     harness's own error code when the harness reports one. Otherwise the
+     Coordinator records the reason it judged from the run's error summary.
+  2. The Coordinator calls `milburn attempt handoff <attempt> --harness <other>`. The
+     CLI builds a handoff manifest from the worker's committed progress file, the
+     branch head, `git status` (uncommitted changes are listed, never committed or
+     discarded by the CLI), the acceptance criteria, and open decisions. It
+     validates the manifest (PRDv1 §12.2) and refuses if the progress file is
+     missing or malformed, or if its last checkpoint is not an ancestor of the head.
+     It also refuses while the old run is still alive.
+  3. The CLI starts a new session generation of the same attempt on the other
+     harness, in the same worktree, under the same lease, from a fresh brief plus the
+     manifest. It never passes the earlier transcript (R31).
+  4. The Coordinator decides when to hand off and to which harness; the choice and
+     its reason are recorded. This is the explicit alternative to the rule in R8
+     that dispatch never silently switches harness.
+  5. For the QA gate (R16), the Coder harness is the harness of the generation that
+     produced the candidate head. The event record keeps every harness that
+     contributed, and the QA report shows them.
+
+  The Coordinator itself can resume on another harness the same way, from
+  `milburn status --digest` (R5), because the digest is harness-neutral.
 
 ## 12. Safety
 
@@ -295,6 +320,13 @@ evidence and mechanisms).
     the attempt is recorded as refused.
 14. Every module marked retire in `ARCH.md` §11 is unwired and deleted in its own
     task, with the full suite passing after each removal.
+15. A Codex Coder run that ends out of tokens is recorded `exhausted`. `milburn attempt
+    handoff --harness claude-code` continues the same attempt in the same worktree
+    from the progress file and manifest, without the transcript. The task then
+    completes through a QA gate that treats Claude Code as the Coder harness. The
+    reverse direction works the same way. The handoff refuses when the progress file
+    is missing, when its checkpoint is not an ancestor of the head, or while the old
+    run is alive. Uncommitted changes survive the handoff untouched.
 
 ## 14. Open items
 
@@ -315,6 +347,9 @@ the details.
 9. **Decided:** the CLI records a user's answer as relayed by the Coordinator, with
    a verbatim quote. It can check that an answer exists, not that the user gave it.
    Accepted as a known limit.
+10. How each harness reports running out of tokens or hitting a rate limit (exit
+    code, error event, message), captured from real runs, so R43 can classify it
+    mechanically.
 
 ## 15. Later
 
