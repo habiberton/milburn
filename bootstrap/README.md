@@ -117,8 +117,9 @@ resolution. Active work is classified as `unaffected`, `needs steering`,
 `must pause`, or `must stop`; unaffected attempts retain ownership and continue.
 
 New worker dispatch remains frozen until planning files are clean, the amended
-registry and specifications agree, the amendment commit is reviewed and merged
-remotely, and the primary checkout and amendment record are reconciled. Startup
+registry and specifications agree, the amendment commit is merged remotely
+(without an independent review pass), and the primary checkout and amendment
+record are reconciled. Startup
 and continuation preflights treat an unresolved amendment as a concrete dispatch
 blocker, not as permission to stop unrelated unaffected work.
 

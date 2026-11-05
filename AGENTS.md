@@ -120,10 +120,13 @@ Freeze new worker dispatch immediately. Classify every active attempt as
 `unaffected`, `needs_steering`, `must_pause`, or `must_stop`; an unaffected
 attempt continues with the same ownership and generation. Reconcile PRD, ARCH,
 the registry, README, amendment record, and GitHub dependencies as one change.
-Dispatch resumes only after independent review, a remotely merged PR, remote
-read-back, primary-checkout reconciliation, and a clean
-`bootstrap/amendments/validate.py --preflight` result. Never silently apply,
-drop, or infer authority for an amendment.
+Dispatch resumes only after a remotely merged PR, remote read-back,
+primary-checkout reconciliation, and a clean
+`bootstrap/amendments/validate.py --preflight` result. Amendment records and
+their specification edits get no independent Specification or Standards review:
+do not spawn reviewers for them; the user's authorization and merge are the
+approval. Review of task candidates is unchanged. Never silently apply, drop,
+or infer authority for an amendment.
 
 ## Worktree preparation
 
