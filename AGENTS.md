@@ -42,6 +42,8 @@ Only the root coordinator may update:
 - `bootstrap/progress/coordinator.md`
 - shared specifications or shared interface decisions
 - durable records under `bootstrap/amendments/`
+- `bootstrap/progress/state.md`, `bootstrap/briefs/`, and `bootstrap/config.json`
+  once they exist (AMEND-003)
 - the primary integration checkout
 
 Each worker updates only its assigned task progress file under
@@ -62,6 +64,12 @@ At the beginning of every new or resumed root session:
 7. Run `python3 bootstrap/amendments/validate.py --preflight`; do not dispatch
    while it reports an unresolved amendment or dirty coordinator planning file.
 8. Continue the active wave from `bootstrap/tasks.json`.
+
+Once `bootstrap/progress/state.md` and `scripts/reconcile.sh` exist (AMEND-003),
+read `state.md` instead of the full-file reads in step 3, read `PRD.md` and
+`ARCH.md` only in the sections a decision needs, and use `scripts/reconcile.sh`
+for step 6 and for the continuation gate. Until they exist, follow the steps
+above as written.
 
 Do not spend a startup turn reassessing the approved product or architecture.
 The executable task graph and work waves have already been provided.
@@ -175,6 +183,47 @@ Every worker receives:
 
 Every worker begins by reading `AGENTS.md`, its task record, relevant approved
 specification sections, Git status, relevant Git history, and its progress file.
+Once the brief generator exists (AMEND-003), a worker instead reads its generated
+brief at `bootstrap/briefs/<task>-<attempt>.md` and the files it points to, not
+the full `AGENTS.md`.
+
+## Spawn, model, and brief rules
+
+These rules take effect immediately unless a sentence says otherwise.
+
+- Spawn every worker and reviewer with `fork_turns: none`. Never use
+  `fork_turns: all`. The launch message must carry the full launch brief above
+  (or point to the generated brief once it exists), because the agent inherits
+  no transcript. Replacement and resumed sessions start from the brief and the
+  handoff manifest, not from inherited history.
+- Models: the root coordinator and builders use `gpt-5.6-sol`; every reviewer
+  (Specification, Standards, Focused, re-reviews, and finals) uses `gpt-6-sol`.
+  Reasoning effort stays at its current medium setting. Set the model explicitly
+  on every spawn. If a configured model is unavailable, fail closed: record the
+  reason and stop that spawn; never inherit the root's model silently. Once
+  `bootstrap/config.json` exists it is the single place model IDs are set. Log
+  each session's model, effort, role, and review mode in its task record.
+- Reviewer brief: the task record fields, base and candidate (or integrated)
+  SHAs, the recorded review mode, the boundary questions below, and for a
+  re-review the prior findings and the fix commit range.
+- Boundary questions go in every worker and reviewer brief. The builder applies
+  those that fit the task; a reviewer cites the number of the question a finding
+  violates:
+  1. For every check you write: what could pass this check while the real
+     condition is false? Add a test where that happens.
+  2. For every input or record you accept: list each field and variant, then
+     either validate it or state that you ignore it.
+  3. For every public entry point: can a caller bypass the guard?
+  4. For every identifier used as a key: is it unique across the whole scope
+     where it is used?
+  5. For every state change or external effect: are preconditions checked
+     before the change, and does every failure path leave state consistent?
+  6. For a fake or test double: does it enforce the same preconditions and
+     terminal states as the real implementation?
+- Acceptance criteria for any validator or adapter must require negative tests,
+  written before the happy path. Any fake adapter must ship with fake/live
+  parity tests covering every lifecycle operation and terminal state of the live
+  adapter.
 
 ## Worker rules
 
@@ -271,6 +320,23 @@ When a worker returns a candidate:
 Do not delete a worktree until its candidate is integrated, rejected, or
 explicitly archived.
 
+Once `scripts/integrate-candidate.sh` exists (AMEND-003), use `prepare` for the
+mechanical steps 1-4, 8, and 10, `record-review` to store the review mode,
+verdict, and findings, and `land` for the mechanics of steps 11-18. The script
+commits its own registry and progress updates under the configured coordinator
+identity, never pushes to `main`, and refuses ambiguous states. Judgment steps
+remain with the root: path exceptions (5), feedback briefs (6), sufficiency of
+acceptance evidence (7), interface compatibility and review-mode selection (9),
+and the independent review itself. Post-merge record commits stay on the local
+primary checkout and reach `origin` inside the next ticket's integration branch
+and pull request. Until the script exists, follow the numbered procedure
+manually.
+
+Run tests, smoke tests, preflight, and validators so that the output stays
+bounded: print a one-line result and keep full output in a log file or a tail;
+read the full output only when the result is not enough. This takes the form of
+a shared wrapper once one exists.
+
 ## Risk-based independent review procedure
 
 Every candidate receives coordinator verification, acceptance-criteria and
@@ -305,6 +371,28 @@ open or update PRs, or merge. The coordinator records a pass or returns the
 same task to its worker with findings. When review subagents are unavailable,
 the root performs the selected distinct pass or passes after clearing
 implementation context as much as practical and records that limitation.
+
+### Review rounds, escalation, and exhaustive review
+
+- Round 1 is a full, exhaustive review: the reviewer enumerates the whole class
+  of each defect, listing every place a pattern appears (for example every
+  `required` set or every identity key), not just the first instance.
+- After a fix, a delta re-review covers the fix and its blast radius first.
+  When a round is clean, one full-pass confirmation runs on the final SHA; that
+  confirmation counts as a round.
+- Each finding records an ID, the boundary-question number it violates, the file
+  and symbol, severity, and round. Until `record-review` computes it, the root
+  records each round's blocking count and these fields in the task progress
+  record and applies the rule below by hand.
+- Automatic rounds continue only while the work converges. Escalate the task to
+  the user, with the stuck reason recorded, when: (1) a finding recurs, meaning
+  it matches an earlier finding recorded as fixed by boundary-question number
+  and file and symbol; (2) a round has no fewer blocking findings than the most
+  recent earlier round that had findings; (3) a round introduces a new blocking
+  finding in code the previous fix touched; or (4) three fix rounds have
+  already run. The root may escalate earlier but may not continue past an
+  escalation or the backstop. Escalation pauses only that task's path and
+  records a concrete blocker; other ready work continues.
 
 ## Conflict procedure
 
@@ -362,10 +450,37 @@ The root may stop only when:
 4. No authorized unfinished work remains.
 5. The execution environment forcibly ends the turn; persist exact recovery
    state first whenever the environment permits it.
+6. Rotation is requested at a quiescent point with a valid checkpoint (see
+   "Root session rotation"). This applies only when `scripts/run-root.sh` is
+   managing the session.
 
 A final response is prohibited while the preflight finds executable unblocked
 work. Before stopping, record a concrete blocker for every unfinished path in
 `bootstrap/progress/coordinator.md`.
+
+## Root session rotation
+
+This section takes effect once `bootstrap/progress/state.md` and
+`scripts/run-root.sh` exist (AMEND-003); until then normal compaction applies.
+
+- Rotate at the first quiescent point after context use reaches 35% of the
+  model's context window or 100k tokens, whichever comes first (values in
+  `bootstrap/config.json` once it exists).
+- Spawned workers do not run independently of the root; when the root session
+  ends, unfinished workers are interrupted. Always drain first: stop dispatching
+  new workers and reviewers, wait for every in-flight one to return, and
+  integrate or record each result.
+- A quiescent point means coordinator planning files are committed,
+  `python3 bootstrap/amendments/validate.py --preflight` is clean, no judgment
+  step is half-done (such as an unrecorded review verdict or a partly written
+  feedback brief), and the integration script is between phases.
+- Before rotating, write and commit `bootstrap/progress/state.md` (in-flight
+  work, what each is awaited for, pending decisions, and the resume action) and
+  stop with rotation as the reason. If auto-compaction would trigger before the
+  drain completes, compaction applies and rotation waits for the next quiescent
+  point. Never end a session with workers running.
+- After an abnormal root termination, treat any running workers as interrupted;
+  restart each as a new generation from its brief and progress summary.
 
 ## Safety boundaries
 

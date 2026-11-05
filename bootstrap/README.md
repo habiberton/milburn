@@ -29,6 +29,11 @@ implementation choices remain within the approved design.
   `feedback/README.md` defines its validated format and completion gates.
 - `decisions.md`: bootstrap implementation decisions that do not change the
   approved product or architecture.
+- Added by AMEND-003 as they are implemented: `progress/state.md` (short
+  root-owned state digest), `briefs/` (generated worker and reviewer briefs),
+  `config.json` (rotation thresholds and model IDs), and `progress/history/`
+  (completed-work log moved out of `coordinator.md`). Generated files are
+  written only by their scripts.
 
 ## GitHub task registry
 
