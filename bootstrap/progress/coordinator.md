@@ -4,7 +4,7 @@
 
 Wave 2 (independent boundaries). MB-009 is the only original Wave 2 task not
 done. Seven process-tooling tasks (MB-023 to MB-029) were registered in Wave 2
-under AMEND-003 and are `blocked` until their GitHub issues exist. Whether they
+under AMEND-003 and are `blocked` until the coordinator marks them ready. Whether they
 gate Wave 3 is an open user decision (see Blockers).
 
 ## Repository state
@@ -22,7 +22,7 @@ gate Wave 3 is an open user decision (see Blockers).
   MB-018, MB-020, and MB-022. Keep MB-009's; the others are integrated.
 - Recorded `blocked` but with every dependency done: MB-010 and MB-011.
   Reconcile their GitHub labels before dispatching.
-- New tasks MB-023 to MB-029 have no GitHub issue yet.
+- New tasks MB-023 to MB-029 are GitHub issues #41 to #47, all `milburn:blocked`.
 
 ## Completed
 
@@ -918,7 +918,9 @@ gate Wave 3 is an open user decision (see Blockers).
 
 Decisions needed from the user before the affected paths can proceed:
 
-1. Authorize creating GitHub issues for MB-023 to MB-029 (outward-facing).
+1. (Resolved) GitHub issues #41 to #47 were created for MB-023 to MB-029 with
+   `milburn:task` and `milburn:blocked`; set labels to match status as tasks
+   become ready.
 2. Confirm whether the process-tooling tasks gate Wave 3, or run as a parallel
    track that does not block it. Wave rules otherwise hold Wave 3 until Wave 2
    completes, and MB-029 also waits on decision 4.
