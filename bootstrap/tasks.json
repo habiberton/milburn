@@ -1176,6 +1176,11 @@
       "candidate_sha": "915e9e98e666339b6075eb0d016c1ea6ab31c339",
       "integration_branch": "bootstrap/coordinator/MB-023/a01-integration",
       "integration_commit_sha": "eeda92f5f39db97380e1eaaa61bba6731c4688a2",
+      "pull_request": {
+        "number": 54,
+        "url": "https://github.com/habiberton/milburn/pull/54",
+        "merge_commit_sha": null
+      },
       "review_exception": {
         "authority": "AMEND-004",
         "status": "effective",

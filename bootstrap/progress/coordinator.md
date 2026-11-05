@@ -1029,6 +1029,10 @@ before changes. Dispatch has resumed under the narrow MB-023 exception.
   verification passed 16 focused tests, smoke with 430 passed/3 protected
   skips/3 subtests, feedback/amendment validators, and diff checks. Issue #41
   is `milburn:qa`; the single evidence-bearing task PR remains.
+- The coordinator pushed MB-023 integration tip `d228f21` and opened single
+  task PR #54. Its body records worker/candidate/integration SHAs, acceptance
+  and tests, the Focused blocking verdict, effective AMEND-004 authority,
+  unresolved risks #49/#50, feedback link, and `Closes #41`.
 
 - `scripts/smoke-test.sh` with the shared test environment: 29 tasks valid, 12
   feedback briefs valid, 3 amendment records valid, 414 passed, 3 skipped, 3
