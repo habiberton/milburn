@@ -102,3 +102,16 @@ def test_a_child_that_exits_before_reading_its_brief_is_still_tracked(tmp_path: 
     endpoint = runtime.launch(ProcessLaunch((str(stub),), str(tmp_path), "x" * 1_000_000))
     collected = runtime.collect(endpoint)
     assert collected.exit_code == 3
+
+
+def test_a_failed_brief_write_stops_and_forgets_the_run(tmp_path: Path) -> None:
+    stub = _stub(tmp_path, "import time; time.sleep(30)\n")
+    runtime = _runtime(tmp_path)
+    endpoints_before = set(runtime._runs)
+    with pytest.raises(UnicodeEncodeError):
+        # A lone surrogate cannot be encoded as UTF-8, so the write fails.
+        runtime.launch(ProcessLaunch((str(stub),), str(tmp_path), "\ud800"))
+    assert set(runtime._runs) == endpoints_before
+    import subprocess as _subprocess
+    leftover = _subprocess.run(["pgrep", "-f", str(stub)], capture_output=True, text=True)
+    assert leftover.stdout.strip() == ""

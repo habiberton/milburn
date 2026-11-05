@@ -161,6 +161,11 @@ class LaunchRequest:
                 raise ValueError(
                     "writable_dirs must not contain the home directory (that is full access)"
                 )
+            milburn_home = home / ".milburn"
+            if Path(directory) == milburn_home or Path(directory).is_relative_to(milburn_home):
+                raise ValueError(
+                    "writable_dirs must not include ~/.milburn (event store and schemas)"
+                )
 
 
 _ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
@@ -402,7 +407,8 @@ class AgentAdapter:
             f"{request.role.value}.{request.task_id}.{request.attempt_id}@milburn.invalid"
         )
         return (
-            ("MILBURN_ATTEMPT_ID", request.attempt_id),
+            # Attempt IDs repeat across tasks, so the marker is task-qualified.
+            ("MILBURN_ATTEMPT_ID", f"{request.task_id}/{request.attempt_id}"),
             ("GIT_AUTHOR_NAME", name),
             ("GIT_AUTHOR_EMAIL", email),
             ("GIT_COMMITTER_NAME", name),

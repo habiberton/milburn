@@ -133,7 +133,7 @@ def test_every_launch_carries_the_per_attempt_identity(fake_type: type) -> None:
     fake.launch(request())
     env = dict(fake.runtime.launches[0].env)
     assert set(IDENTITY_ENV) <= set(env)
-    assert env["MILBURN_ATTEMPT_ID"] == "attempt-1"
+    assert env["MILBURN_ATTEMPT_ID"] == "task-6/attempt-1"
     assert env["GIT_AUTHOR_NAME"] == env["GIT_COMMITTER_NAME"] == "Milburn coder [task-6/attempt-1]"
     assert env["GIT_AUTHOR_EMAIL"] == "coder.task-6.attempt-1@milburn.invalid"
 
@@ -180,6 +180,19 @@ def test_invalid_model_is_rejected(model: str) -> None:
 def test_writable_dirs_cannot_cover_the_home_directory(directory: str) -> None:
     with pytest.raises(ValueError, match="home directory"):
         replace(request(), writable_dirs=(directory,))
+
+
+@pytest.mark.parametrize("suffix", [".milburn", ".milburn/projects/x", ".milburn/schemas"])
+def test_writable_dirs_cannot_reach_the_event_store(suffix: str) -> None:
+    with pytest.raises(ValueError, match=r"\.milburn"):
+        replace(request(), writable_dirs=(str(Path.home() / suffix),))
+
+
+def test_schema_dir_with_a_space_still_launches(tmp_path: Path) -> None:
+    fake = FakeCodexAdapter((ScriptedCodexRun(result_document()),), schema_dir=tmp_path / "a b")
+    fake.launch(request())
+    command = fake.runtime.launches[0].command
+    assert command[command.index("--output-schema") + 1].startswith(str(tmp_path / "a b"))
 
 
 def test_tampered_schema_file_is_rewritten_before_use(tmp_path: Path) -> None:

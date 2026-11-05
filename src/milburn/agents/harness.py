@@ -97,7 +97,12 @@ class HarnessInvocation:
             raise ValueError("writable_dirs must be a tuple")
         if self.writable_dirs and self.sandbox is not Sandbox.WORKSPACE_WRITE:
             raise ValueError("writable_dirs require the workspace-write sandbox")
-        for name in ("model", "resume_session", "result_schema_path"):
+        path = self.result_schema_path
+        if path is not None and (
+            not isinstance(path, str) or not path.startswith("/") or "\n" in path
+        ):
+            raise ValueError("result_schema_path must be an absolute path")
+        for name in ("model", "resume_session"):
             value = getattr(self, name)
             if value is not None and (
                 not isinstance(value, str)

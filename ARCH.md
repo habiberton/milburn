@@ -318,7 +318,7 @@ per harness builds the command line and interprets the event stream into a
 | Resume | `codex exec resume [options] <session> -` | `--resume <session>` |
 | Config isolation | `--ignore-user-config` (small saving; drops the full-access default) | `--setting-sources ""` and `--strict-mcp-config` (about 59k to 3.5k tokens); `--bare` breaks subscription login |
 | Sandbox | Required; `read-only` or `workspace-write`. A missing sandbox is refused, never defaulted from user config (G12) | Sandbox settings with unsandboxed commands disabled; read-only means no Edit or Write tools and `dontAsk`, though sandboxed Bash can still write inside the worktree, so the Tester's worktree is disposable |
-| Run end | `turn.completed`: completed; `error`/`turn.failed`: unknown | `result` success: completed; `rate_limit_event` refused or HTTP 429: exhausted; error result: failed |
+| Run end | `turn.completed`: completed; `error`/`turn.failed`: unknown | `result` success: completed; `rate_limit_event` refused or HTTP 429: exhausted; known failure subtypes such as `error_max_turns`: failed; any other error result: unknown, for the Coordinator to judge |
 
 Every launch sets `MILBURN_ATTEMPT_ID`, `GIT_AUTHOR_NAME`/`EMAIL`, and
 `GIT_COMMITTER_NAME`/`EMAIL` to a per-attempt identity (G22), through a new

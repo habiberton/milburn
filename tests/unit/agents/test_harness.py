@@ -326,6 +326,8 @@ def test_harness_names() -> None:
         {"sandbox": Sandbox.READ_ONLY, "resume_session": "-x"},
         {"sandbox": Sandbox.READ_ONLY, "model": "a b"},
         {"sandbox": Sandbox.READ_ONLY, "result_schema_path": ""},
+        {"sandbox": Sandbox.READ_ONLY, "result_schema_path": "relative.json"},
+        {"sandbox": Sandbox.READ_ONLY, "result_schema_path": "-x"},
     ],
 )
 def test_invocation_rejects_unsafe_values(kwargs: dict) -> None:
