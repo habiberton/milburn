@@ -1040,6 +1040,10 @@ before changes. Dispatch has resumed under the narrow MB-023 exception.
   430 passed/3 protected skips/3 subtests, feedback/amendment validation, and
   preflight. Issue #41 auto-closed in QA; final done-label reconciliation
   remains under effective AMEND-004 while #49/#50 retain the known defects.
+- After the durable remote-merge record, closed issue #41 transitioned from
+  `milburn:qa` to `milburn:done`. Registry, GitHub, local main, and origin/main
+  agree MB-023 is complete; AMEND-004 explicitly accepts the unresolved known
+  limitations and #49/#50 remain open.
 
 - `scripts/smoke-test.sh` with the shared test environment: 29 tasks valid, 12
   feedback briefs valid, 3 amendment records valid, 414 passed, 3 skipped, 3
