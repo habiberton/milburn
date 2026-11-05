@@ -1,8 +1,10 @@
 """The ``milburn`` enforcement CLI (ARCH §4).
 
 Output is one summary line (or a short block for reports); ``--json`` prints
-the structured result instead. Exit status: 0 done, 1 refused (preconditions
-unmet; nothing changed), 2 usage error, 3 project or environment error.
+the structured result instead. Exit status: 0 done; 1 refused (preconditions
+unmet, nothing changed); 2 usage error; 3 project or environment error before
+any effect; 4 failed after effects may have started (the record says what
+happened: run ``milburn status``).
 """
 
 from __future__ import annotations
@@ -62,7 +64,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     """Parse command-line arguments and return a process exit status."""
 
-    from .commands import CommandRefused, Commands, refuse_inside_role_agent
+    from .commands import CommandRefused, Commands, EffectFailed, refuse_inside_role_agent
     from .project import ProjectError, init_project, load_project
     from milburn.persistence.sqlite_store import SQLiteEventStore
 
@@ -108,6 +110,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ProjectError as error:
         _emit(args, f"error: {error}", {"error": str(error)}, sys.stderr)
         return 3
+    except EffectFailed as error:
+        _emit(args, f"failed: {error}; run `milburn status`", {"failed": str(error)}, sys.stderr)
+        return 4
+    except Exception as error:  # noqa: BLE001 - the exit-code contract needs a catch-all
+        message = f"{type(error).__name__}: {error}".splitlines()[0]
+        _emit(args, f"failed: {message}; effects may be partial, run `milburn status`",
+              {"failed": message}, sys.stderr)
+        return 4
 
 
 def _emit(args: argparse.Namespace, summary: str, data: dict, stream=None) -> int:

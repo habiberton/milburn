@@ -6,6 +6,11 @@ real stream format of the named harness. Behaviour knobs (environment):
 
 - FAKE_CODER_MODE: candidate (default) | nocommit | wronghead | blocked
 - FAKE_TESTER_OUTCOME: passed (default) | changes_requested
+- FAKE_SLEEP: seconds to sleep before answering (to observe a running attempt)
+
+Like the real harnesses, it refuses to act when launched with flags that do
+not match the role: the sandbox (Codex ``--sandbox``, Claude Code
+``--permission-mode``) and the result schema flag must be present.
 """
 
 import json
@@ -14,9 +19,30 @@ import re
 import subprocess
 import sys
 
+import time
+
 harness = sys.argv[1]
+flags = sys.argv[2:]
 brief = sys.stdin.read()
 role = re.search(r"^- role: (\S+)$", brief, re.M).group(1)
+
+
+def flag(name: str) -> str | None:
+    return flags[flags.index(name) + 1] if name in flags else None
+
+
+if harness == "codex":
+    expected = {"coder": "workspace-write", "tester": "read-only"}[role]
+    problems = [] if flag("--sandbox") == expected else [f"--sandbox {flag('--sandbox')} != {expected}"]
+    problems += [] if flag("--output-schema") else ["--output-schema missing"]
+else:
+    expected = {"coder": "acceptEdits", "tester": "dontAsk"}[role]
+    problems = [] if flag("--permission-mode") == expected else [f"--permission-mode != {expected}"]
+    problems += [] if flag("--json-schema") else ["--json-schema missing"]
+if problems:
+    print("fake harness refused: " + "; ".join(problems), file=sys.stderr)
+    sys.exit(2)
+time.sleep(float(os.environ.get("FAKE_SLEEP", "0")))
 task_id = re.search(r"^- task_id: (\S+)$", brief, re.M).group(1)
 attempt_id = re.search(r"^- attempt_id: (\S+)$", brief, re.M).group(1)
 number = int(task_id[1:])

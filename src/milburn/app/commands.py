@@ -5,17 +5,24 @@ One free-form task flows through: ``task create`` → ``dispatch`` (Coder) →
 complete`` (QA gate) → ``integrate`` → ``deliver`` (``local-only``). Usage is
 recorded at every collect.
 
-Every mutating command checks its preconditions before any effect and refuses
-with all unmet conditions rather than guessing. A command run from inside a
-role agent (``MILBURN_ATTEMPT_ID`` set) is refused (ARCH §3).
+Consistency rules (ARCH §4):
+
+- Preconditions are checked before any effect; a refusal changes nothing and
+  lists every unmet condition.
+- An effect that allocates a name (branch, worktree, run endpoint) is preceded
+  by an intent event that reserves the name. A retry after a crash adopts what
+  the earlier effect created, or closes the attempt, instead of colliding.
+- Mutating commands hold the project lock, so two CLI processes cannot
+  interleave on one project.
+- A command run from inside a role agent (``MILBURN_ATTEMPT_ID`` set) is
+  refused (ARCH §3).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-import json
-import os
 from pathlib import Path
+import re
 from typing import Any, Mapping
 
 from milburn.agents.codex_adapter import (
@@ -31,11 +38,12 @@ from milburn.domain.events import EventType
 from milburn.persistence.sqlite_store import SQLiteEventStore
 from milburn.runtime.run_host import DetachedRunRuntime
 
-from .project import Project, ProjectError, git
-from .state import Attempt, Ledger, ProjectState, Task, WorkItem
+from .project import Project, ProjectError, agent_git, git
+from .state import Attempt, Ledger, ProjectState, Task, WorkItem, payload_of
 
 RULES_ROOT = Path(__file__).resolve().parents[1] / "agents" / "role_rules"
 PROGRESS_FILE = "progress.txt"
+_FULL_SHA = re.compile(r"[0-9a-f]{40}")
 
 
 class CommandRefused(RuntimeError):
@@ -44,6 +52,10 @@ class CommandRefused(RuntimeError):
     def __init__(self, reasons: list[str] | str) -> None:
         self.reasons = [reasons] if isinstance(reasons, str) else list(reasons)
         super().__init__("; ".join(self.reasons))
+
+
+class EffectFailed(RuntimeError):
+    """An effect failed after its intent was recorded; the record says so."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,6 +69,15 @@ def refuse_inside_role_agent(environ: Mapping[str, str]) -> None:
         raise CommandRefused(
             "mutating commands cannot run inside a role agent (MILBURN_ATTEMPT_ID is set)"
         )
+
+
+def coder_identity(task_id: str, attempt_id: str) -> tuple[str, str]:
+    """Must match ``AgentAdapter._identity_env`` for the Coder role."""
+
+    return (
+        f"Milburn coder [{task_id}/{attempt_id}]",
+        f"coder.{task_id}.{attempt_id}@milburn.invalid",
+    )
 
 
 class Commands:
@@ -97,6 +118,20 @@ class Commands:
             return CodexAdapter(runtime, executable=executable, schema_dir=schema_dir)
         return ClaudeCodeAdapter(runtime, executable=executable, schema_dir=schema_dir)
 
+    def _worktree_state(self, worktree: Path) -> tuple[str | None, str, bool]:
+        """Return (checked-out branch, HEAD, clean) through the trusted gitdir."""
+
+        branch = agent_git(self.project, worktree, "symbolic-ref", "--quiet", "--short", "HEAD", check=False)
+        head = agent_git(self.project, worktree, "rev-parse", "HEAD").stdout.strip()
+        dirty = agent_git(self.project, worktree, "status", "--porcelain", "--untracked-files=all").stdout.strip()
+        return (branch.stdout.strip() if branch.returncode == 0 else None), head, not dirty
+
+    def _add_worktree(self, worktree: Path, *arguments: str) -> None:
+        git(self.project.repository, "worktree", "add", *arguments)
+        actual = git(worktree, "rev-parse", "--absolute-git-dir").stdout.strip()
+        if Path(actual).resolve() != self.project.expected_gitdir(worktree).resolve():
+            raise ProjectError(f"{worktree} got gitdir {actual}, not the expected one")
+
     # ------------------------------------------------------------- work items
 
     def task_create(
@@ -111,142 +146,173 @@ class Commands:
             reasons.append("at least one non-empty acceptance criterion is required")
         if reasons:
             raise CommandRefused(reasons)
-        state = self._state()
-        if work_item is None:
-            work_item = self._open_work_item(state, title)
+        with self.project.mutation_lock():
             state = self._state()
-        elif work_item not in state.work_items:
-            raise CommandRefused(f"unknown work item {work_item}")
-        elif state.work_items[work_item].delivered:
-            raise CommandRefused(f"work item {work_item} is already delivered")
-        task_id = f"t{len(state.tasks) + 1}"
-        branch = f"milburn/{work_item}/{task_id}"
-        self.ledger.append(
-            "project", self._seq(state, "project"), EventType.TASK_CREATED,
-            {
-                "task": task_id, "work_item": work_item, "task_type": "code",
-                "title": title, "objective": objective, "acceptance": acceptance,
-                "branch": branch,
-            },
-            actor="coordinator", correlation_id=task_id,
-        )
+            if work_item is None:
+                work_item = f"w{len(state.work_items) + 1}"
+                base = self._head(self.project.config.default_branch)
+                # Intent first: the ID and names are reserved before any effect.
+                self.ledger.append(
+                    "project", self._seq(state, "project"), EventType.WORK_ITEM_OPENED,
+                    {
+                        "work_item": work_item, "title": title, "base_sha": base,
+                        "branch": f"milburn/{work_item}/integration",
+                        "integration_worktree": str(
+                            self.project.worktree_root / f"{work_item}-integration"
+                        ),
+                    },
+                    actor="controller", correlation_id=work_item,
+                )
+                state = self._state()
+            elif work_item not in state.work_items:
+                raise CommandRefused(f"unknown work item {work_item}")
+            elif state.work_items[work_item].delivered:
+                raise CommandRefused(f"work item {work_item} is already delivered")
+            self._ensure_work_item(state.work_items[work_item])
+            task_id = f"t{len(state.tasks) + 1}"
+            self.ledger.append(
+                "project", self._seq(state, "project"), EventType.TASK_CREATED,
+                {
+                    "task": task_id, "work_item": work_item, "task_type": "code",
+                    "title": title, "objective": objective, "acceptance": acceptance,
+                    "branch": f"milburn/{work_item}/{task_id}",
+                },
+                actor="coordinator", correlation_id=task_id,
+            )
         return Outcome(f"created {task_id} in {work_item}", {"task": task_id, "work_item": work_item})
 
-    def _open_work_item(self, state: ProjectState, title: str) -> str:
-        work_item = f"w{len(state.work_items) + 1}"
-        # Not "milburn/<work_item>": Git cannot hold that branch alongside the
-        # task branches "milburn/<work_item>/<task>" (a ref cannot be both a
-        # file and a directory).
-        branch = f"milburn/{work_item}/integration"
-        default = self.project.config.default_branch
-        base = self._head(default)
-        if self._branch_exists(branch):
-            raise CommandRefused(f"branch {branch} already exists; refusing to reuse it")
-        worktree = self.project.worktree_root / f"{work_item}-integration"
-        if worktree.exists():
-            raise CommandRefused(f"{worktree} already exists")
-        self.project.worktree_root.mkdir(parents=True, exist_ok=True)
-        git(self.project.repository, "worktree", "add", "-b", branch, str(worktree), base)
-        self.ledger.append(
-            "project", self._seq(state, "project"), EventType.WORK_ITEM_OPENED,
-            {
-                "work_item": work_item, "title": title, "base_sha": base,
-                "branch": branch, "integration_worktree": str(worktree),
-            },
-            actor="controller", correlation_id=work_item,
-        )
-        return work_item
+    def _ensure_work_item(self, work: WorkItem) -> None:
+        """Create the integration branch and worktree, or adopt existing ones."""
+
+        worktree = Path(work.integration_worktree)
+        if not self._branch_exists(work.branch):
+            if worktree.exists():
+                raise ProjectError(f"{worktree} exists without branch {work.branch}")
+            self.project.worktree_root.mkdir(parents=True, exist_ok=True)
+            self._add_worktree(worktree, "-b", work.branch, str(worktree), work.base_sha)
+        elif not worktree.exists():
+            self._add_worktree(worktree, str(worktree), work.branch)
 
     # ---------------------------------------------------------------- dispatch
 
     def dispatch(self, task_id: str, role: str) -> Outcome:
         if role not in ("coder", "tester"):
             raise CommandRefused("role must be coder or tester")
+        with self.project.mutation_lock():
+            return self._dispatch(task_id, role)
+
+    def _dispatch(self, task_id: str, role: str) -> Outcome:
         state = self._state()
         task = self._task(state, task_id)
         work = state.work_items[task.work_item]
         reasons: list[str] = []
         if task.completed:
             reasons.append(f"{task_id} is already completed")
-        running = [a.attempt_id for a in task.attempts if a.collected is None]
-        if running:
-            reasons.append(f"{task_id} has an uncollected attempt {running[-1]}; collect it first")
+        open_attempts = [a.attempt_id for a in task.attempts if a.collected is None]
+        if open_attempts:
+            reasons.append(f"{task_id} has an uncollected attempt {open_attempts[-1]}; collect it first")
         coder = task.latest("coder")
-        if role == "tester":
-            candidate = (coder.collected or {}) if coder else {}
-            if not coder or not candidate.get("candidate_ok"):
-                reasons.append("the latest Coder attempt has no accepted candidate")
+        if role == "tester" and (not coder or not (coder.collected or {}).get("candidate_ok")):
+            reasons.append("the latest Coder attempt has no accepted candidate")
         if reasons:
             raise CommandRefused(reasons)
 
+        self._ensure_work_item(work)
         attempt_id = f"a{len(task.attempts) + 1}"
+        candidate_sha: str | None = None
         if role == "coder":
             role_config = self.project.config.coder
             worktree = self.project.worktree_root / task_id
-            if self._branch_exists(task.branch):
+            if worktree.exists():
+                branch, base, clean = self._worktree_state(worktree)
+                if branch != task.branch:
+                    raise CommandRefused(f"{worktree} is on {branch}, not {task.branch}")
+                if not clean:
+                    raise CommandRefused(
+                        f"{worktree} has uncommitted changes from an earlier attempt; "
+                        "collect or clean them before a new attempt"
+                    )
+                if self._branch_exists(task.branch) and base != self._head(task.branch):
+                    raise CommandRefused(f"{worktree} HEAD is not the {task.branch} head")
+            elif self._branch_exists(task.branch):
                 base = self._head(task.branch)
             else:
                 base = self._head(work.branch)
-            if not worktree.exists():
-                if self._branch_exists(task.branch):
-                    git(self.project.repository, "worktree", "add", str(worktree), task.branch)
-                else:
-                    git(self.project.repository, "worktree", "add", "-b", task.branch, str(worktree), base)
             sandbox = "workspace-write"
-            # No --add-dir for Git: Codex keeps Git metadata read-only anyway,
-            # and collect commits leftovers (ARCH §6, "Who commits").
-            writable: tuple[str, ...] = ()
-            candidate_sha = None
         else:
             role_config = self.project.config.tester
             candidate_sha = coder.collected["head_sha"]  # type: ignore[union-attr]
-            coder_harness = Harness(coder.harness)  # type: ignore[union-attr]
             if (
                 self.project.config.tester_independence == "other-than-coder"
-                and role_config.harness is coder_harness
+                and role_config.harness is Harness(coder.harness)  # type: ignore[union-attr]
             ):
                 raise CommandRefused(
                     f"the Tester harness {role_config.harness.value} equals the Coder's; "
                     "independent QA needs another harness"
                 )
             worktree = self.project.worktree_root / f"{task_id}-qa-{attempt_id}"
-            if worktree.exists():
-                raise CommandRefused(f"{worktree} already exists")
-            git(self.project.repository, "worktree", "add", "--detach", str(worktree), candidate_sha)
             base = candidate_sha
             sandbox = "read-only"
-            writable = ()
 
         endpoint_id = f"{task_id}-{attempt_id}"
-        runtime = self._runtime(endpoint_id)
-        adapter = self._adapter(role_config.harness, runtime)
-        request = LaunchRequest(
-            role=Role.CODER if role == "coder" else Role.TESTER,
-            task_id=task_id,
-            attempt_id=attempt_id,
-            worktree=str(worktree),
-            objective=task.objective,
-            role_rules=_role_rules(role),
-            task_context=_task_context(task, role, base, candidate_sha),
-            repository_instructions=(
-                "Read AGENTS.md or CLAUDE.md in the repository if present. Preserve "
-                "unrelated work. Do not push, merge, or open pull requests."
-            ),
-            expected_result_type="coder_result" if role == "coder" else "qa_report",
-            sandbox=sandbox,
-            writable_dirs=writable,
-            model=role_config.model,
-        )
-        endpoint = adapter.launch(request)
+        expected_type = "coder_result" if role == "coder" else "qa_report"
+        stream = f"task-{task_id}"
+        # Intent first: the attempt, worktree, and endpoint names are reserved.
         self.ledger.append(
-            f"task-{task_id}", self._seq(state, f"task-{task_id}"), EventType.ATTEMPT_DISPATCHED,
+            stream, self._seq(state, stream), EventType.ATTEMPT_DISPATCHED,
             {
                 "task": task_id, "attempt": attempt_id, "role": role,
-                "harness": role_config.harness.value, "endpoint": endpoint.runtime_endpoint,
+                "harness": role_config.harness.value, "endpoint": endpoint_id,
                 "worktree": str(worktree), "base_sha": base, "sandbox": sandbox,
-                "expected_result_type": endpoint.expected_result_type,
+                "expected_result_type": expected_type, "candidate_sha": candidate_sha,
+            },
+            actor="controller", correlation_id=task_id,
+        )
+        try:
+            if role == "coder" and not worktree.exists():
+                if self._branch_exists(task.branch):
+                    self._add_worktree(worktree, str(worktree), task.branch)
+                else:
+                    self._add_worktree(worktree, "-b", task.branch, str(worktree), base)
+            elif role == "tester":
+                self._add_worktree(worktree, "--detach", str(worktree), base)  # type: ignore[arg-type]
+            request = LaunchRequest(
+                role=Role.CODER if role == "coder" else Role.TESTER,
+                task_id=task_id,
+                attempt_id=attempt_id,
+                worktree=str(worktree),
+                objective=task.objective,
+                role_rules=_role_rules(role),
+                task_context=_task_context(task, role, base, candidate_sha),  # type: ignore[arg-type]
+                repository_instructions=(
+                    "Read AGENTS.md or CLAUDE.md in the repository if present. Preserve "
+                    "unrelated work. Do not push, merge, or open pull requests."
+                ),
+                expected_result_type=expected_type,
+                sandbox=sandbox,
+                model=role_config.model,
+            )
+            endpoint = self._adapter(role_config.harness, self._runtime(endpoint_id)).launch(request)
+        except Exception as error:
+            # The attempt is closed on the record, so the task can be retried.
+            self.ledger.append(
+                stream, self._seq(self._state(), stream), EventType.ATTEMPT_COLLECTED,
+                {
+                    "task": task_id, "attempt": attempt_id, "role": role,
+                    "run_end": RunEnd.FAILED.value, "exit_code": None,
+                    "protocol_error": f"launch failed: {error}", "session_id": None,
+                    "task_success": None, "result": None, "candidate_ok": False,
+                    "candidate_reasons": ["launch failed"], "head_sha": None,
+                    "qa_outcome": None, "qa_candidate_sha": None, "qa_defects": [],
+                },
+                actor="controller", correlation_id=task_id,
+            )
+            raise EffectFailed(f"{task_id}/{attempt_id} could not start: {error}") from error
+        self.ledger.append(
+            stream, self._seq(self._state(), stream), EventType.AGENT_STARTED,
+            {
+                "task": task_id, "attempt": attempt_id,
                 "brief_digest": endpoint.brief_digest, "rules_digest": endpoint.rules_digest,
-                "candidate_sha": candidate_sha,
             },
             actor="controller", correlation_id=task_id,
         )
@@ -264,11 +330,41 @@ class Commands:
         pending = [a for a in task.attempts if a.collected is None]
         if not pending:
             raise CommandRefused(f"{task_id} has no attempt to collect")
+        if wait_seconds > 0 and (self.project.run_dir / f"{pending[-1].endpoint}.launch.json").exists():
+            # Wait outside the lock so other commands are not blocked.
+            self._runtime(pending[-1].endpoint).wait(pending[-1].endpoint, wait_seconds)
+        with self.project.mutation_lock():
+            return self._collect(task_id)
+
+    def _collect(self, task_id: str) -> Outcome:
+        state = self._state()
+        task = self._task(state, task_id)
+        pending = [a for a in task.attempts if a.collected is None]
+        if not pending:
+            raise CommandRefused(f"{task_id} has no attempt to collect")
         attempt = pending[-1]
-        runtime = self._runtime(attempt.endpoint)
-        if wait_seconds > 0:
-            runtime.wait(attempt.endpoint, wait_seconds)
+        stream = f"task-{task_id}"
+        launched = (self.project.run_dir / f"{attempt.endpoint}.launch.json").exists()
+        base_record: dict[str, Any] = {
+            "task": task_id, "attempt": attempt.attempt_id, "role": attempt.role,
+        }
+        if not launched:
+            # The intent was recorded but the run never started (a crash
+            # between the two). Close the attempt so the task can continue.
+            record = {
+                **base_record, "run_end": RunEnd.UNKNOWN.value, "exit_code": None,
+                "protocol_error": "the run was never started", "session_id": None,
+                "task_success": None, "result": None, "candidate_ok": False,
+                "candidate_reasons": ["the run was never started"], "head_sha": None,
+                "qa_outcome": None, "qa_candidate_sha": None, "qa_defects": [],
+            }
+            self.ledger.append(stream, self._seq(state, stream), EventType.ATTEMPT_COLLECTED,
+                               record, actor="controller", correlation_id=task_id)
+            return Outcome(f"closed {task_id}/{attempt.attempt_id}: the run was never started", record)
+
         dispatched = _dispatch_payload(self.ledger, task_id, attempt.attempt_id)
+        started = attempt.started or {}
+        runtime = self._runtime(attempt.endpoint)
         endpoint = AgentEndpoint(
             runtime_endpoint=attempt.endpoint,
             role=Role.CODER if attempt.role == "coder" else Role.TESTER,
@@ -276,8 +372,8 @@ class Commands:
             attempt_id=attempt.attempt_id,
             expected_result_type=dispatched["expected_result_type"],
             expected_result_schema_version=1,
-            brief_digest=dispatched["brief_digest"],
-            rules_digest=dispatched["rules_digest"],
+            brief_digest=started.get("brief_digest", "unrecorded"),
+            rules_digest=started.get("rules_digest", "unrecorded"),
             skill_bindings=(),
             harness=Harness(attempt.harness),
         )
@@ -286,9 +382,7 @@ class Commands:
             return Outcome(f"{task_id}/{attempt.attempt_id} is still running", {"running": True})
 
         record: dict[str, Any] = {
-            "task": task_id,
-            "attempt": attempt.attempt_id,
-            "role": attempt.role,
+            **base_record,
             "run_end": result.run_end.value,
             "exit_code": result.process_exit.exit_code if result.process_exit else None,
             "protocol_error": result.protocol_error,
@@ -297,32 +391,28 @@ class Commands:
             "result": result.task_result.payload.to_dict() if result.task_result else None,
         }
         if attempt.role == "coder":
-            record.update(self._check_candidate(task, attempt, result.task_result))
+            record.update(self._check_candidate(task, attempt, result))
         else:
-            record.update(_qa_summary(result.task_result, dispatched["candidate_sha"]))
-        sequence = self._seq(state, f"task-{task_id}")
-        self.ledger.append(
-            f"task-{task_id}", sequence, EventType.ATTEMPT_COLLECTED, record,
-            actor="controller", correlation_id=task_id,
-        )
+            record.update(_qa_summary(result.task_result, attempt, task))
+        items: list[tuple[EventType, dict[str, Any]]] = [(EventType.ATTEMPT_COLLECTED, record)]
         if result.usage is not None:
-            usage = {
-                "task": task_id, "attempt": attempt.attempt_id, "role": attempt.role,
-                "harness": attempt.harness,
-                **{name: getattr(result.usage, name) for name in (
-                    "input_tokens", "cached_input_tokens", "cache_write_tokens",
-                    "output_tokens", "reasoning_tokens",
-                )},
-            }
-            self.ledger.append(
-                f"task-{task_id}", sequence + 1, EventType.AGENT_USAGE_OBSERVED, usage,
-                actor="controller", correlation_id=task_id,
-            )
+            items.append((
+                EventType.AGENT_USAGE_OBSERVED,
+                {
+                    "task": task_id, "attempt": attempt.attempt_id, "role": attempt.role,
+                    "harness": attempt.harness,
+                    **{name: getattr(result.usage, name) for name in (
+                        "input_tokens", "cached_input_tokens", "cache_write_tokens",
+                        "output_tokens", "reasoning_tokens",
+                    )},
+                },
+            ))
+        # One atomic batch: the verdict and its usage are recorded together.
+        self.ledger.append_many(stream, self._seq(state, stream), items,
+                                actor="controller", correlation_id=task_id)
         verdict = record.get("candidate_ok", record.get("qa_outcome"))
         detail = (
-            "error: " + result.protocol_error
-            if result.protocol_error
-            else f"result {verdict}"
+            "error: " + result.protocol_error if result.protocol_error else f"result {verdict}"
         )
         if record.get("candidate_reasons"):
             detail += " (" + "; ".join(record["candidate_reasons"]) + ")"
@@ -331,35 +421,40 @@ class Commands:
             record,
         )
 
-    def _commit_leftovers(self, task: Task, attempt: Attempt) -> str | None:
-        """Commit what the Coder left in its worktree, under its own identity.
+    def _commit_leftovers(self, task: Task, attempt: Attempt) -> tuple[str | None, str]:
+        """Commit what the Coder left, on the task branch, under its identity.
 
         Codex keeps the Git directory read-only under workspace-write, so a
         Codex Coder cannot commit (docs/harness-facts.md); the CLI makes the
-        commit for it (ARCH §6). Returns the new commit SHA, if any.
+        commit for it (ARCH §6). Returns (commit made, head the Coder saw).
+        Idempotent: a retry finds its own earlier commit and reuses it.
         """
 
         worktree = Path(attempt.worktree)
-        if not git(worktree, "status", "--porcelain", "--untracked-files=all").stdout.strip():
-            return None
-        name = f"Milburn coder [{task.task_id}/{attempt.attempt_id}]"
-        email = f"coder.{task.task_id}.{attempt.attempt_id}@milburn.invalid"
-        identity = (
+        name, email = coder_identity(task.task_id, attempt.attempt_id)
+        marker = f"Committed by Milburn for attempt {attempt.attempt_id}"
+        branch, head, clean = self._worktree_state(worktree)
+        if branch != task.branch:
+            raise CommandRefused(f"the Coder left {worktree} on {branch}, not {task.branch}")
+        last = agent_git(self.project, worktree, "log", "-1", "--format=%ae%n%B").stdout
+        if clean and last.startswith(email) and marker in last:
+            return head, agent_git(self.project, worktree, "rev-parse", "HEAD^").stdout.strip()
+        if clean:
+            return None, head
+        agent_git(self.project, worktree, "add", "-A")
+        agent_git(
+            self.project, worktree,
             "-c", f"user.name={name}", "-c", f"user.email={email}",
+            "commit", "-q", "-m",
+            f"{task.task_id}: {task.title}\n\n{marker}; the Coder's harness could not write Git.",
         )
-        git(worktree, "add", "-A")
-        git(
-            worktree, *identity, "commit", "-q", "-m",
-            f"{task.task_id}: {task.title}\n\nCommitted by Milburn for attempt "
-            f"{attempt.attempt_id}; the Coder's harness could not write Git.",
-        )
-        return git(worktree, "rev-parse", "HEAD").stdout.strip()
+        return agent_git(self.project, worktree, "rev-parse", "HEAD").stdout.strip(), head
 
-    def _check_candidate(self, task: Task, attempt: Attempt, parsed: Any) -> dict[str, Any]:
+    def _check_candidate(self, task: Task, attempt: Attempt, result: Any) -> dict[str, Any]:
         """Mechanical candidate checks (the core of ``candidate-protocol``)."""
 
         reasons: list[str] = []
-        payload = parsed.payload if parsed else None
+        payload = result.task_result.payload if result.task_result else None
         if not isinstance(payload, CoderResult):
             return {"candidate_ok": False, "candidate_reasons": ["no valid Coder result"],
                     "head_sha": None, "outcome": None}
@@ -367,129 +462,157 @@ class Commands:
             return {"candidate_ok": False, "outcome": payload.outcome.value,
                     "candidate_reasons": [f"Coder reported {payload.outcome.value}"],
                     "head_sha": payload.head_sha}
+        if result.run_end is not RunEnd.COMPLETED:
+            # Nothing is committed for a run that did not complete; its
+            # leftovers stay in the worktree for a handoff (ARCH §8.1).
+            return {"candidate_ok": False, "outcome": payload.outcome.value,
+                    "candidate_reasons": [f"the Coder run ended {result.run_end.value}"],
+                    "head_sha": payload.head_sha}
+        if payload.issue_number != int(task.task_id[1:]):
+            reasons.append("the result names another task number")
+        try:
+            cli_commit, seen_head = self._commit_leftovers(task, attempt)
+        except CommandRefused as refused:
+            return {"candidate_ok": False, "candidate_reasons": refused.reasons,
+                    "head_sha": None, "outcome": payload.outcome.value}
+        if payload.head_sha != seen_head:
+            reasons.append(f"reported head {payload.head_sha} is not the worktree head {seen_head}")
         worktree = Path(attempt.worktree)
-        reported_against = git(worktree, "rev-parse", "HEAD").stdout.strip()
-        if payload.head_sha != reported_against:
-            reasons.append(
-                f"reported head {payload.head_sha} is not the worktree head {reported_against}"
-            )
-        cli_commit = self._commit_leftovers(task, attempt)
-        head = git(worktree, "rev-parse", "HEAD").stdout.strip()
-        branch_head = self._head(task.branch)
-        if head != branch_head:
-            reasons.append(f"the worktree head {head} is not the task branch head {branch_head}")
-        if git(worktree, "status", "--porcelain", "--untracked-files=all").stdout.strip():
+        _, head, clean = self._worktree_state(worktree)
+        if head != self._head(task.branch):
+            reasons.append(f"the worktree head {head} is not the {task.branch} head")
+        if not clean:
             reasons.append("the task worktree still has uncommitted changes")
-        if git(worktree, "merge-base", "--is-ancestor", attempt.base_sha, head, check=False).returncode:
+        if agent_git(self.project, worktree, "merge-base", "--is-ancestor",
+                     attempt.base_sha, head, check=False).returncode:
             reasons.append("the candidate does not descend from the attempt base")
         new_commits = set(
-            git(worktree, "rev-list", f"{attempt.base_sha}..{head}").stdout.split()
+            agent_git(self.project, worktree, "rev-list", f"{attempt.base_sha}..{head}").stdout.split()
         )
         if not new_commits:
             reasons.append("the candidate adds no commits")
-        listed = set(payload.commits)
-        unknown = sorted(
-            commit for commit in listed
-            if not any(full.startswith(commit) for full in new_commits)
-        )
+        malformed = [c for c in payload.commits if not _FULL_SHA.fullmatch(c)]
+        if malformed:
+            reasons.append(f"reported commits must be full SHAs: {malformed}")
+        unknown = sorted(set(payload.commits) - new_commits - set(malformed))
         if unknown:
             reasons.append(f"reported commits are not on the branch: {unknown}")
         return {"candidate_ok": not reasons, "candidate_reasons": reasons,
-                "head_sha": head, "outcome": payload.outcome.value,
-                "cli_commit": cli_commit}
+                "head_sha": head, "outcome": payload.outcome.value, "cli_commit": cli_commit}
 
     # ------------------------------------------------------------------ QA gate
 
     def complete(self, task_id: str) -> Outcome:
-        state = self._state()
-        task = self._task(state, task_id)
-        reasons = qa_gate(task, self.project.config.tester_independence, self._head_or_none(task.branch))
-        if reasons:
+        with self.project.mutation_lock():
+            state = self._state()
+            task = self._task(state, task_id)
+            stream = f"task-{task_id}"
+            head = self._head(task.branch) if self._branch_exists(task.branch) else None
+            reasons = qa_gate(task, self.project.config.tester_independence, head)
+            if reasons:
+                self.ledger.append(stream, self._seq(state, stream), EventType.QA_GATE_REFUSED,
+                                   {"task": task_id, "reasons": reasons},
+                                   actor="controller", correlation_id=task_id)
+                raise CommandRefused(reasons)
+            coder = task.latest("coder")
+            tester = task.latest("tester")
             self.ledger.append(
-                f"task-{task_id}", self._seq(state, f"task-{task_id}"), EventType.QA_GATE_REFUSED,
-                {"task": task_id, "reasons": reasons}, actor="controller", correlation_id=task_id,
+                stream, self._seq(state, stream), EventType.TASK_COMPLETED,
+                {
+                    "task": task_id, "candidate_sha": coder.collected["head_sha"],  # type: ignore[union-attr]
+                    "coder_attempt": coder.attempt_id, "coder_harness": coder.harness,  # type: ignore[union-attr]
+                    "qa_attempt": tester.attempt_id, "qa_harness": tester.harness,  # type: ignore[union-attr]
+                },
+                actor="controller", correlation_id=task_id,
             )
-            raise CommandRefused(reasons)
-        coder = task.latest("coder")
-        tester = task.latest("tester")
-        self.ledger.append(
-            f"task-{task_id}", self._seq(state, f"task-{task_id}"), EventType.TASK_COMPLETED,
-            {
-                "task": task_id, "candidate_sha": coder.collected["head_sha"],  # type: ignore[union-attr]
-                "coder_attempt": coder.attempt_id, "coder_harness": coder.harness,  # type: ignore[union-attr]
-                "qa_attempt": tester.attempt_id, "qa_harness": tester.harness,  # type: ignore[union-attr]
-            },
-            actor="controller", correlation_id=task_id,
-        )
         return Outcome(f"{task_id} completed: independent QA passed", {"task": task_id})
-
-    def _head_or_none(self, branch: str) -> str | None:
-        return self._head(branch) if self._branch_exists(branch) else None
 
     # --------------------------------------------------------------- delivery
 
     def integrate(self, task_id: str) -> Outcome:
-        state = self._state()
-        task = self._task(state, task_id)
-        work = state.work_items[task.work_item]
-        reasons = []
-        if not task.completed:
-            reasons.append(f"{task_id} has not passed the QA gate")
-        if task.integrated:
-            reasons.append(f"{task_id} is already integrated")
-        if task.completed and self._head(task.branch) != task.completed["candidate_sha"]:
-            reasons.append(f"{task.branch} moved after QA passed; QA must run again")
-        if reasons:
-            raise CommandRefused(reasons)
-        worktree = Path(work.integration_worktree)
-        identity = (
-            "-c", "user.name=Milburn controller", "-c", "user.email=controller@milburn.invalid",
-        )
-        merged = git(
-            worktree, *identity, "merge", "--no-ff", "--no-edit",
-            "-m", f"Merge {task_id}: {task.title}", task.branch, check=False,
-        )
-        if merged.returncode != 0:
-            git(worktree, "merge", "--abort", check=False)
-            raise CommandRefused(
-                f"{task.branch} does not merge cleanly into {work.branch}; "
-                "dispatch a Coder rework attempt that merges the integration head first"
+        with self.project.mutation_lock():
+            state = self._state()
+            task = self._task(state, task_id)
+            work = state.work_items[task.work_item]
+            reasons = []
+            if not task.completed:
+                reasons.append(f"{task_id} has not passed the QA gate")
+            if task.integrated:
+                reasons.append(f"{task_id} is already integrated")
+            if reasons:
+                raise CommandRefused(reasons)
+            candidate = task.completed["candidate_sha"]  # type: ignore[index]
+            self._ensure_work_item(work)
+            worktree = Path(work.integration_worktree)
+            branch, head, clean = self._worktree_state(worktree)
+            expected = work.expected_head
+            if self._head(task.branch) != candidate:
+                reasons.append(f"{task.branch} moved after QA passed; QA must run again")
+            if branch != work.branch:
+                reasons.append(f"the integration worktree is on {branch}, not {work.branch}")
+            if not clean:
+                reasons.append("the integration worktree has uncommitted changes")
+            if head != expected or self._head(work.branch) != expected:
+                reasons.append(f"{work.branch} is not at the recorded head {expected[:12]}")
+            if reasons:
+                raise CommandRefused(reasons)
+            identity = ("-c", "user.name=Milburn controller",
+                        "-c", "user.email=controller@milburn.invalid")
+            # Merge the recorded candidate SHA, never the moving branch name.
+            merged = agent_git(self.project, worktree, *identity, "merge", "--no-ff", "--no-edit",
+                               "-m", f"Merge {task_id}: {task.title}", candidate, check=False)
+            if merged.returncode != 0:
+                agent_git(self.project, worktree, "merge", "--abort", check=False)
+                raise CommandRefused(
+                    f"{task_id} does not merge cleanly into {work.branch}; "
+                    "dispatch a Coder rework attempt that merges the integration head first"
+                )
+            merge_sha = agent_git(self.project, worktree, "rev-parse", "HEAD").stdout.strip()
+            parents = agent_git(self.project, worktree, "rev-list", "--parents", "-n", "1",
+                                merge_sha).stdout.split()[1:]
+            if parents != [expected, candidate]:
+                raise EffectFailed(f"merge {merge_sha} has unexpected parents {parents}")
+            self.ledger.append(
+                f"task-{task_id}", self._seq(state, f"task-{task_id}"), EventType.TASK_INTEGRATED,
+                {"task": task_id, "merge_sha": merge_sha, "work_item": work.work_item,
+                 "candidate_sha": candidate},
+                actor="controller", correlation_id=task_id,
             )
-        merge_sha = git(worktree, "rev-parse", "HEAD").stdout.strip()
-        self.ledger.append(
-            f"task-{task_id}", self._seq(state, f"task-{task_id}"), EventType.TASK_INTEGRATED,
-            {"task": task_id, "merge_sha": merge_sha, "work_item": work.work_item},
-            actor="controller", correlation_id=task_id,
-        )
         return Outcome(f"integrated {task_id} into {work.branch} at {merge_sha[:12]}",
                        {"merge_sha": merge_sha})
 
     def deliver(self, work_item: str) -> Outcome:
-        state = self._state()
-        work = state.work_items.get(work_item)
-        if work is None:
-            raise CommandRefused(f"unknown work item {work_item}")
-        reasons = []
-        if work.delivered:
-            reasons.append(f"{work_item} is already delivered")
-        if not work.tasks:
-            reasons.append(f"{work_item} has no tasks")
-        for task_id in work.tasks:
-            if not state.tasks[task_id].integrated:
-                reasons.append(f"{task_id} is not integrated")
-        mode = self.project.config.delivery
-        if mode != "local-only":
-            reasons.append(f"delivery mode {mode} is not available yet (#68); use local-only")
-        if reasons:
-            raise CommandRefused(reasons)
-        head = self._head(work.branch)
-        self.ledger.append(
-            f"work-{work_item}", self._seq(state, f"work-{work_item}"), EventType.WORK_ITEM_DELIVERED,
-            {"work_item": work_item, "mode": mode, "head_sha": head, "branch": work.branch},
-            actor="controller", correlation_id=work_item,
-        )
+        with self.project.mutation_lock():
+            state = self._state()
+            work = state.work_items.get(work_item)
+            if work is None:
+                raise CommandRefused(f"unknown work item {work_item}")
+            reasons = []
+            if work.delivered:
+                reasons.append(f"{work_item} is already delivered")
+            if not work.tasks:
+                reasons.append(f"{work_item} has no tasks")
+            for task_id in work.tasks:
+                if not state.tasks[task_id].integrated:
+                    reasons.append(f"{task_id} is not integrated")
+            mode = self.project.config.delivery
+            if mode != "local-only":
+                reasons.append(f"delivery mode {mode} is not available yet (#68); use local-only")
+            head = self._head(work.branch) if self._branch_exists(work.branch) else None
+            if work.last_merge and head != work.last_merge:
+                reasons.append(
+                    f"{work.branch} is at {str(head)[:12]}, not the last recorded merge "
+                    f"{work.last_merge[:12]}"
+                )
+            if reasons:
+                raise CommandRefused(reasons)
+            self.ledger.append(
+                f"work-{work_item}", self._seq(state, f"work-{work_item}"), EventType.WORK_ITEM_DELIVERED,
+                {"work_item": work_item, "mode": mode, "head_sha": head, "branch": work.branch},
+                actor="controller", correlation_id=work_item,
+            )
         return Outcome(
-            f"delivered {work_item} ({mode}): branch {work.branch} at {head[:12]}, not pushed",
+            f"delivered {work_item} ({mode}): branch {work.branch} at {str(head)[:12]}, not pushed",
             {"head_sha": head},
         )
 
@@ -528,9 +651,9 @@ class Commands:
 def qa_gate(task: Task, independence: str, branch_head: str | None) -> list[str]:
     """ARCH §8 conditions 1-4 and 6 for the skeleton. Pure; returns unmet conditions."""
 
-    reasons: list[str] = []
     if task.completed:
         return [f"{task.task_id} is already completed"]
+    reasons: list[str] = []
     coder = task.latest("coder")
     tester = task.latest("tester")
     coder_result = coder.collected if coder else None
@@ -542,8 +665,12 @@ def qa_gate(task: Task, independence: str, branch_head: str | None) -> list[str]
         reasons.append("no collected Tester report")
         return reasons
     report = tester.collected
-    if tester.role != "tester" or (coder and tester.attempt_id == coder.attempt_id):
-        reasons.append("the QA report is not from a separate Tester attempt")
+    # Condition 3: the report comes from a recorded Tester dispatch, read-only,
+    # for exactly this candidate (attempt IDs differ by construction).
+    if tester.sandbox != "read-only":
+        reasons.append("the Tester attempt was not read-only")
+    if coder_result and tester.candidate_sha != coder_result.get("head_sha"):
+        reasons.append("the Tester was dispatched for a different candidate")
     if report.get("run_end") != RunEnd.COMPLETED.value:
         reasons.append(f"the Tester run ended {report.get('run_end')}")
     if report.get("qa_outcome") != QAOutcome.PASSED.value:
@@ -557,13 +684,23 @@ def qa_gate(task: Task, independence: str, branch_head: str | None) -> list[str]
     return reasons
 
 
-def _qa_summary(parsed: Any, candidate_sha: str | None) -> dict[str, Any]:
+def _qa_summary(parsed: Any, attempt: Attempt, task: Task) -> dict[str, Any]:
+    """Validate the report against its dispatch.
+
+    ``attempt_id`` is already checked by the result parser's correlation;
+    ``issue_number`` and ``candidate_sha`` are checked here. ``commands``,
+    ``acceptance_results``, ``evidence_artifacts`` and ``summary`` are evidence
+    for the Coordinator and are not judged by the CLI.
+    """
+
     payload = parsed.payload if parsed else None
     if not isinstance(payload, QAReport):
         return {"qa_outcome": None, "qa_candidate_sha": None, "qa_defects": []}
     outcome = payload.outcome.value
-    if payload.candidate_sha != candidate_sha:
+    if payload.candidate_sha != attempt.candidate_sha:
         outcome = "mismatched-candidate"
+    elif payload.issue_number != int(task.task_id[1:]):
+        outcome = "mismatched-task"
     return {
         "qa_outcome": outcome,
         "qa_candidate_sha": payload.candidate_sha,
@@ -603,12 +740,12 @@ def _task_context(task: Task, role: str, base: str, candidate: str | None) -> st
     ]
     if role == "coder":
         lines += [
-            f"Keep your progress in {PROGRESS_FILE} at the worktree root and commit it.",
+            f"Keep your progress in {PROGRESS_FILE} at the worktree root.",
             f"Use issue_number {int(task.task_id[1:])} and progress_path {PROGRESS_FILE} in your result.",
             "Commit your work on the current branch if your sandbox allows it. If a commit "
             "fails, leave the changes in the worktree: Milburn commits them for you when it "
             "collects your result. Report outcome candidate with head_sha set to the current "
-            "HEAD and commits listing the commits you made (empty if none).",
+            "HEAD and commits listing the full SHAs of commits you made (empty if none).",
         ]
     else:
         lines += [
@@ -620,8 +757,6 @@ def _task_context(task: Task, role: str, base: str, candidate: str | None) -> st
 
 
 def _dispatch_payload(ledger: Ledger, task_id: str, attempt_id: str) -> dict[str, Any]:
-    from .state import payload_of
-
     for event in ledger._store.read_stream(f"task-{task_id}"):
         if event.event_type is EventType.ATTEMPT_DISPATCHED:
             data = payload_of(event)

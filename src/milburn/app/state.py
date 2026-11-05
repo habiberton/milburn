@@ -32,6 +32,8 @@ class Attempt:
     worktree: str
     base_sha: str
     sandbox: str
+    candidate_sha: str | None = None
+    started: dict[str, Any] | None = None
     collected: dict[str, Any] | None = None
 
 
@@ -62,7 +64,14 @@ class WorkItem:
     branch: str
     integration_worktree: str
     tasks: list[str] = field(default_factory=list)
+    last_merge: str | None = None
     delivered: dict[str, Any] | None = None
+
+    @property
+    def expected_head(self) -> str:
+        """The integration head the record says is current."""
+
+        return self.last_merge or self.base_sha
 
 
 @dataclass(slots=True)
@@ -118,6 +127,41 @@ class Ledger:
         )
         return self._store.append(stream, expected_sequence, (event,))[0]
 
+    def append_many(
+        self,
+        stream: str,
+        expected_sequence: int,
+        items: list[tuple[EventType, dict[str, Any]]],
+        *,
+        actor: str,
+        correlation_id: str,
+    ) -> tuple[DomainEvent, ...]:
+        """Append several events atomically: all of them or none."""
+
+        if actor not in ACTORS:
+            raise ValueError(f"actor must be one of {ACTORS}")
+        now = datetime.now(timezone.utc)
+        events = tuple(
+            DomainEvent(
+                event_id=f"evt-{uuid.uuid4().hex}",
+                stream=stream,
+                sequence=expected_sequence + offset,
+                event_type=event_type,
+                occurred_at=now,
+                correlation_id=correlation_id,
+                causation_id=None,
+                facts=(
+                    EventFact(name="actor", value=actor),
+                    EventFact(
+                        name="payload",
+                        value=json.dumps(payload, sort_keys=True, separators=(",", ":")),
+                    ),
+                ),
+            )
+            for offset, (event_type, payload) in enumerate(items, start=1)
+        )
+        return self._store.append(stream, expected_sequence, events)
+
     def replay(self) -> ProjectState:
         state = ProjectState()
         for event in self._store.read_all():
@@ -140,8 +184,13 @@ class Ledger:
                     Attempt(
                         data["attempt"], data["role"], data["harness"], data["endpoint"],
                         data["worktree"], data["base_sha"], data["sandbox"],
+                        data.get("candidate_sha"),
                     )
                 )
+            elif kind is EventType.AGENT_STARTED:
+                for attempt in state.tasks[data["task"]].attempts:
+                    if attempt.attempt_id == data["attempt"]:
+                        attempt.started = data
             elif kind is EventType.ATTEMPT_COLLECTED:
                 task = state.tasks[data["task"]]
                 for attempt in task.attempts:
@@ -155,6 +204,7 @@ class Ledger:
                 state.tasks[data["task"]].completed = data
             elif kind is EventType.TASK_INTEGRATED:
                 state.tasks[data["task"]].integrated = data
+                state.work_items[data["work_item"]].last_merge = data["merge_sha"]
             elif kind is EventType.WORK_ITEM_DELIVERED:
                 state.work_items[data["work_item"]].delivered = data
         return state

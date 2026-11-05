@@ -194,3 +194,173 @@ def test_request_to_delivery_with_cross_harness_qa_and_usage(repo: Path, capsys)
     # Completion is final: a second complete or deliver is refused.
     assert run("task", "complete", "t1") == 1
     assert run("deliver", "w1") == 1
+
+
+# --- review round 1: consistency, delivery checks, exit codes ------------------
+
+def _project(repo: Path):
+    from milburn.app.project import load_project
+
+    return load_project(repo)
+
+
+def test_a_running_attempt_blocks_collect_and_redispatch(repo: Path, monkeypatch, capsys) -> None:
+    monkeypatch.setenv("FAKE_SLEEP", "5")
+    create_task()
+    assert run("dispatch", "t1") == 0
+    capsys.readouterr()
+    assert run("collect", "t1") == 0
+    assert "still running" in capsys.readouterr().out
+    assert run("dispatch", "t1") == 1
+    assert "uncollected attempt" in capsys.readouterr().err
+    assert run("collect", "t1", "--wait", "20") == 0
+    assert "result True" in capsys.readouterr().out
+
+
+def test_a_failed_launch_closes_the_attempt_and_the_task_can_retry(repo: Path, monkeypatch, capsys) -> None:
+    from milburn.app import commands as commands_module
+
+    create_task()
+    original = commands_module.Commands._adapter
+
+    def broken(self, harness, runtime):
+        raise RuntimeError("harness unavailable")
+
+    monkeypatch.setattr(commands_module.Commands, "_adapter", broken)
+    assert run("dispatch", "t1") == 4
+    assert "could not start" in capsys.readouterr().err
+    monkeypatch.setattr(commands_module.Commands, "_adapter", original)
+    assert run("dispatch", "t1") == 0
+    assert "t1/a2" in capsys.readouterr().out
+    assert run("collect", "t1", "--wait", "20") == 0
+    assert "result True" in capsys.readouterr().out
+
+
+def test_a_crash_between_intent_and_launch_is_closed_by_collect(repo: Path, monkeypatch, capsys) -> None:
+    from milburn.app import commands as commands_module
+
+    create_task()
+
+    def crash(self, harness, runtime):
+        raise KeyboardInterrupt  # not caught: simulates the process dying
+
+    monkeypatch.setattr(commands_module.Commands, "_adapter", crash)
+    with pytest.raises(KeyboardInterrupt):
+        run("dispatch", "t1")
+    monkeypatch.undo()
+    monkeypatch.setenv("MILBURN_HOME", str(_project_home(repo)))
+    _restore_env(monkeypatch, repo)
+    capsys.readouterr()
+    assert run("collect", "t1") == 0
+    assert "never started" in capsys.readouterr().out
+    assert run("dispatch", "t1") == 0
+
+
+def _project_home(repo: Path) -> Path:
+    return repo.parent / "milburn-home"
+
+
+def _restore_env(monkeypatch, repo: Path) -> None:
+    bin_dir = repo.parent / "bin"
+    monkeypatch.setenv("MILBURN_CODEX_EXECUTABLE", str(bin_dir / "fake-codex"))
+    monkeypatch.setenv("MILBURN_CLAUDE_EXECUTABLE", str(bin_dir / "fake-claude-code"))
+    monkeypatch.chdir(repo)
+
+
+def test_a_lost_collect_record_is_retried_without_rejecting_the_candidate(
+    repo: Path, monkeypatch, capsys
+) -> None:
+    from milburn.app import state as state_module
+
+    monkeypatch.setenv("FAKE_CODER_MODE", "nocommit")
+    create_task()
+    assert run("dispatch", "t1") == 0
+    original = state_module.Ledger.append_many
+    calls = {"n": 0}
+
+    def flaky(self, *args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("store unavailable")
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(state_module.Ledger, "append_many", flaky)
+    assert run("collect", "t1", "--wait", "20") == 4
+    capsys.readouterr()
+    assert run("collect", "t1") == 0
+    assert "result True" in capsys.readouterr().out
+    # Exactly one Milburn commit, reused by the retry.
+    log = sh(repo, "git", "log", "--format=%s", "milburn/w1/t1")
+    assert log.count("t1: Add feature") == 1
+
+
+def test_integrate_refuses_when_the_integration_branch_moved(repo: Path, capsys) -> None:
+    build_candidate()
+    assert run("qa", "t1") == 0
+    assert run("collect", "t1", "--wait", "20") == 0
+    assert run("task", "complete", "t1") == 0
+    worktree = _project(repo).worktree_root / "w1-integration"
+    sh(worktree, "git", "-c", "user.name=u", "-c", "user.email=u@x", "commit", "-q", "--allow-empty", "-m", "sneaky")
+    capsys.readouterr()
+    assert run("integrate", "t1") == 1
+    assert "not at the recorded head" in capsys.readouterr().err
+
+
+def test_deliver_refuses_when_the_integration_branch_moved_after_merging(repo: Path, capsys) -> None:
+    build_candidate()
+    assert run("qa", "t1") == 0
+    assert run("collect", "t1", "--wait", "20") == 0
+    assert run("task", "complete", "t1") == 0
+    assert run("integrate", "t1") == 0
+    worktree = _project(repo).worktree_root / "w1-integration"
+    sh(worktree, "git", "-c", "user.name=u", "-c", "user.email=u@x", "commit", "-q", "--allow-empty", "-m", "unreviewed")
+    capsys.readouterr()
+    assert run("deliver", "w1") == 1
+    assert "not the last recorded merge" in capsys.readouterr().err
+
+
+def _wait_for_exit(repo: Path, endpoint: str) -> None:
+    import time as _time
+
+    exit_file = _project(repo).run_dir / f"{endpoint}.exit.json"
+    deadline = _time.monotonic() + 20
+    while not exit_file.exists() and _time.monotonic() < deadline:
+        _time.sleep(0.05)
+    assert exit_file.exists()
+
+
+def test_a_coder_that_switched_branches_gets_nothing_committed(repo: Path, monkeypatch, capsys) -> None:
+    monkeypatch.setenv("FAKE_CODER_MODE", "nocommit")
+    create_task()
+    assert run("dispatch", "t1") == 0
+    _wait_for_exit(repo, "t1-a1")
+    worktree = _project(repo).worktree_root / "t1"
+    sh(worktree, "git", "checkout", "-q", "-b", "elsewhere")
+    capsys.readouterr()
+    assert run("collect", "t1") == 0
+    assert "not milburn/w1/t1" in capsys.readouterr().out
+    assert sh(repo, "git", "rev-list", "--count", "elsewhere", "^main") == "0"  # nothing committed
+    assert "feature_t1.txt" not in sh(repo, "git", "ls-tree", "--name-only", "-r", "elsewhere")
+
+
+def test_a_tampered_git_pointer_is_refused(repo: Path, monkeypatch, capsys) -> None:
+    create_task()
+    assert run("dispatch", "t1") == 0
+    _wait_for_exit(repo, "t1-a1")
+    pointer = _project(repo).worktree_root / "t1" / ".git"
+    pointer.write_text("gitdir: /tmp/elsewhere\n")
+    capsys.readouterr()
+    assert run("collect", "t1") == 3
+    assert "does not point at" in capsys.readouterr().err
+
+
+def test_unexpected_errors_exit_4_with_one_line(repo: Path, monkeypatch, capsys) -> None:
+    from milburn.app import commands as commands_module
+
+    def boom(self):
+        raise ValueError("first line\nsecond line")
+
+    monkeypatch.setattr(commands_module.Commands, "status", boom)
+    assert run("status") == 4
+    err = capsys.readouterr().err.strip()
+    assert err.count("\n") == 0 and "first line" in err

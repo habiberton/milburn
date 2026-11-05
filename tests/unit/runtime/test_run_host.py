@@ -166,3 +166,38 @@ def test_child_pythonpath_is_the_callers_not_the_hosts(tmp_path: Path, monkeypat
     endpoint = runtime.launch(ProcessLaunch((str(stub),), str(tmp_path), ""))
     _wait_exit(runtime, endpoint)
     assert runtime.collect(endpoint).stdout.strip() == "/caller/path"
+
+
+def test_a_harness_child_that_outlives_its_host_keeps_the_run_running(tmp_path: Path) -> None:
+    stub = _stub(tmp_path, "sleep", "import time; time.sleep(30)\n")
+    runtime = _runtime(tmp_path / "runs")
+    endpoint = runtime.launch(ProcessLaunch((str(stub),), str(tmp_path), ""))
+    host = json.loads((tmp_path / "runs" / f"{endpoint}.host.json").read_text())
+    import subprocess
+
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        members = subprocess.run(
+            ["pgrep", "-g", str(host["pid"])], capture_output=True, text=True
+        ).stdout.split()
+        if len(members) >= 2:  # the host and its harness child
+            break
+        time.sleep(0.05)
+    os.kill(host["pid"], 9)  # only the host, not its process group
+    time.sleep(0.3)
+    assert runtime.status(endpoint).state is ProcessState.RUNNING
+    assert runtime.collect(endpoint).state is ProcessState.RUNNING
+    os.killpg(host["pid"], 9)
+
+
+def test_an_unidentified_host_is_never_collected_while_its_group_runs(tmp_path: Path) -> None:
+    class Blind:
+        def identify(self, pid: int):
+            return None
+
+    stub = _stub(tmp_path, "sleep", "import time; time.sleep(30)\n")
+    runtime = DetachedRunRuntime(tmp_path / "runs", endpoint_ids=lambda: "blind-1", inspector=Blind())
+    endpoint = runtime.launch(ProcessLaunch((str(stub),), str(tmp_path), ""))
+    assert runtime.collect(endpoint).state is ProcessState.RUNNING
+    host = json.loads((tmp_path / "runs" / f"{endpoint}.host.json").read_text())
+    os.killpg(host["pid"], 9)

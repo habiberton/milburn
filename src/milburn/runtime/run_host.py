@@ -125,7 +125,12 @@ class DetachedRunRuntime:
                 start_new_session=True,
                 env=host_env,
             )
-        identity = self._inspector.identify(host.pid)
+        identity = None
+        for _ in range(20):
+            identity = self._inspector.identify(host.pid)
+            if identity is not None:
+                break
+            time.sleep(0.05)
         if identity is None:
             # The host may already have finished a very short run; its exit
             # file is then the evidence. Record the PID without a start time.
@@ -157,11 +162,11 @@ class DetachedRunRuntime:
         paths = self._require(endpoint)
         if paths["exit"].exists():
             return ControlResult(observed=True, detail="process already exited")
-        identity = self._host_identity(paths)
-        if identity is None or not self._host_alive(paths):
+        if not self._host_alive(paths):
             return ControlResult(observed=False, detail="host is not running; outcome unknown")
+        pid = int(json.loads(paths["host"].read_text(encoding="utf-8"))["pid"])
         try:
-            os.killpg(identity.pid, signal.SIGTERM)
+            os.killpg(pid, signal.SIGTERM)
         except ProcessLookupError:
             pass
         deadline = time.monotonic() + self._grace
@@ -171,7 +176,7 @@ class DetachedRunRuntime:
             time.sleep(0.05)
         if not paths["exit"].exists() and self._host_alive(paths):
             try:
-                os.killpg(identity.pid, signal.SIGKILL)
+                os.killpg(pid, signal.SIGKILL)
             except ProcessLookupError:
                 pass
         return ControlResult(observed=True, detail="process stopped")
@@ -235,11 +240,29 @@ class DetachedRunRuntime:
             return None
 
     def _host_alive(self, paths: dict[str, Path]) -> bool:
+        """True while the host or anything in its process group still runs.
+
+        The host leads its own session, so the harness child shares its
+        process group; a child that outlives a killed host keeps the run
+        alive. A host whose identity was never recorded is treated as alive
+        until its group is gone, so a live run is never collected as dead.
+        """
+
         identity = self._host_identity(paths)
-        if identity is None:
+        if identity is not None:
+            observed = self._inspector.identify(identity.pid)
+            if observed is not None and observed.matches(identity):
+                return True
+        try:
+            record = json.loads(paths["host"].read_text(encoding="utf-8"))
+            pid = int(record["pid"])
+        except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
             return False
-        observed = self._inspector.identify(identity.pid)
-        return observed is not None and observed.matches(identity)
+        try:
+            os.killpg(pid, 0)
+        except (ProcessLookupError, PermissionError):
+            return False
+        return True
 
 
 def _host_main(run_dir: Path, endpoint: str) -> int:

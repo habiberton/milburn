@@ -14,14 +14,16 @@ worktree of one repository maps to the same project.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass
+import fcntl
 import hashlib
 import os
 from pathlib import Path
 import re
 import subprocess
 import tomllib
-from typing import Mapping
+from typing import Iterator, Mapping
 
 from milburn.agents.harness import Harness
 
@@ -87,13 +89,33 @@ class Project:
     def worktree_root(self) -> Path:
         return self.state_dir / "worktrees"
 
+    def expected_gitdir(self, worktree: Path) -> Path:
+        """The admin directory Git creates for a linked worktree we add."""
+
+        return self.git_common_dir / "worktrees" / worktree.name
+
+    @contextmanager
+    def mutation_lock(self) -> Iterator[None]:
+        """Serialize mutating CLI commands for one project (ARCH §4)."""
+
+        self.state_dir.mkdir(parents=True, exist_ok=True)
+        with open(self.state_dir / "cli.lock", "w") as handle:
+            fcntl.flock(handle, fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(handle, fcntl.LOCK_UN)
+
 
 def git(repository: Path, *arguments: str, check: bool = True) -> subprocess.CompletedProcess[str]:
-    """Run Git for the CLI with hooks disabled (ARCH §4)."""
+    """Run Git for the CLI with hooks and fsmonitor disabled (ARCH §4)."""
 
     empty_hooks = Path(os.devnull)
     completed = subprocess.run(
-        ("git", "-c", f"core.hooksPath={empty_hooks}", *arguments),
+        (
+            "git", "-c", f"core.hooksPath={empty_hooks}", "-c", "core.fsmonitor=false",
+            *arguments,
+        ),
         cwd=repository,
         capture_output=True,
         text=True,
@@ -104,6 +126,34 @@ def git(repository: Path, *arguments: str, check: bool = True) -> subprocess.Com
             f"git {' '.join(arguments)} failed: {completed.stderr.strip() or completed.stdout.strip()}"
         )
     return completed
+
+
+def agent_git(
+    project: "Project", worktree: Path, *arguments: str, check: bool = True
+) -> subprocess.CompletedProcess[str]:
+    """Run Git in a role agent's worktree without trusting its ``.git`` file.
+
+    The ``.git`` file sits inside the agent's writable root; an agent could
+    repoint it at a gitdir it controls. The CLI checks the pointer and passes
+    the expected gitdir and work tree explicitly.
+    """
+
+    gitdir = project.expected_gitdir(worktree)
+    pointer = worktree / ".git"
+    try:
+        content = pointer.read_text(encoding="utf-8").strip()
+    except OSError as error:
+        raise ProjectError(f"{pointer} is unreadable: {error}") from error
+    resolved_gitdir = gitdir.resolve()
+    if not content.startswith("gitdir: ") or Path(content[8:]).resolve() != resolved_gitdir:
+        raise ProjectError(f"{pointer} does not point at {gitdir}; refusing to use it")
+    return git(
+        worktree,
+        f"--git-dir={resolved_gitdir}",
+        f"--work-tree={worktree}",
+        *arguments,
+        check=check,
+    )
 
 
 def milburn_home(environ: Mapping[str, str] | None = None) -> Path:
