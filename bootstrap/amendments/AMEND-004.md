@@ -49,8 +49,17 @@ task.
 
 ## Effectiveness
 
-- Planning commit: pending
-- Effective remote PR: pending
-- Effective merge commit: pending
-- Dispatch status: frozen
-- Resolution status: pending
+- Planning commit: `d2c0d4aede7435116e09b4ca96ba3ccbadd3bf05`
+- Effective remote PR: #52 (https://github.com/habiberton/milburn/pull/52)
+- Effective merge commit: `df266743c23644d0e9ae064e624cc228b13b9009`
+- Dispatch status: resumed
+- Resolution status: effective and reconciled
+
+PR #52 merged through GitHub's merge-commit method with parents
+`62ef4b404e5affeb97bfb09e33c5f17795606db2` and the final independently
+reviewed planning tip. The coordinator fetched `origin/main`, proved it
+contains both the planning tip and merge commit, verified the two-parent
+topology, and fast-forwarded the primary checkout. Follow-up issues #49/#50
+remain open, issue #41 returned to `milburn:in-progress`, and the exact
+preserved candidate remains unchanged. This reconciliation resumes dispatch;
+the exception applies only to MB-023 and does not claim either finding is fixed.
