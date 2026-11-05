@@ -7,7 +7,7 @@ from pathlib import Path
 import sqlite3
 from threading import RLock
 from types import TracebackType
-from typing import Self
+from typing import Mapping, Self
 
 from milburn.domain import DomainEvent
 
@@ -70,6 +70,8 @@ class SQLiteEventStore:
         stream: str,
         expected_sequence: int,
         events: tuple[DomainEvent, ...],
+        *,
+        guard_sequences: Mapping[str, int] | None = None,
     ) -> tuple[DomainEvent, ...]:
         """Atomically append an exact next sequence or reject the whole batch."""
 
@@ -96,6 +98,17 @@ class SQLiteEventStore:
                     f"expected {required_sequence}"
                 )
 
+        guards = dict(guard_sequences or {})
+        for guarded_stream, guarded_sequence in guards.items():
+            if not isinstance(guarded_stream, str) or not guarded_stream or guarded_stream != guarded_stream.strip():
+                raise InvalidEventBatchError("guard stream must be a non-empty identifier")
+            if (
+                not isinstance(guarded_sequence, int)
+                or isinstance(guarded_sequence, bool)
+                or guarded_sequence < NO_STREAM
+            ):
+                raise InvalidEventBatchError("guard sequence must be at least NO_STREAM")
+
         with self._lock:
             transaction_started = False
             try:
@@ -107,6 +120,13 @@ class SQLiteEventStore:
                         f"stream {stream} is at sequence {actual_sequence}; "
                         f"expected {expected_sequence}"
                     )
+                for guarded_stream, guarded_sequence in guards.items():
+                    actual_guard = self._stream_sequence(guarded_stream)
+                    if actual_guard != guarded_sequence:
+                        raise ConcurrencyError(
+                            f"guard stream {guarded_stream} is at sequence {actual_guard}; "
+                            f"expected {guarded_sequence}"
+                        )
                 for event in events:
                     self._connection.execute(
                         """

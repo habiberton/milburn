@@ -40,11 +40,12 @@ def document(
 def seed_event(
     store: SQLiteEventStore, kind: EventType, *,
     feature_id: str = "feature-1", facts: dict[str, str] | None = None,
+    stream_override: str | None = None,
 ) -> None:
-    stream = f"feature:{feature_id}"
+    stream = stream_override or f"feature:{feature_id}"
     sequence = store.stream_sequence(stream)
     store.append(stream, sequence, (DomainEvent(
-        event_id=f"seed-{feature_id}-{sequence + 1}",
+        event_id=f"seed-{stream.replace(':', '-')}-{sequence + 1}",
         stream=stream, sequence=sequence + 1, event_type=kind,
         occurred_at=datetime(2026, 11, 4, tzinfo=UTC),
         correlation_id=feature_id, causation_id=None,

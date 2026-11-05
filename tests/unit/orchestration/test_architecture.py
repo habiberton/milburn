@@ -14,11 +14,14 @@ from milburn.domain import (
 from milburn.orchestration.architecture import ArchitectCoordinator
 from milburn.orchestration.controller import Controller
 from milburn.persistence.sqlite_store import SQLiteEventStore
+from milburn.persistence.errors import ConcurrencyError
 from tests.fakes.role_results import document, expectation, seed_event
 
 
 NOW = datetime(2026, 11, 4, tzinfo=UTC)
 EXPECTED = expectation(Role.ARCHITECT, "architecture_package")
+PRD_REF = "feature-1:architect-1:PRD.md:" + sha256(b"# Product\n").hexdigest()
+ARCH_REF = "feature-1:architect-1:ARCH.md:" + sha256(b"# Architecture\n").hexdigest()
 
 
 def plan() -> PlanEnvelope:
@@ -40,7 +43,7 @@ def draft(key: str, dependencies: tuple[str, ...] = ()) -> IssueDraft:
 
 def package(
     *, drafts: tuple[IssueDraft, ...] | None = None,
-    prd: str = "PRD.md", arch: str = "ARCH.md",
+    prd: str = PRD_REF, arch: str = ARCH_REF,
 ) -> ArchitecturePackage:
     return ArchitecturePackage(
         feature_id="feature-1", prd_artifact=prd, arch_artifact=arch,
@@ -184,6 +187,17 @@ def test_preexisting_specs_unrelated_to_current_plan_are_rejected(tmp_path) -> N
         assert len(store.read_all()) == 2
 
 
+def test_artifact_refs_must_bind_current_attempt_and_exact_bytes(tmp_path) -> None:
+    with SQLiteEventStore(tmp_path / "events.db") as store:
+        service = coordinator(store, tmp_path)
+        with pytest.raises(ValueError):
+            accept(service, package(prd=PRD_REF.replace("architect-1", "architect-other")))
+        (tmp_path / "PRD.md").write_text("# Product from another feature\n")
+        with pytest.raises(ValueError):
+            accept(service, package())
+        assert len(store.read_all()) == 2
+
+
 def test_symlinked_spec_cannot_masquerade_as_root_artifact(tmp_path) -> None:
     with SQLiteEventStore(tmp_path / "events.db") as store:
         service = coordinator(store, tmp_path)
@@ -229,3 +243,24 @@ def test_decision_id_collision_with_prior_event_rejected(tmp_path) -> None:
         with pytest.raises(ValueError):
             accept(service, item)
         assert len(store.read_stream("feature:feature-1")) == 2
+
+
+def test_feature_completion_between_validation_and_architecture_append_is_rejected(tmp_path) -> None:
+    with SQLiteEventStore(tmp_path / "events.db") as store:
+        coordinator(store, tmp_path)
+
+        class RacingController(Controller):
+            def handle(self, *args, **kwargs):
+                seed_event(store, EventType.FEATURE_COMPLETED)
+                return super().handle(*args, **kwargs)
+
+        ids = (f"event-{number}" for number in range(100))
+        service = ArchitectCoordinator(
+            AgentResultParser(),
+            RacingController(store, clock=lambda: NOW, event_ids=lambda: next(ids)),
+            store, repository_root=tmp_path,
+        )
+        with pytest.raises(ConcurrencyError):
+            accept(service, package())
+        assert all(event.event_type is not EventType.ARCHITECTURE_PACKAGE_RECEIVED
+                   for event in store.read_all())

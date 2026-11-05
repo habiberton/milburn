@@ -12,7 +12,7 @@ from .role_results import (
     ROLE_RESULT_STREAM, RoleEventReader, artifact_digest,
     durable_feature_state, feature_events,
     parse_role_result, record_result, require_accepted_request,
-    used_decision_ids, validate_decisions, validate_graph,
+    stream_sequence, used_decision_ids, validate_decisions, validate_graph,
 )
 from milburn.domain import FeatureState
 
@@ -74,6 +74,11 @@ class PlannerCoordinator:
             command_id=command_id,
             expected_sequence=expected_sequence,
             stream=ROLE_RESULT_STREAM,
+            guard_sequences={
+                f"feature:{request.feature_id}": stream_sequence(
+                    events, f"feature:{request.feature_id}"
+                ),
+            },
             extra_facts=(
                 EventFact(name="prd_base_digest", value=artifact_digest(self._root / "PRD.md")),
                 EventFact(name="arch_base_digest", value=artifact_digest(self._root / "ARCH.md")),

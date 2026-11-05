@@ -92,6 +92,36 @@ def test_stale_expected_sequence_is_rejected_across_connections(tmp_path: Path) 
         )
 
 
+def test_cross_stream_guard_rejects_stale_state_atomically(tmp_path: Path) -> None:
+    with SQLiteEventStore(tmp_path / "events.sqlite3") as store:
+        store.append("feature:one", NO_STREAM,
+                     (event("event-1", "feature:one", 0),))
+        with pytest.raises(ConcurrencyError, match="guard stream"):
+            store.append(
+                "role-results", NO_STREAM,
+                (event("event-2", "role-results", 0, EventType.PLAN_RECEIVED),),
+                guard_sequences={"feature:one": NO_STREAM},
+            )
+        assert store.read_stream("role-results") == ()
+        store.append(
+            "role-results", NO_STREAM,
+            (event("event-3", "role-results", 0, EventType.PLAN_RECEIVED),),
+            guard_sequences={"feature:one": 0},
+        )
+
+
+@pytest.mark.parametrize("guards", [{"": 0}, {"feature:one": True}, {"feature:one": -2}])
+def test_invalid_cross_stream_guard_fails_before_write(tmp_path: Path, guards) -> None:
+    with SQLiteEventStore(tmp_path / "events.sqlite3") as store:
+        with pytest.raises(InvalidEventBatchError):
+            store.append(
+                "role-results", NO_STREAM,
+                (event("event-1", "role-results", 0),),
+                guard_sequences=guards,
+            )
+        assert store.read_all() == ()
+
+
 def test_concurrent_writers_cannot_both_claim_the_same_sequence(tmp_path: Path) -> None:
     database = tmp_path / "events.sqlite3"
     with SQLiteEventStore(database) as first, SQLiteEventStore(database) as second:

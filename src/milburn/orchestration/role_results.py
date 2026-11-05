@@ -41,6 +41,14 @@ def feature_events(reader: RoleEventReader, feature_id: str) -> tuple[DomainEven
     )
 
 
+def stream_sequence(events: tuple[DomainEvent, ...], stream: str) -> int:
+    """Sequence observed with the validation snapshot, or -1 when absent."""
+    return max(
+        (event.sequence for event in events if event.stream == stream),
+        default=-1,
+    )
+
+
 def artifact_digest(path: Path) -> str:
     """Return an exact baseline marker for a root spec file."""
     if not path.is_file():
@@ -172,6 +180,7 @@ def record_result(
     expected_sequence: int,
     stream: str | None = None,
     extra_facts: tuple[EventFact, ...] = (),
+    guard_sequences: Mapping[str, int] | None = None,
 ) -> None:
     """Use the controller's role and intent policy after all result checks."""
     command = CommandEnvelope(
@@ -188,6 +197,7 @@ def record_result(
         intent_type=event_type,
         expected_sequence=expected_sequence,
         stream=stream,
+        guard_sequences=guard_sequences,
         facts=(
             EventFact(name="feature_id", value=feature_id),
             EventFact(name="attempt_id", value=expectation.correlation.attempt_id),

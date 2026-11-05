@@ -12,7 +12,7 @@ from milburn.domain import (
 from .controller import Controller
 from .role_results import (
     RoleEventReader, durable_feature_state, feature_events,
-    parse_role_result, record_result,
+    parse_role_result, record_result, stream_sequence, ROLE_RESULT_STREAM,
 )
 from .workflow import ApprovedRoute, TransitionGuard
 
@@ -76,6 +76,9 @@ class RouterCoordinator:
             correlation_id=request_id,
             command_id=command_id,
             expected_sequence=expected_sequence,
+            guard_sequences={
+                ROLE_RESULT_STREAM: stream_sequence(events, ROLE_RESULT_STREAM),
+            },
         )
         if payload.decision_needed:
             return RouteEscalation(request_id, payload.reason)

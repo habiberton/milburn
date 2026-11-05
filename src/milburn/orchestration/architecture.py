@@ -11,9 +11,10 @@ from milburn.domain import (
 
 from .controller import Controller
 from .role_results import (
-    ROLE_RESULT_STREAM, RoleEventReader, durable_feature_state, feature_events,
+    ROLE_RESULT_STREAM, RoleEventReader, artifact_digest,
+    durable_feature_state, feature_events,
     parse_role_result, record_result, require_accepted_plan, require_changed_specs,
-    used_decision_ids, validate_decisions, validate_graph,
+    stream_sequence, used_decision_ids, validate_decisions, validate_graph,
 )
 from milburn.domain import FeatureState
 
@@ -53,9 +54,17 @@ class ArchitectCoordinator:
             raise ValueError("Architect result must be an ArchitecturePackage")
         if payload.feature_id != plan.feature_id or expectation.correlation.task_id != plan.feature_id:
             raise ValueError("architecture belongs to another feature")
-        if payload.prd_artifact != "PRD.md" or payload.arch_artifact != "ARCH.md":
-            raise ValueError("architecture must name root PRD.md and ARCH.md artifacts")
         require_changed_specs(plan_event, self._root)
+        for actual_ref, name in (
+            (payload.prd_artifact, "PRD.md"),
+            (payload.arch_artifact, "ARCH.md"),
+        ):
+            expected_ref = (
+                f"{plan.feature_id}:{expectation.correlation.attempt_id}:"
+                f"{name}:{artifact_digest(self._root / name)}"
+            )
+            if actual_ref != expected_ref:
+                raise ValueError(f"{name} artifact reference does not match this attempt's bytes")
         for draft in payload.issue_drafts:
             if not any(link in {"PRD.md", "ARCH.md"} for link in draft.spec_links):
                 raise ValueError("each issue draft must reference a produced spec")
@@ -82,5 +91,10 @@ class ArchitectCoordinator:
             command_id=command_id,
             expected_sequence=expected_sequence,
             stream=ROLE_RESULT_STREAM,
+            guard_sequences={
+                f"feature:{plan.feature_id}": stream_sequence(
+                    events, f"feature:{plan.feature_id}"
+                ),
+            },
         )
         return payload

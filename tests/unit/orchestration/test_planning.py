@@ -17,6 +17,7 @@ from milburn.domain import (
 from milburn.orchestration.controller import Controller
 from milburn.orchestration.planning import PlannerCoordinator
 from milburn.persistence.sqlite_store import SQLiteEventStore
+from milburn.persistence.errors import ConcurrencyError
 from tests.fakes.role_results import document, expectation, seed_event
 
 
@@ -284,3 +285,30 @@ def test_concurrent_features_cannot_record_same_decision_id(tmp_path) -> None:
         assert outcomes.count(False) == 1
         assert sum(event.event_type is EventType.PLAN_RECEIVED
                    for event in store.read_all()) == 1
+
+
+def test_feature_completion_between_validation_and_plan_append_is_rejected(tmp_path) -> None:
+    with SQLiteEventStore(tmp_path / "events.db") as store:
+        seed_event(store, EventType.REQUEST_ACCEPTED, facts={
+            "request": json.dumps(request().to_dict(), sort_keys=True),
+            "request_id": "request-1",
+        })
+
+        class RacingController(Controller):
+            def handle(self, *args, **kwargs):
+                seed_event(store, EventType.FEATURE_COMPLETED)
+                return super().handle(*args, **kwargs)
+
+        ids = (f"event-{number}" for number in range(100))
+        service = PlannerCoordinator(
+            AgentResultParser(),
+            RacingController(store, clock=lambda: NOW, event_ids=lambda: next(ids)),
+            store, repository_root=tmp_path,
+        )
+        with pytest.raises(ConcurrencyError):
+            service.accept(
+                document(plan(), EXPECTED), EXPECTED, request(),
+                command_id="command-1", expected_sequence=-1,
+            )
+        assert all(event.event_type is not EventType.PLAN_RECEIVED
+                   for event in store.read_all())

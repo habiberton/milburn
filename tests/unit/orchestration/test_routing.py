@@ -11,6 +11,7 @@ from milburn.orchestration.controller import Controller
 from milburn.orchestration.routing import RouteEscalation, RouterCoordinator
 from milburn.orchestration.workflow import TransitionGuard
 from milburn.persistence.sqlite_store import SQLiteEventStore
+from milburn.persistence.errors import ConcurrencyError
 from tests.fakes.role_results import document, expectation, seed_event
 
 
@@ -127,3 +128,28 @@ def test_false_caller_state_cannot_approve_route(tmp_path) -> None:
                 command_id="command-1", expected_sequence=1,
             )
         assert len(store.read_all()) == 2
+
+
+def test_plan_between_route_validation_and_append_rejects_stale_route(tmp_path) -> None:
+    with SQLiteEventStore(tmp_path / "events.db") as store:
+        seed_event(store, EventType.REQUEST_ACCEPTED, facts={"request_id": "request-1"})
+
+        class RacingController(Controller):
+            def handle(self, *args, **kwargs):
+                seed_event(
+                    store, EventType.PLAN_RECEIVED,
+                    stream_override="role-results",
+                    facts={"feature_id": "feature-1"},
+                )
+                return super().handle(*args, **kwargs)
+
+        ids = (f"event-{number}" for number in range(100))
+        service = RouterCoordinator(
+            AgentResultParser(), TransitionGuard(),
+            RacingController(store, clock=lambda: NOW, event_ids=lambda: next(ids)),
+            store,
+        )
+        with pytest.raises(ConcurrencyError):
+            accept(service, document(proposal(), EXPECTED))
+        assert all(event.event_type is not EventType.ROLE_ROUTE_PROPOSED
+                   for event in store.read_all())
