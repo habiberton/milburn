@@ -16,6 +16,10 @@ for arg in "$@"; do
   if [[ "$arg" == --verbose ]]; then verbose=1; else args+=("$arg"); fi
 done
 
+# dev-env.sh is found next to this script, so a worktree created before these
+# scripts existed can still run them from another checkout.
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
 repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
 if [[ -z "$repo_root" ]]; then
   echo "run-tests: run inside a Git repository." >&2
@@ -23,7 +27,7 @@ if [[ -z "$repo_root" ]]; then
 fi
 cd "$repo_root"
 
-python=$("$repo_root/scripts/dev-env.sh" --print-python)
+python=$("$script_dir/dev-env.sh" --print-python)
 export PYTHONPATH="$repo_root/src${PYTHONPATH:+:$PYTHONPATH}"
 
 if [[ "$verbose" == 1 ]]; then
