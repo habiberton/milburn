@@ -907,7 +907,7 @@
       "id": "MB-013",
       "wave": 3,
       "title": "Implement the long-running Coder workflow and protocol guard",
-      "status": "in_progress",
+      "status": "done",
       "github": {
         "issue_number": 13,
         "issue_url": "https://github.com/habiberton/milburn/issues/13",
@@ -923,7 +923,7 @@
       "branch": "product/MB-013-coder-protocol",
       "worktree": null,
       "base_sha": "e4b49871d5ca549f3b5f374b486d6f1731f1cc1e",
-      "candidate_sha": null,
+      "candidate_sha": "8770e94",
       "progress_path": "bootstrap/progress/tasks/MB-013.md",
       "owned_paths": [
         "src/milburn/orchestration/coder.py",
