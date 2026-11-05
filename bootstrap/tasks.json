@@ -1157,14 +1157,14 @@
       "id": "MB-023",
       "wave": 2,
       "title": "Add a quiet command runner for smoke, preflight, and validators",
-      "status": "in_progress",
+      "status": "blocked",
       "github": {
         "issue_number": 41,
         "issue_url": "https://github.com/habiberton/milburn/issues/41",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:changes-requested",
+        "last_observed_status_label": "milburn:decision-needed",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": [],
@@ -1174,6 +1174,16 @@
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-023-a01",
       "base_sha": "1b8d86a6802867771c122bfdd0af80d9533ff313",
       "candidate_sha": "915e9e98e666339b6075eb0d016c1ea6ab31c339",
+      "review_exception": {
+        "authority": "AMEND-004",
+        "status": "pending",
+        "preserved_candidate_sha": "915e9e98e666339b6075eb0d016c1ea6ab31c339",
+        "waived_passes": ["Specification", "Standards"],
+        "known_limitations": [
+          "Shell keywords and shell-only builtins can pass command discovery and behave inconsistently between quiet and verbose modes.",
+          "Control characters in the configured log-directory path can break the one-physical-line summary invariant."
+        ]
+      },
       "progress_path": "bootstrap/progress/tasks/MB-023.md",
       "owned_paths": [
         "scripts/run-quiet.sh",
@@ -1186,7 +1196,8 @@
         "An unwritable log directory, a missing command, and a nonexistent executable fail closed with a clear message and a nonzero exit; output is never silently discarded.",
         "scripts/run-tests.sh and scripts/smoke-test.sh keep their current behavior and their tests keep passing.",
         "Negative tests for every refusal and failure path are written before the happy path, and every check is exercised with an input that would pass a weaker check but must be rejected.",
-        "Behavior is tested through the public command-line interface; nothing in AGENTS.md, bootstrap/README.md, bootstrap/ROOT_PROMPT.md, bootstrap/tasks.json, or the coordinator progress file is modified."
+        "Behavior is tested through the public command-line interface; nothing in AGENTS.md, bootstrap/README.md, bootstrap/ROOT_PROMPT.md, bootstrap/tasks.json, or the coordinator progress file is modified.",
+        "AMEND-004, once effective, accepts the recorded shell keyword/builtin and control-character display limitations for preserved candidate 915e9e98e666339b6075eb0d016c1ea6ab31c339 and waives only the fresh Specification and Standards escalation."
       ],
       "required_tests": [
         "scripts/run-tests.sh tests/bootstrap/test_run_quiet.py -q",

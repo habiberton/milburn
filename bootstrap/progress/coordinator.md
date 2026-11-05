@@ -8,6 +8,10 @@ under AMEND-003 as a parallel track that does not gate Wave 3 (see
 `bootstrap/decisions.md`); they are `blocked` until the coordinator marks them
 ready.
 
+New dispatch is frozen by pending AMEND-004. MB-009/a01 is classified
+`unaffected` and continues; the resumed MB-023 correction was classified
+`must_stop` and interrupted before changes.
+
 ## Repository state
 
 - Integration branch: `main`; AMEND-003 is effective and reconciled (PRs #36 to
@@ -981,6 +985,16 @@ ready.
   blocking Focused result escalates the corrected candidate to fresh
   Specification and Standards passes; MB-023-F001/F002 require durable feedback
   proposals and regression evidence.
+- The user then authorized accepting those MB-023 limitations and skipping the
+  escalated Specification/Standards passes as long as the script remains
+  functional. This is pending AMEND-004 because it changes recorded acceptance
+  and the task's review gate. MB-023 correction work stopped cleanly at
+  candidate `915e9e9`; new dispatch is frozen until the amendment is reviewed,
+  remotely merged, read back, reconciled, and preflight is clear.
+- MB-025 Focused review blocked candidate `687cd80` on accepted string values
+  that can emit multiple lines or unpaired-surrogate tracebacks and malformed
+  UTF-8 that escapes as a traceback. No MB-025 correction worker was active
+  when AMEND-004 froze dispatch; preserve its candidate and findings.
 
 - `scripts/smoke-test.sh` with the shared test environment: 29 tasks valid, 12
   feedback briefs valid, 3 amendment records valid, 414 passed, 3 skipped, 3
