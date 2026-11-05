@@ -42,10 +42,9 @@ def git(directory: Path, *arguments: str) -> str:
     return completed.stdout.strip()
 
 
-@pytest.fixture
-def repository(tmp_path: Path) -> tuple[Path, Path, str]:
-    repo = tmp_path / "repository"
-    root = tmp_path / "worktrees"
+def create_repository(tmp_path: Path, name: str) -> tuple[Path, Path, str]:
+    repo = tmp_path / name
+    root = tmp_path / f"{name}-worktrees"
     repo.mkdir()
     root.mkdir()
     git(repo, "init", "-b", "main")
@@ -55,6 +54,11 @@ def repository(tmp_path: Path) -> tuple[Path, Path, str]:
     git(repo, "add", "README.md")
     git(repo, "commit", "-m", "fixture")
     return repo.resolve(), root.resolve(), git(repo, "rev-parse", "HEAD")
+
+
+@pytest.fixture
+def repository(tmp_path: Path) -> tuple[Path, Path, str]:
+    return create_repository(tmp_path, "repository")
 
 
 def request(
@@ -305,6 +309,93 @@ def test_duplicate_clean_retirement_is_idempotent(
     assert first == duplicate
 
 
+def test_older_retired_evidence_cannot_replace_newer_attempt_history(
+    repository: tuple[Path, Path, str],
+) -> None:
+    manager = GitWorktreeManager()
+    first = manager.prepare(request(repository))
+    stale = manager.retire(first, PriorProcessState.STOPPED)
+    second = manager.prepare(request(repository, attempt="a02"))
+    (second.worktree / "second.txt").write_text("newer attempt\n")
+    git(second.worktree, "add", "second.txt")
+    git(second.worktree, "commit", "-m", "newer attempt")
+    manager.retire(second, PriorProcessState.STOPPED)
+
+    with pytest.raises(WorktreeConflictError, match="newer retirement"):
+        manager.register_retired(stale, PriorProcessState.STOPPED)
+
+
+def test_recovered_stale_evidence_cannot_bypass_missing_later_attempt(
+    repository: tuple[Path, Path, str],
+) -> None:
+    original = GitWorktreeManager()
+    first = original.prepare(request(repository))
+    stale = original.retire(first, PriorProcessState.STOPPED)
+    recovered = GitWorktreeManager()
+    recovered.register_retired(stale, PriorProcessState.STOPPED)
+    second = recovered.prepare(request(repository, attempt="a02"))
+    git(repository[0], "worktree", "remove", "--", str(second.worktree))
+
+    with pytest.raises(WorktreeConflictError, match="mutating ownership"):
+        recovered.register_retired(stale, PriorProcessState.STOPPED)
+    with pytest.raises(WorktreeConflictError, match="mutating ownership"):
+        recovered.prepare(request(repository, attempt="a03"))
+
+
+def test_deleted_preserved_branch_is_not_recreated(
+    repository: tuple[Path, Path, str],
+) -> None:
+    manager = GitWorktreeManager()
+    first = manager.prepare(request(repository))
+    manager.retire(first, PriorProcessState.STOPPED)
+    git(repository[0], "branch", "-D", first.branch)
+    second_request = request(repository, attempt="a02")
+
+    with pytest.raises(WorktreeOwnershipError, match="preserved issue branch"):
+        manager.prepare(second_request)
+
+    assert not second_request.worktree.exists()
+
+
+def test_duplicate_retirement_detects_deleted_preserved_branch(
+    repository: tuple[Path, Path, str],
+) -> None:
+    manager = GitWorktreeManager()
+    lease = manager.prepare(request(repository))
+    manager.retire(lease, PriorProcessState.STOPPED)
+    git(repository[0], "branch", "-D", lease.branch)
+
+    with pytest.raises(WorktreeOwnershipError, match="preserved issue branch"):
+        manager.retire(lease, PriorProcessState.STOPPED)
+
+
+def test_retired_lease_cannot_be_prepared_again(
+    repository: tuple[Path, Path, str],
+) -> None:
+    manager = GitWorktreeManager()
+    lease = manager.prepare(request(repository))
+    manager.retire(lease, PriorProcessState.STOPPED)
+
+    with pytest.raises(WorktreeOwnershipError, match="already retired"):
+        manager.prepare(request(repository))
+
+    assert not lease.worktree.exists()
+
+
+def test_duplicate_retirement_rejects_externally_reappearing_path(
+    repository: tuple[Path, Path, str],
+) -> None:
+    manager = GitWorktreeManager()
+    lease = manager.prepare(request(repository))
+    manager.retire(lease, PriorProcessState.STOPPED)
+    lease.worktree.mkdir()
+
+    with pytest.raises(WorktreeOwnershipError, match="retired worktree path"):
+        manager.retire(lease, PriorProcessState.STOPPED)
+
+    assert lease.worktree.is_dir()
+
+
 def test_retired_evidence_is_strictly_serializable(
     repository: tuple[Path, Path, str],
 ) -> None:
@@ -401,6 +492,98 @@ def test_fake_matches_later_attempt_and_duplicate_retirement(
 
     assert retired == duplicate
     assert second.worktree != first.worktree
+    assert fake.inspect(second).matched
+
+
+def test_fake_older_retired_evidence_cannot_replace_newer_attempt_history(
+    repository: tuple[Path, Path, str],
+) -> None:
+    fake = FakeWorktreeManager()
+    first = fake.prepare(request(repository))
+    stale = fake.retire(first, PriorProcessState.STOPPED)
+    second = fake.prepare(request(repository, attempt="a02"))
+    fake.retire(second, PriorProcessState.STOPPED)
+
+    with pytest.raises(WorktreeConflictError, match="newer retirement"):
+        fake.register_retired(stale, PriorProcessState.STOPPED)
+
+
+def test_fake_recovered_stale_evidence_cannot_bypass_missing_later_attempt(
+    repository: tuple[Path, Path, str],
+) -> None:
+    first = WorktreeLease.from_request(request(repository))
+    fake = FakeWorktreeManager()
+    fake.seed_preserved_branch(first)
+    stale = RetiredWorktreeEvidence(first, first.base_sha)
+    fake.register_retired(stale, PriorProcessState.STOPPED)
+    second = fake.prepare(request(repository, attempt="a02"))
+    fake.remove_externally(second)
+
+    with pytest.raises(WorktreeConflictError, match="mutating ownership"):
+        fake.register_retired(stale, PriorProcessState.STOPPED)
+    with pytest.raises(WorktreeConflictError, match="mutating ownership"):
+        fake.prepare(request(repository, attempt="a03"))
+
+
+def test_fake_deleted_preserved_branch_is_not_recreated(
+    repository: tuple[Path, Path, str],
+) -> None:
+    fake = FakeWorktreeManager()
+    first = fake.prepare(request(repository))
+    fake.retire(first, PriorProcessState.STOPPED)
+    fake.remove_preserved_branch_externally(first)
+
+    with pytest.raises(WorktreeOwnershipError, match="preserved issue branch"):
+        fake.prepare(request(repository, attempt="a02"))
+
+    with pytest.raises(WorktreeOwnershipError, match="preserved issue branch"):
+        fake.retire(first, PriorProcessState.STOPPED)
+
+
+def test_fake_retired_lease_is_terminal_even_if_workspace_reappears(
+    repository: tuple[Path, Path, str],
+) -> None:
+    fake = FakeWorktreeManager()
+    lease = fake.prepare(request(repository))
+    fake.retire(lease, PriorProcessState.STOPPED)
+
+    with pytest.raises(WorktreeOwnershipError, match="already retired"):
+        fake.prepare(request(repository))
+
+    fake.seed_existing(lease)
+    with pytest.raises(WorktreeOwnershipError, match="retired worktree path"):
+        fake.retire(lease, PriorProcessState.STOPPED)
+
+
+def test_fake_branch_attachment_scope_is_repository_local_for_retired_recovery(
+    tmp_path: Path,
+) -> None:
+    first_repository = create_repository(tmp_path, "first")
+    second_repository = create_repository(tmp_path, "second")
+    fake = FakeWorktreeManager()
+    fake.prepare(request(first_repository))
+    retired = WorktreeLease.from_request(request(second_repository))
+    fake.seed_preserved_branch(retired)
+    evidence = RetiredWorktreeEvidence(retired, retired.base_sha)
+
+    fake.register_retired(evidence, PriorProcessState.STOPPED)
+    second = fake.prepare(request(second_repository, attempt="a02"))
+
+    assert fake.inspect(second).matched
+
+
+def test_fake_branch_attachment_scope_is_repository_local_for_prepare(
+    tmp_path: Path,
+) -> None:
+    first_repository = create_repository(tmp_path, "first")
+    second_repository = create_repository(tmp_path, "second")
+    fake = FakeWorktreeManager()
+    second_first = fake.prepare(request(second_repository))
+    fake.retire(second_first, PriorProcessState.STOPPED)
+    fake.prepare(request(first_repository))
+
+    second = fake.prepare(request(second_repository, attempt="a02"))
+
     assert fake.inspect(second).matched
 
 

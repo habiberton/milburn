@@ -256,6 +256,7 @@ class GitWorktreeManager:
     def prepare(self, request: WorktreeRequest) -> WorktreeLease:
         self._validate_request_filesystem(request)
         lease = WorktreeLease.from_request(request)
+        self._ensure_not_retired(lease)
         self._ensure_no_ownership_conflict(lease)
         if lease.worktree.exists() or lease.worktree.is_symlink():
             raise WorktreeConflictError("derived worktree path already exists")
@@ -279,6 +280,8 @@ class GitWorktreeManager:
                 "worktree", "add", str(request.worktree), request.branch,
             )
         elif branch.returncode == 1:
+            if (lease.repository, lease.branch) in self._retired_branches:
+                raise WorktreeOwnershipError("preserved issue branch is unavailable")
             add_arguments = (
                 "worktree", "add", "-b", request.branch,
                 str(request.worktree), request.base_sha,
@@ -293,6 +296,7 @@ class GitWorktreeManager:
         # Retain ownership even if postcondition inspection fails: the external
         # effect happened and must be reconciled rather than blindly retried.
         self._leases[lease.worktree] = lease
+        self._retired_branches.pop((lease.repository, lease.branch), None)
         inspection = self._inspect_lease(lease)
         if (
             not inspection.matched
@@ -307,6 +311,7 @@ class GitWorktreeManager:
         """Restore an immutable lease from durable state after controller restart."""
 
         self._validate_lease_filesystem(lease)
+        self._ensure_not_retired(lease)
         self._ensure_no_ownership_conflict(lease)
         inspection = self._inspect_lease(lease)
         if not inspection.matched or inspection.branch != lease.branch:
@@ -324,6 +329,13 @@ class GitWorktreeManager:
         self._require_stopped(prior_process)
         self._validate_lease_filesystem(lease)
         self._ensure_no_ownership_conflict(lease)
+        current = self._retired.get(lease.worktree)
+        if current is not None and current != evidence:
+            raise WorktreeConflictError("a different or newer retirement is already registered")
+        branch_key = (lease.repository, lease.branch)
+        current_branch = self._retired_branches.get(branch_key)
+        if current_branch is not None and current_branch != evidence:
+            raise WorktreeConflictError("a different or newer retirement is already registered")
         inspection = self._inspect_lease(lease)
         if inspection.registered or inspection.path_exists:
             raise WorktreeOwnershipError("retired worktree path is still present")
@@ -340,7 +352,7 @@ class GitWorktreeManager:
             "preserved branch no longer descends from retired worktree head",
         )
         self._retired[lease.worktree] = evidence
-        self._retired_branches[(lease.repository, lease.branch)] = evidence
+        self._retired_branches[branch_key] = evidence
         return inspection
 
     def inspect(self, lease: WorktreeLease) -> WorktreeInspection:
@@ -365,6 +377,23 @@ class GitWorktreeManager:
         self._require_stopped(prior_process)
         retired = self._retired.get(lease.worktree)
         if retired is not None and retired.lease == lease:
+            self._validate_lease_filesystem(lease)
+            inspection = self._inspect_lease(lease)
+            if inspection.registered or inspection.path_exists:
+                raise WorktreeOwnershipError("retired worktree path unexpectedly reappeared")
+            if any(
+                entry.branch == lease.branch
+                for entry in self._list_worktrees(lease.repository)
+            ):
+                raise WorktreeOwnershipError("retired issue branch is unexpectedly attached")
+            branch_head = self._branch_head(lease)
+            self._validate_commit_ancestry(lease, retired.head_sha)
+            self._validate_ancestor(
+                lease.repository,
+                retired.head_sha,
+                branch_head,
+                "preserved branch no longer descends from retired worktree head",
+            )
             return retired
         self._require_owned(lease)
         self._validate_lease_filesystem(lease)
@@ -422,6 +451,13 @@ class GitWorktreeManager:
                 continue
             if active.repository == lease.repository and active.branch == lease.branch:
                 raise WorktreeConflictError("issue branch already has mutating ownership")
+
+    def _ensure_not_retired(self, lease: WorktreeLease) -> None:
+        retired = self._retired.get(lease.worktree)
+        if retired is not None:
+            if retired.lease == lease:
+                raise WorktreeOwnershipError("worktree lease is already retired")
+            raise WorktreeConflictError("worktree path belongs to a retired lease")
 
     def _authorize_retired_branch_reuse(self, lease: WorktreeLease) -> None:
         evidence = self._retired_branches.get((lease.repository, lease.branch))
