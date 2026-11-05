@@ -764,7 +764,7 @@
       "id": "MB-010",
       "wave": 3,
       "title": "Implement the persistent Coordinator session, notifications, and user decisions",
-      "status": "in_progress",
+      "status": "done",
       "github": {
         "issue_number": 10,
         "issue_url": "https://github.com/habiberton/milburn/issues/10",
@@ -780,7 +780,7 @@
       "branch": "product/MB-010-coordinator-session",
       "worktree": null,
       "base_sha": "fb02fbc10376fbf583b87414672621d8ddeb73a4",
-      "candidate_sha": null,
+      "candidate_sha": "c30ac76",
       "progress_path": "bootstrap/progress/tasks/MB-010.md",
       "owned_paths": [
         "src/milburn/orchestration/coordinator.py",
@@ -799,7 +799,12 @@
       "required_tests": [
         "scripts/run-tests.sh tests/unit/orchestration/test_coordinator.py tests/unit/orchestration/test_notifications.py tests/integration/workflows/test_user_decision.py -q",
         "scripts/smoke-test.sh"
-      ]
+      ],
+      "pull_request": {
+        "number": 59,
+        "url": "https://github.com/habiberton/milburn/pull/59",
+        "merge_commit_sha": null
+      }
     },
     {
       "id": "MB-011",
