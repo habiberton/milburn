@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+import json
+import os
 import re
 import subprocess
 
@@ -104,8 +106,11 @@ class GitCoderProbe:
                                        cwd=lease.worktree, capture_output=True, check=False)
             if completed.returncode:
                 raise CoderProtocolError("candidate head is not reachable from assigned branch and base")
-        if self._git(lease, "ls-tree", "--name-only", "HEAD", "--", progress_path) != progress_path:
+        tree_entry = self._git(lease, "ls-tree", "HEAD", "--", progress_path)
+        if not tree_entry.startswith(("100644 blob ", "100755 blob ")):
             raise CoderProtocolError("progress file is not committed on the issue branch")
+        if tree_entry.split("\t", 1)[-1] != progress_path:
+            raise CoderProtocolError("progress path does not match the committed file")
         trailing = tuple(self._git(lease, "rev-list", "--reverse", f"{candidate}..HEAD").splitlines())
         if not trailing:
             raise CoderProtocolError("progress must be committed after candidate")
@@ -127,8 +132,16 @@ class GitCoderProbe:
 
 
 class CoderProtocolGuard:
-    def __init__(self, git: GitCoderProbe) -> None:
+    def __init__(self, git: GitCoderProbe, *, log_root: Path,
+                 required_commands: tuple[str, ...]) -> None:
+        if (not isinstance(log_root, Path) or not log_root.is_absolute()
+            or not isinstance(required_commands, tuple) or not required_commands
+            or len(set(required_commands)) != len(required_commands)
+            or any(not isinstance(command, str) or not command.strip() for command in required_commands)):
+            raise CoderProtocolError("trusted log root and required test commands are needed")
         self._git = git
+        self._log_root = log_root
+        self._required_commands = required_commands
 
     def accept(self, result: CoderResult, lease: WorktreeLease, issue_state: IssueState) -> CoderResult:
         if not isinstance(result, CoderResult) or not isinstance(lease, WorktreeLease):
@@ -142,6 +155,8 @@ class CoderProtocolGuard:
             or result.progress_path != expected_path or _SHA.fullmatch(result.head_sha) is None):
             raise CoderProtocolError("candidate identity, path, or head does not match assignment")
         progress_file = lease.worktree / expected_path
+        if progress_file.is_symlink() or not progress_file.resolve(strict=False).is_relative_to(lease.worktree.resolve()):
+            raise CoderProtocolError("progress must be a regular file inside the worktree")
         try:
             progress = parse_progress(progress_file.read_text())
         except OSError as error:
@@ -152,13 +167,52 @@ class CoderProtocolGuard:
             raise CoderProtocolError("progress issue, attempt, branch, base, or head does not match")
         if re.search(r"\bself[- ]approv(?:e|ed|al)\b", progress.sections["Blockers"], re.I):
             raise CoderProtocolError("Coder cannot self-approve")
-        if not result.test_claims or not any(claim.outcome == "passed" for claim in result.test_claims):
-            raise CoderProtocolError("candidate has no passing test evidence")
-        if not any(re.match(r"^- .+: passed(?:;|$)", line, re.I)
-                   for line in progress.sections["Validation"].splitlines()):
-            raise CoderProtocolError("progress has no passing validation record")
+        self._validate_test_evidence(result, progress, lease)
         commits, changed = self._git.inspect(lease, result.head_sha, expected_path)
         if (result.commits != commits or len(set(result.files_changed)) != len(result.files_changed)
             or set(result.files_changed) != set(changed)):
             raise CoderProtocolError("reported commits or changed files do not match Git")
         return result
+
+    def _validate_test_evidence(self, result: CoderResult, progress: ProgressRecord,
+                                lease: WorktreeLease) -> None:
+        claims = result.test_claims
+        if len(claims) != len(self._required_commands) or {item.name for item in claims} != set(self._required_commands):
+            raise CoderProtocolError("candidate test evidence omits a required command")
+        if not self._log_root.is_dir() or self._log_root.resolve().is_relative_to(lease.worktree.resolve()):
+            raise CoderProtocolError("test evidence log root is unavailable or inside worktree")
+        validation_lines = set(progress.sections["Validation"].splitlines())
+        for item in claims:
+            if item.outcome != "passed":
+                raise CoderProtocolError("candidate test evidence did not pass")
+            try:
+                value = json.loads(item.evidence)
+            except (json.JSONDecodeError, TypeError) as error:
+                raise CoderProtocolError("candidate test evidence is malformed") from error
+            if not isinstance(value, dict) or set(value) != {"command", "result", "revision", "log_ref"}:
+                raise CoderProtocolError("candidate test evidence fields are incomplete")
+            if (value["command"] != item.name or value["revision"] != result.head_sha
+                or not isinstance(value["result"], str)
+                or re.search(r"\b[1-9][0-9]* passed\b", value["result"]) is None):
+                raise CoderProtocolError("candidate test evidence command, result, or revision is invalid")
+            if not isinstance(value["log_ref"], str):
+                raise CoderProtocolError("candidate test evidence log reference is invalid")
+            log_path = Path(value["log_ref"])
+            if (not log_path.is_absolute() or log_path.is_symlink()
+                or log_path.resolve(strict=False).parent != self._log_root.resolve()
+                or not log_path.is_file()):
+                raise CoderProtocolError("candidate test evidence log reference is unavailable")
+            try:
+                with log_path.open("rb") as stream:
+                    stream.seek(0, os.SEEK_END)
+                    stream.seek(max(0, stream.tell() - 4096))
+                    log_tail = stream.read().decode("utf-8", errors="replace")
+            except OSError as error:
+                raise CoderProtocolError("candidate test evidence log is unreadable") from error
+            if not any(line.startswith(value["result"]) and
+                       (len(line) == len(value["result"]) or line[len(value["result"])] in " ,")
+                       for line in log_tail.splitlines()):
+                raise CoderProtocolError("candidate test evidence result is absent from log")
+            expected_line = f"- {item.name}: passed; revision:{result.head_sha}; log:{log_path}"
+            if expected_line not in validation_lines:
+                raise CoderProtocolError("progress validation does not match candidate test evidence")

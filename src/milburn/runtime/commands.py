@@ -5,11 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import os
+import shlex
 import subprocess
 import tempfile
 from time import monotonic
 
-from .worktrees import WorktreeLease
+from .worktrees import WorktreeLease, WorktreeManagerProtocol, WorktreeError
 
 
 class CommandExecutionError(ValueError):
@@ -31,21 +32,32 @@ class BoundedCommandResult:
     @property
     def summary(self) -> str:
         status = "passed" if self.passed else f"failed ({self.exit_code})"
-        return f"{self.command[0]}: {status}; {self.duration_seconds:.2f}s; log: {self.log_ref}"
+        display = shlex.join(self.command)
+        if len(display) > 512:
+            display = display[:509] + "..."
+        return f"{display}: {status}; {self.duration_seconds:.2f}s; log: {self.log_ref}"
 
 
 class BoundedCommandRunner:
-    def __init__(self, log_dir: Path, *, max_excerpt_chars: int = 2_000) -> None:
+    def __init__(self, log_dir: Path, *, worktrees: WorktreeManagerProtocol,
+                 max_excerpt_chars: int = 2_000) -> None:
         if not isinstance(log_dir, Path) or not log_dir.is_absolute():
             raise CommandExecutionError("log directory must be absolute")
         if not isinstance(max_excerpt_chars, int) or isinstance(max_excerpt_chars, bool) or max_excerpt_chars < 0:
             raise CommandExecutionError("excerpt limit must be non-negative")
         self._log_dir = log_dir
         self._max_excerpt_chars = max_excerpt_chars
+        self._worktrees = worktrees
 
     def run(self, lease: WorktreeLease, command: tuple[str, ...], *, timeout: float = 300) -> BoundedCommandResult:
         if not isinstance(lease, WorktreeLease) or not lease.worktree.is_dir():
             raise CommandExecutionError("command requires an existing assigned worktree")
+        try:
+            inspection = self._worktrees.inspect(lease)
+        except WorktreeError as error:
+            raise CommandExecutionError("command requires a registered owned worktree") from error
+        if not inspection.matched or inspection.branch != lease.branch:
+            raise CommandExecutionError("command requires a registered owned worktree")
         if not isinstance(command, tuple) or not command or any(not isinstance(arg, str) or not arg for arg in command):
             raise CommandExecutionError("command must be a non-empty argument tuple")
         if not isinstance(timeout, (int, float)) or isinstance(timeout, bool) or timeout <= 0:

@@ -9,6 +9,7 @@ from tests.fakes.worktrees import FakeWorktreeManager
 from tests.unit.orchestration.test_coder import assignment
 from tests.unit.validation.test_handoff_manifest import expectation, manifest
 from milburn.domain.sessions import TestEvidence as HandoffTestEvidence
+from milburn.domain import IssueState
 
 
 def checkpoint(item):
@@ -18,7 +19,7 @@ def checkpoint(item):
                   acceptance_refs=("AC-1",), worktree=str(lease.worktree),
                   branch=lease.branch, base_sha=lease.base_sha, head_sha=lease.base_sha,
                   progress_ref=f".milburn/issues/{lease.issue_number}/progress.txt",
-                  brief_digest="briefdigest", rules_digest="rulesdigest")
+                  brief_digest="briefdigest", rules_digest=item.attempt.rules_digest)
     return manifest(**values, test_evidence=(HandoffTestEvidence(
         command="pytest tests/unit", result="12 passed", passed=True,
         revision=lease.base_sha,
@@ -27,6 +28,8 @@ def checkpoint(item):
 
 def prepared(tmp_path):
     item = assignment(tmp_path)
+    item = replace(item, state=IssueState.CODING,
+                   issue=replace(item.issue, labels=("milburn:task", "milburn:in-progress")))
     manager = FakeWorktreeManager()
     lease = item.lease
     manager.prepare(WorktreeRequest(lease.repository, lease.worktree_root,
@@ -38,10 +41,13 @@ def prepared(tmp_path):
 def test_replacement_uses_validated_durable_handoff_without_private_transcript(tmp_path):
     item, manager = prepared(tmp_path)
     handoff, expected = checkpoint(item)
-    brief = CoderCoordinator(manager, BriefRenderer()).resume(
+    brief = CoderCoordinator(manager, BriefRenderer(), repository_id=item.issue.repository_id, repository_path=item.lease.repository).resume(
         item, PriorProcessState.STOPPED, handoff, expected)
     assert "Issue #13" in brief.content
     assert "progress.txt" in brief.content
+    assert "inbox_sequence: 4" in brief.content
+    assert "effect-1" in brief.content
+    assert "pytest tests/unit" in brief.content
     assert "previous transcript" not in brief.content
     assert ("resume", item.lease.attempt_id) in manager.actions
 
@@ -54,7 +60,7 @@ def test_replacement_rejects_stale_or_mismatched_handoff_before_worktree_resume(
     item, manager = prepared(tmp_path)
     handoff, expected = checkpoint(item)
     with pytest.raises(ValueError):
-        CoderCoordinator(manager, BriefRenderer()).resume(
+        CoderCoordinator(manager, BriefRenderer(), repository_id=item.issue.repository_id, repository_path=item.lease.repository).resume(
             item, PriorProcessState.STOPPED, replace(handoff, **change), expected)
     assert ("resume", item.lease.attempt_id) not in manager.actions
 
@@ -63,7 +69,7 @@ def test_replacement_cannot_derive_its_own_expectation_from_handoff(tmp_path):
     item, manager = prepared(tmp_path)
     handoff, expected = checkpoint(item)
     with pytest.raises(CoderStartupError):
-        CoderCoordinator(manager, BriefRenderer()).resume(
+        CoderCoordinator(manager, BriefRenderer(), repository_id=item.issue.repository_id, repository_path=item.lease.repository).resume(
             item, PriorProcessState.STOPPED, handoff,
             replace(expected, issue_ref="issue-99"))
     assert ("resume", item.lease.attempt_id) not in manager.actions
@@ -73,9 +79,30 @@ def test_replacement_rejects_expected_head_different_from_worktree(tmp_path):
     item, manager = prepared(tmp_path)
     handoff, expected = checkpoint(item)
     with pytest.raises(CoderStartupError):
-        CoderCoordinator(manager, BriefRenderer()).resume(
+        CoderCoordinator(manager, BriefRenderer(), repository_id=item.issue.repository_id, repository_path=item.lease.repository).resume(
             item, PriorProcessState.STOPPED,
             replace(handoff, head_sha="0" * 40,
                     test_evidence=()),
             replace(expected, head_sha="0" * 40))
     assert ("resume", item.lease.attempt_id) not in manager.actions
+
+
+def test_replacement_preserves_dirty_recoverable_worktree(tmp_path):
+    item, manager = prepared(tmp_path)
+    manager.set_dirty(item.lease)
+    handoff, expected = checkpoint(item)
+    brief = CoderCoordinator(manager, BriefRenderer(), repository_id=item.issue.repository_id, repository_path=item.lease.repository).resume(
+        item, PriorProcessState.STOPPED, handoff, expected)
+    assert "dirty" in brief.content.lower()
+    assert ("resume", item.lease.attempt_id) in manager.actions
+
+
+def test_replacement_accepts_issue_already_in_progress(tmp_path):
+    item, manager = prepared(tmp_path)
+    item = replace(item, state=IssueState.CODING,
+                   issue=replace(item.issue, labels=("milburn:task", "milburn:in-progress")))
+    handoff, expected = checkpoint(item)
+    brief = CoderCoordinator(manager, BriefRenderer(), repository_id=item.issue.repository_id,
+                             repository_path=item.lease.repository).resume(
+        item, PriorProcessState.STOPPED, handoff, expected)
+    assert "Issue #13" in brief.content

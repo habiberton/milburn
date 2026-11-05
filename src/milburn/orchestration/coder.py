@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from milburn.agents.briefs import BriefRenderer, RenderedBrief, LaunchBrief, CODER_BOUNDARY_QUESTIONS
 from milburn.domain import AgentAttempt, AttemptState, IssueState, Role
-from milburn.integrations.github.contracts import Issue
+from milburn.integrations.github.contracts import Issue, RepositoryId
 from milburn.runtime.worktrees import (
     PriorProcessState, WorktreeLease, WorktreeManagerProtocol,
 )
@@ -22,6 +23,12 @@ _STATUS_LABELS = frozenset({
     "milburn:ready", "milburn:blocked", "milburn:in-progress", "milburn:qa",
     "milburn:changes-requested", "milburn:done", "milburn:decision-needed",
 })
+CODER_ROLE_RULES = "\n".join((
+    "Work only on this issue in the assigned worktree. Maintain progress.txt and issue-linked commits.",
+    "Submit progress or candidate only; controller and independent Tester own approval and closure.",
+    "Write negative tests before validators and adapters; require fake/live parity tests.",
+    "Boundary questions:", *CODER_BOUNDARY_QUESTIONS,
+))
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,13 +43,19 @@ class CoderAssignment:
     spec_refs: tuple[str, ...]
     repository_instructions: str
 
-    def validate(self) -> None:
+    def validate(self, *, replacement: bool = False) -> None:
         if not isinstance(self.issue, Issue) or not isinstance(self.attempt, AgentAttempt) or not isinstance(self.lease, WorktreeLease):
             raise CoderStartupError("issue, attempt, and worktree lease must use known contracts")
-        if (self.state is not IssueState.READY or self.issue.state != "open"
+        states = (
+            {IssueState.CODING: "milburn:in-progress",
+             IssueState.CHANGES_REQUESTED: "milburn:changes-requested"}
+            if replacement else {IssueState.READY: "milburn:ready"}
+        )
+        if (not isinstance(self.state, IssueState) or self.state not in states
+            or self.issue.state != "open"
             or "milburn:task" not in self.issue.labels
-            or set(self.issue.labels) & _STATUS_LABELS != {"milburn:ready"}):
-            raise CoderStartupError("Coder assignment requires one open ready issue")
+            or set(self.issue.labels) & _STATUS_LABELS != {states.get(self.state)}):
+            raise CoderStartupError("Coder assignment requires one open issue in its expected state")
         if (self.attempt.role is not Role.CODER or self.attempt.status is not AttemptState.STARTING
             or self.attempt.issue_number != self.issue.number
             or self.lease.issue_number != self.issue.number
@@ -74,18 +87,30 @@ class CoderAssignment:
 
 class CoderCoordinator:
     def __init__(self, worktrees: WorktreeManagerProtocol, renderer: BriefRenderer,
+                 *, repository_id: RepositoryId, repository_path: Path,
                  handoffs: HandoffManifestValidator | None = None) -> None:
+        if not isinstance(repository_id, RepositoryId) or not isinstance(repository_path, Path) or not repository_path.is_absolute():
+            raise CoderStartupError("configured repository identity and path are required")
         self._worktrees = worktrees
         self._renderer = renderer
         self._handoffs = handoffs or HandoffManifestValidator()
+        self._repository_id = repository_id
+        self._repository_path = repository_path
 
     def prepare(self, assignment: CoderAssignment) -> RenderedBrief:
+        return self._prepare(assignment, allow_dirty=False)
+
+    def _prepare(self, assignment: CoderAssignment, *, allow_dirty: bool,
+                 manifest: HandoffManifest | None = None) -> RenderedBrief:
         if not isinstance(assignment, CoderAssignment):
             raise CoderStartupError("Coder assignment must use the known contract")
-        assignment.validate()
+        assignment.validate(replacement=allow_dirty)
+        if (assignment.issue.repository_id != self._repository_id
+            or assignment.lease.repository != self._repository_path):
+            raise CoderStartupError("issue and worktree do not belong to the configured repository")
         inspection = self._worktrees.inspect(assignment.lease)
-        if not inspection.matched or inspection.clean is not True:
-            raise CoderStartupError("Coder worktree is not a clean registered lease")
+        if not inspection.matched or (not allow_dirty and inspection.clean is not True):
+            raise CoderStartupError("Coder worktree is not a registered lease in the required state")
         lease = assignment.lease
         issue = assignment.issue
         context = "\n".join((
@@ -97,7 +122,25 @@ class CoderCoordinator:
             "Recent comments:\n" + ("\n".join(f"- {item}" for item in assignment.comments) or "- none"),
             "Spec references:\n" + "\n".join(f"- {item}" for item in assignment.spec_refs),
             f"Branch: {lease.branch}\nWorktree: {lease.worktree}\nBase SHA: {lease.base_sha}",
+            f"Git status: {'clean' if inspection.clean is True else 'dirty or unknown'}; inspect every uncommitted change before editing.",
         ))
+        if manifest is not None:
+            context += "\n" + "\n".join((
+                "Validated durable handoff:",
+                f"progress_ref: {manifest.progress_ref}",
+                f"head_sha: {manifest.head_sha}",
+                f"inbox_sequence: {manifest.inbox_sequence}",
+                f"outbox_sequence: {manifest.outbox_sequence}",
+                "completed: " + "; ".join(manifest.completed),
+                "remaining: " + "; ".join(manifest.remaining),
+                "test_evidence: " + "; ".join(
+                    f"{item.command} -> {item.result} at {item.revision}"
+                    for item in manifest.test_evidence),
+                "uncertain_effects: " + "; ".join(
+                    f"{effect.effect_id} reconciled={effect.reconciled}"
+                    for effect in manifest.uncertain_effects),
+                "open_decisions: " + "; ".join(manifest.open_decisions),
+            ))
         startup = "\n".join((
             "Before editing, confirm the repository, issue, attempt, branch, worktree, and base SHA.",
             "Read AGENTS.md and repository guidance; read this issue, its dependencies, and recent comments.",
@@ -109,27 +152,24 @@ class CoderCoordinator:
             "Compare code, progress, commits, and tests with every acceptance criterion; choose one incomplete step.",
             "For a replacement, use this durable context and validated handoff; perform the full startup sequence.",
         ))
-        rules = "\n".join((
-            "Work only on this issue in the assigned worktree. Maintain progress.txt and issue-linked commits.",
-            "Submit progress or candidate only; controller and independent Tester own approval and closure.",
-            "Write negative tests before validators and adapters; require fake/live parity tests.",
-            "Boundary questions:", *CODER_BOUNDARY_QUESTIONS,
-        ))
-        return self._renderer.render(LaunchBrief(
+        rendered = self._renderer.render(LaunchBrief(
             role=Role.CODER, task_id=lease.task_id, attempt_id=lease.attempt_id,
-            objective=issue.title, role_rules=rules,
+            objective=issue.title, role_rules=CODER_ROLE_RULES,
             task_context=context + "\n\nStartup sequence:\n" + startup,
             repository_instructions=assignment.repository_instructions,
             result_contract="Return a versioned CoderResult with candidate SHA, issue-linked commits, progress path, test claims, and risks. A candidate is a claim for Tester validation.",
             skill_bindings=assignment.attempt.skill_bindings,
         ))
+        if rendered.rules_digest != assignment.attempt.rules_digest:
+            raise CoderStartupError("rendered Coder rules digest does not match attempt")
+        return rendered
 
     def resume(self, assignment: CoderAssignment, prior_process: PriorProcessState,
                manifest: HandoffManifest | None = None,
                expectation: HandoffExpectation | None = None) -> RenderedBrief:
         if not isinstance(assignment, CoderAssignment):
             raise CoderStartupError("Coder assignment must use the known contract")
-        assignment.validate()
+        assignment.validate(replacement=True)
         if prior_process is not PriorProcessState.STOPPED:
             raise CoderStartupError("replacement requires proof that prior process stopped")
         if not isinstance(manifest, HandoffManifest) or not isinstance(expectation, HandoffExpectation):
@@ -140,11 +180,15 @@ class CoderCoordinator:
             or expectation.issue_ref != f"issue-{lease.issue_number}"
             or expectation.worktree != str(lease.worktree)
             or expectation.branch != lease.branch or expectation.base_sha != lease.base_sha
-            or expectation.progress_ref != f".milburn/issues/{lease.issue_number}/progress.txt"):
+            or expectation.progress_ref != f".milburn/issues/{lease.issue_number}/progress.txt"
+            or expectation.rules_digest != assignment.attempt.rules_digest):
             raise CoderStartupError("handoff expectation does not match assignment")
         inspection = self._worktrees.inspect(lease)
         if not inspection.matched or inspection.head_sha != expectation.head_sha:
             raise CoderStartupError("handoff head does not match observed worktree")
         self._handoffs.validate(manifest, expectation)
-        self._worktrees.resume(assignment.lease, prior_process)
-        return self.prepare(assignment)
+        brief = self._prepare(assignment, allow_dirty=True, manifest=manifest)
+        resumed = self._worktrees.resume(assignment.lease, prior_process)
+        if resumed.head_sha != expectation.head_sha:
+            raise CoderStartupError("worktree changed during replacement validation")
+        return brief
