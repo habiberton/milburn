@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import re
 from typing import Mapping
+from types import MappingProxyType
 
 from milburn.domain import CommandEnvelope, CommandType, IssueDraft, IssueState
 from milburn.domain.policies import ensure_command_allowed
@@ -33,6 +34,11 @@ _APPROVED_STATES = {
 class LabelConfig:
     task: str
     states: Mapping[IssueState, str]
+
+    def __post_init__(self) -> None:
+        if self.task != "milburn:task" or not isinstance(self.states, Mapping) or dict(self.states) != _APPROVED_STATES:
+            raise ValueError("label config differs from the approved Milburn mapping")
+        object.__setattr__(self, "states", MappingProxyType(dict(self.states)))
 
     @classmethod
     def load(cls, path: Path) -> LabelConfig:
@@ -108,12 +114,21 @@ class IssueRegistry:
         other_lifecycle = set(issue.labels) & self._labels.lifecycle_labels
         if issue.labels and (other_lifecycle or set(issue.labels) - {self._labels.task}):
             raise ValueError("existing issue has a different lifecycle label")
-        return self._gateway.set_labels(SetLabelsCommand(
+        labeled = self._gateway.set_labels(SetLabelsCommand(
             effect_id=_effect_id(marker, "initial-labels"),
             idempotency_marker=f"{marker}:initial-labels",
             fence=fence, repository_id=self._repository, issue_number=issue.number,
             labels=expected,
         ))
+        if labeled.state != "open":
+            self._gateway.set_labels(SetLabelsCommand(
+                effect_id=_effect_id(marker, "closed-labels"),
+                idempotency_marker=f"{marker}:closed-labels",
+                fence=fence, repository_id=self._repository, issue_number=issue.number,
+                labels=self._labels.labels_for(IssueState.DONE),
+            ))
+            raise ValueError("closed issue cannot be returned as ready")
+        return labeled
 
 
 def _effect_id(marker: str, operation: str) -> str:

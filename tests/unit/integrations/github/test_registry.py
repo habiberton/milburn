@@ -139,6 +139,28 @@ def test_label_config_rejects_renamed_approved_labels(tmp_path):
         LabelConfig.load(path)
 
 
+def test_label_config_constructor_cannot_bypass_approved_mapping():
+    with pytest.raises(ValueError):
+        LabelConfig("milburn:task", {state: "milburn:ready" for state in IssueState})
+
+
+def test_close_during_labeling_is_reconciled_to_done_not_returned_ready():
+    service, server = registry()
+    closed = False
+
+    def close_before_update(tool, arguments):
+        nonlocal closed
+        if tool == UPDATE_ISSUE and not closed:
+            server.issues[1]["state"] = "closed"
+            closed = True
+
+    server.client.set_before_call(close_before_update)
+    with pytest.raises(ValueError, match="closed"):
+        service.create(command(), draft(), FENCE, {})
+    assert server.issues[1]["state"] == "closed"
+    assert server.issues[1]["labels"] == ["milburn:task", "milburn:done"]
+
+
 def test_timeout_after_create_reconciles_without_duplicate():
     service, server = registry()
     server.client.script(CREATE_ISSUE, ScriptedOutcome.TIMEOUT_AFTER)
