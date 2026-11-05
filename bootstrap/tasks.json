@@ -945,7 +945,12 @@
       "required_tests": [
         "scripts/run-tests.sh tests/unit/orchestration/test_coder.py tests/unit/validation/test_coder_protocol.py tests/integration/workflows/test_coder_attempt.py tests/recovery/test_coder_resume.py -q",
         "scripts/smoke-test.sh"
-      ]
+      ],
+      "pull_request": {
+        "number": 63,
+        "url": "https://github.com/habiberton/milburn/pull/63",
+        "merge_commit_sha": null
+      }
     },
     {
       "id": "MB-014",
