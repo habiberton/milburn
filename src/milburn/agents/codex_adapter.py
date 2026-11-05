@@ -156,13 +156,15 @@ class LaunchRequest:
                 or os.path.normpath(directory) != directory
             ):
                 raise ValueError("writable_dirs must be absolute normalized paths")
-            home = Path.home()
-            if directory == "/" or home == Path(directory) or home.is_relative_to(directory):
+            # Resolve symlinks so an alias cannot slip past the checks below.
+            home = Path.home().resolve()
+            resolved = Path(directory).resolve()
+            if resolved == Path("/") or home == resolved or home.is_relative_to(resolved):
                 raise ValueError(
                     "writable_dirs must not contain the home directory (that is full access)"
                 )
             milburn_home = home / ".milburn"
-            if Path(directory) == milburn_home or Path(directory).is_relative_to(milburn_home):
+            if resolved == milburn_home or resolved.is_relative_to(milburn_home):
                 raise ValueError(
                     "writable_dirs must not include ~/.milburn (event store and schemas)"
                 )

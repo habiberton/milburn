@@ -206,3 +206,11 @@ def test_tampered_schema_file_is_rewritten_before_use(tmp_path: Path) -> None:
     fake.launch(request())
     assert path.read_text() == original
     assert (schema_dir.stat().st_mode & 0o777) == 0o700
+
+
+def test_a_symlink_to_the_event_store_is_refused(tmp_path: Path) -> None:
+    target = Path.home() / ".milburn"
+    link = tmp_path / "alias"
+    link.symlink_to(target, target_is_directory=True)
+    with pytest.raises(ValueError, match=r"\.milburn"):
+        replace(request(), writable_dirs=(str(link),))
