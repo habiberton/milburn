@@ -304,7 +304,9 @@ Replacement may follow repeated observable compaction, durable evidence of
 degraded or contradictory context, unrecoverable failure, an explicit
 independence requirement, or a completed semantic boundary. It first validates
 Git, progress, tests, decisions, acknowledgements, handoff freshness, and every
-uncertain external effect. Token telemetry may compare continuation and
+uncertain external effect. A configured context-use percentage or absolute ceiling
+is an additional trigger; it applies only at a quiescent point after the same
+validation and is never the sole safety signal. Token telemetry may compare continuation and
 replacement, but it never restores budget policy or becomes the sole safety
 signal.
 
@@ -336,6 +338,38 @@ remote merge revision, and resumes dispatch only when local and remote state
 agree. Stable amendment/effect IDs and expected-version writes make retry and
 replay idempotent. Restart restores both pending amendments and the dispatch
 freeze rather than applying or dropping them implicitly.
+
+### 5.17 Context, rework, and workspace policies
+
+These policies implement PRD sections 12.4 to 12.7. They add no new authority;
+they are controller policy over existing components.
+
+| Policy | Component | Task |
+|---|---|---|
+| Launch brief generation, source digest, size budget, start-size observation, bounded state digest | Session lifecycle (5.14) with the Codex observation boundary (6.2) | MB-019 |
+| Context-use replacement trigger | `SessionReplacementPolicy` (5.14) | MB-019 |
+| Convergence and escalation policy | Tester coordinator (5.12) over `DefectFeedbackService` (5.15) | MB-014 |
+| Recurrence detection, user-accepted known limitation, bounded lessons in briefs | `DefectFeedbackService` (5.15) | MB-021 |
+| Shared test environment and bounded command runner | Workspace (3.5) and runtime | MB-013, MB-014 |
+| Read-only reconcile report, usage report | Supervisor (5.13) and operator CLI | MB-015, MB-016 |
+
+Design rules:
+
+- The convergence policy is a pure function over recorded rounds (finding
+  identity, category, location, severity, round), so replay is deterministic.
+- A context-use threshold is an input to replacement. The validation in 5.14 stays
+  the safety gate, and unsupported observations never trigger it.
+- Events record durable log references for command output, not the output.
+- Environment preparation takes a lock, is idempotent, and leaves no partial
+  environment after a failed install.
+- Reconcile reads projections and external state and performs no writes; an
+  unreachable source yields `unknown`.
+- Only a recorded user decision creates an accepted known limitation.
+
+Required tests: pure-policy unit tests for each escalation rule with negative
+cases; stale and over-budget brief rejection; a threshold trigger ignored without
+a quiescent point or on an unsupported observation; concurrent first-time
+environment preparation; reconcile reporting `unknown` and performing no writes.
 
 ## 6. Codex adapter
 

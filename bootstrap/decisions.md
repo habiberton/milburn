@@ -68,3 +68,28 @@ root records it and asks the user again before another fix round.
 
 The user confirmed that `gpt-6-sol` is the reviewer model ID. A reviewer spawn
 that cannot use it still fails closed.
+
+## 2026-11-04 — Single-agent build replaces the coordinator model
+
+The remaining core product tasks (MB-010 to MB-016, MB-019, MB-021) are built by
+one agent following `bootstrap/SINGLE_AGENT.md`. The coordinator, worker
+worktrees and identities, commit trailers, plan-amendment freeze, root rotation,
+and the AMEND-003 tooling are suspended. The agent reviews its own work with a
+mechanical checklist and a convergence limit, because the user chose not to use
+independent review for this build. Commits made directly by the agent do not
+carry worker trailers, so `scripts/verify-candidate-commits.py` does not apply to
+them.
+
+## 2026-11-04 — MB-009 accepted with one known limitation
+
+The user accepted MB-009 candidate `e8d6c3c`. Eight of its nine recorded findings
+are resolved. The F006 residual (latest-attempt authority held only in memory) is
+recorded `separately-scoped` and linked to issue #55; MB-015 resolves it.
+
+## 2026-11-04 — Process tooling parked; lessons moved into the product
+
+MB-024 to MB-029 are `parked`. MB-025's candidate is preserved on its branch;
+MB-023 shipped. The lessons they encoded are now Milburn requirements: PRD
+sections 12.4 to 12.7, acceptance criteria 27 to 31, ARCH 5.17, and added
+acceptance criteria on MB-013, MB-014, MB-015, MB-016, MB-019, and MB-021.
+v1 stays Codex-only; multi-harness lessons are recorded under deferred work.

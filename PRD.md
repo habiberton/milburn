@@ -323,6 +323,10 @@ scoped defect becomes a linked GitHub issue through controller policy.
 Feedback is concise evidence, not model memory. It contains no transcript,
 prompt, chain-of-thought, secret, or unbounded command log.
 
+Recurring lessons are bounded and may be included, as short references, in the
+launch briefs of later attempts that touch the same area, so a lesson learned
+once is not rediscovered by every attempt.
+
 ## 12. Durable events
 
 ```text
@@ -406,6 +410,76 @@ the dispatch freeze. Dispatch resumes only after the approved amendment is
 committed, remotely merged, and reconciled; no amendment is silently applied or
 dropped.
 
+### 12.4 Context discipline
+
+Milburn manages context size as an operating cost in the controller instead of
+leaving agents to notice it late.
+
+- **Fresh launches.** Every agent attempt and replacement session starts from a
+  controller-generated launch brief and, for a replacement, a validated handoff
+  manifest. No launch inherits a parent's or predecessor's conversation history.
+- **Bounded briefs.** A brief contains task identity, acceptance criteria, exact
+  commands, role rules, and pointers with line ranges to the specification
+  sections that apply. It embeds a digest of its sources, is rejected as stale
+  when a source changes, and fails closed above a configured size budget rather
+  than being silently truncated.
+- **Observed start size.** Milburn records each launch's first observed input size
+  when Codex reports it, so excess startup context is visible per role and task.
+- **Proactive replacement.** When observed context use reaches a configured
+  percentage of the model's reported window, or a configured absolute ceiling,
+  whichever comes first, the controller may replace the session, but only at a
+  quiescent point (no half-complete decision, no uncertain external effect,
+  planning state committed) and only from a validated checkpoint. These
+  thresholds are operational triggers, not budgets: they carry no price, never
+  block work by themselves, and unsupported observations never trigger them.
+- **Resumable controller state.** After restart the Coordinator resumes from a
+  bounded state digest of open decisions, unread notifications, active attempts,
+  ready tasks, and blockers, not by replaying history.
+
+### 12.5 Bounded rework and escalation
+
+Failed QA returns work to the Coder, but rework must converge. For each task the
+controller records every QA round's blocking findings, each with a stable
+identity, a category, and a location. Automatic rework continues only while the
+work converges, and the controller escalates to a user decision through the
+Coordinator when any of these holds:
+
+1. a finding recurs, matching an earlier finding recorded as resolved by category
+   and location;
+2. a round reports no fewer blocking findings than the most recent earlier round
+   that had findings;
+3. a round introduces a new blocking finding in code the previous fix touched; or
+4. a configured maximum number of fix rounds is reached.
+
+Escalation pauses only that task. Only a recorded user decision may accept a
+blocking defect as a known limitation. The acceptance records the user's
+authority, keeps the defect open as deferred (never represented as fixed), and
+links a follow-up issue. A Coder, Tester, Router, or the Coordinator cannot accept
+a blocking defect.
+
+### 12.6 Workspace environment and bounded command output
+
+Agents do not each build their own test environment. Milburn prepares or verifies
+one shared dependency environment per repository, keyed to its dependency
+declaration and kept outside agent worktrees, and exposes a single test-runner
+entry point that uses it with the current worktree's source on the path.
+Preparation is idempotent, safe when several agents start at once, and fails with
+a clear message when it cannot complete.
+
+Commands run on behalf of agents and the Tester return a bounded summary
+(command, result, duration, and a durable log reference) plus the failing excerpt
+on failure. Full output is kept as a log and is not placed into agent context by
+default.
+
+### 12.7 Operator reports and reconciliation
+
+The operator CLI provides a read-only reconcile report comparing the event store,
+GitHub issues, worktrees, tmux endpoints, and progress records. It lists
+mismatches and the dependency-ready work, reports unknown, never success, when a
+source is unreachable, and never changes state. It also provides a usage report
+by role, task, model, and attempt that includes launch context size and
+compaction counts, derived only from recorded telemetry.
+
 ## 13. Requirements
 
 ### 13.1 Skill requirements
@@ -435,6 +509,8 @@ The skill suite must include:
 - Architect PRD, architecture, ambiguity, lifecycle-design, and issue-decomposition procedures.
 - Long-running Coder startup, checkpoint, progress, recovery, and completion procedures.
 - Tester acceptance mapping, end-to-end testing, evidence, and defect-classification procedures.
+- Generic boundary questions shared by the Coder and Tester skills: what could pass this check while the real condition is false; whether every field and variant of an accepted input is validated or explicitly ignored; whether any entry point can bypass a guard; whether identifiers are unique across the scope where they are used; whether preconditions precede every state change and every failure path leaves state consistent; and whether a test double enforces the same preconditions as the real boundary.
+- Negative tests before the happy path for validators and adapters, parity tests for every fake, exhaustive enumeration of a defect class on the first pass, and blast-radius re-testing of fixes before one full confirmation pass.
 
 ### 13.2 Testing and evaluation requirements
 
@@ -499,6 +575,11 @@ Version 1 is accepted when:
 24. Role-specific policy keeps a Coder session for its task attempt by default, ends Planner and Architect at approved artifacts, uses fresh Router calls, and starts every Tester fresh at the exact candidate SHA.
 25. Blocking defects prevent completion until resolved with regression evidence; replay and duplicate delivery produce deterministic concise feedback views, while separately scoped defects become linked issues.
 26. A mid-run user amendment freezes new launches, preserves unaffected active attempts, applies exactly once at an expected revision, survives restart, and exposes its authority, impact, effective revision, and dispatch status.
+27. Every agent launch and replacement starts from a controller-generated brief with a source digest; stale or over-budget briefs are rejected; no launch inherits a transcript; and the launch's observed start size is recorded when reported.
+28. A configured context-use percentage or absolute ceiling triggers replacement only at a quiescent point from a validated checkpoint; unsupported observations never trigger it.
+29. Rework escalates to a user decision when a finding recurs, a round does not reduce blocking findings, a fix introduces a new blocking finding in touched code, or the maximum number of fix rounds is reached; only a recorded user decision accepts a blocking defect, which stays open as deferred with a linked follow-up issue.
+30. Agents and the Tester run tests through one shared, idempotent environment and a bounded command runner that returns summaries with durable log references.
+31. The operator CLI produces a read-only reconcile report (unknown when a source is unreachable) and a usage report that includes launch context size and compaction counts.
 
 ## 16. Delivery milestones
 
@@ -511,3 +592,13 @@ Version 1 is accepted when:
 ## 17. Deferred work
 
 Later releases may add multiple harnesses, model selection, usage pricing, budgets, cost ceilings, reservations, spend-based routing, remote runtimes, parallel Coders, pull-request automation, a richer dashboard, and stronger sandboxing. These are intentional future extensions.
+
+Lessons from building Milburn with an agent-coordinated process shape those
+extensions. When more harnesses are supported, role assignment becomes a
+configured table of harness, model, and effort per role; an unavailable
+assignment fails closed with a logged reason and never falls back silently;
+reviewing and testing agents use a different model or harness than the author
+where available; and each attempt records its harness and model. Plan amendments
+may also narrow the dispatch freeze to the affected work, drop independent
+review of the amendment record, and derive effectiveness from version-control
+history instead of a second reconciliation record.

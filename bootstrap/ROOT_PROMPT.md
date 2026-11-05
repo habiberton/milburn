@@ -1,5 +1,9 @@
 # First root-agent prompt
 
+> **Suspended.** The coordinator model is not in use. Core tasks are built by a
+> single agent; see `bootstrap/SINGLE_AGENT.md`. This prompt is kept for resuming
+> the coordinator model later.
+
 Copy the prompt below into the first Codex task launched from the primary
 Milburn checkout. No separate architecture-review prompt is needed.
 
