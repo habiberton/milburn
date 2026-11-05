@@ -18,6 +18,7 @@ class EventType(StrEnum):
     USER_MESSAGE_RECEIVED = "UserMessageReceived"
     DECISION_REQUESTED = "DecisionRequested"
     COORDINATOR_NOTIFICATION_QUEUED = "CoordinatorNotificationQueued"
+    COORDINATOR_NOTIFICATION_READ = "CoordinatorNotificationRead"
     DECISION_PRESENTED = "DecisionPresented"
     USER_DECISION_RECEIVED = "UserDecisionReceived"
     DECISION_ANSWER_VALIDATED = "DecisionAnswerValidated"
