@@ -723,8 +723,8 @@
         "issue_url": "https://github.com/habiberton/milburn/issues/9",
         "status_source": "github",
         "assignment_source": "github",
-        "last_observed_state": "open",
-        "last_observed_status_label": "milburn:decision-needed",
+        "last_observed_state": "closed",
+        "last_observed_status_label": "milburn:done",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-004", "MB-020", "MB-022"],
@@ -757,29 +757,29 @@
       "pull_request": {
         "number": 56,
         "url": "https://github.com/habiberton/milburn/pull/56",
-        "merge_commit_sha": null
+        "merge_commit_sha": "30a6ea66491af0c9941f3b5b3770d2bbf8d418fc"
       }
     },
     {
       "id": "MB-010",
       "wave": 3,
       "title": "Implement the persistent Coordinator session, notifications, and user decisions",
-      "status": "blocked",
+      "status": "in_progress",
       "github": {
         "issue_number": 10,
         "issue_url": "https://github.com/habiberton/milburn/issues/10",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:blocked",
+        "last_observed_status_label": "milburn:in-progress",
         "last_observed_assignees": []
       },
       "dependencies": ["MB-005", "MB-006", "MB-007", "MB-017", "MB-018"],
       "parallel_group": "wave-3-coordination",
       "owner": null,
-      "branch": null,
+      "branch": "product/MB-010-coordinator-session",
       "worktree": null,
-      "base_sha": null,
+      "base_sha": "fb02fbc10376fbf583b87414672621d8ddeb73a4",
       "candidate_sha": null,
       "progress_path": "bootstrap/progress/tasks/MB-010.md",
       "owned_paths": [
