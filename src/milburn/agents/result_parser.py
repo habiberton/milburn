@@ -182,12 +182,14 @@ class AgentResultParser:
 
         if not turn_completed:
             raise ResultDecodingError("Codex JSONL has no turn.completed event")
-        if len(final_messages) != 1:
+        if not final_messages:
             raise ResultDecodingError(
-                "Codex JSONL must contain exactly one completed agent_message; "
-                f"received {len(final_messages)}"
+                "Codex JSONL must contain at least one completed agent_message"
             )
-        return self.parse(final_messages[0], expected)
+        # Codex emits progress commentary as earlier agent messages. Only the
+        # last completed message of the turn is the result; an earlier message
+        # is never used as a fallback, even when it is valid JSON.
+        return self.parse(final_messages[-1], expected)
 
     def parse(
         self, document: str | bytes | bytearray, expected: ResultExpectation

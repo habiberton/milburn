@@ -208,7 +208,7 @@ def test_deterministic_fake_scripts_missing_and_malformed_results() -> None:
     assert missing.process_exit is not None
     assert missing.process_exit.stderr == "crashed"
     assert missing.task_result is None
-    assert "exactly one completed agent_message" in (missing.protocol_error or "")
+    assert "at least one completed agent_message" in (missing.protocol_error or "")
     assert malformed.process_exit is not None
     assert malformed.task_result is None
     assert "not valid JSON" in (malformed.protocol_error or "")
@@ -243,3 +243,47 @@ def test_launch_rejects_result_type_not_allowed_for_role_before_runtime_effect()
         fake.launch(invalid)
 
     assert fake.runtime.launches == []
+
+
+def test_unknown_or_full_access_sandbox_is_rejected_before_launch() -> None:
+    from dataclasses import replace
+
+    for mode in ("danger-full-access", "", "READ-ONLY"):
+        with pytest.raises(ValueError, match="sandbox"):
+            replace(request(), sandbox=mode)
+
+
+def test_explicit_sandbox_is_passed_to_codex_exec() -> None:
+    from dataclasses import replace
+
+    adapter = FakeCodexAdapter((ScriptedCodexRun(result_document()),))
+    adapter.launch(replace(request(), sandbox="workspace-write"))
+
+    assert adapter.runtime.launches[0].command == (
+        "fake-codex", "exec", "--json", "--sandbox", "workspace-write", "-"
+    )
+
+
+def test_writable_dirs_need_workspace_write_and_absolute_paths() -> None:
+    from dataclasses import replace
+
+    with pytest.raises(ValueError, match="workspace-write"):
+        replace(request(), sandbox="read-only", writable_dirs=("/repo/.git",))
+    with pytest.raises(ValueError, match="workspace-write"):
+        replace(request(), writable_dirs=("/repo/.git",))
+    for bad in ("relative/.git", "/repo/../etc", "/repo\n--x"):
+        with pytest.raises(ValueError, match="absolute"):
+            replace(request(), sandbox="workspace-write", writable_dirs=(bad,))
+
+
+def test_writable_dirs_are_passed_as_add_dir() -> None:
+    from dataclasses import replace
+
+    adapter = FakeCodexAdapter((ScriptedCodexRun(result_document()),))
+    adapter.launch(replace(request(), sandbox="workspace-write",
+                           writable_dirs=("/repo/.git",)))
+
+    assert adapter.runtime.launches[0].command == (
+        "fake-codex", "exec", "--json", "--sandbox", "workspace-write",
+        "--add-dir", "/repo/.git", "-",
+    )
