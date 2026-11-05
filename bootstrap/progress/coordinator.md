@@ -2,16 +2,27 @@
 
 ## Current wave
 
-Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
+Wave 2 (independent boundaries). MB-009 is the only original Wave 2 task not
+done. Seven process-tooling tasks (MB-023 to MB-029) were registered in Wave 2
+under AMEND-003 and are `blocked` until their GitHub issues exist. Whether they
+gate Wave 3 is an open user decision (see Blockers).
 
 ## Repository state
 
-- Integration branch: `main`
-- Bootstrap baseline: `3d363238b2b1654860beca31c64ba185d37e2928`
-- Active workers: none
-- Pending candidates: MB-020 candidate
-  `cde56a19d7a9009c840c0bcde964d35369c0f790`; accepted MB-006 candidate
-  `38b28545a6fb409d62fa1145e083109df649d308` is entering integration
+- Integration branch: `main`; AMEND-003 is effective and reconciled (PRs #36 to
+  #39 merged with merge commits).
+- Done: MB-001 to MB-008, MB-017, MB-018, MB-020, MB-022.
+- Pending candidate: MB-009 `354a18a40694e6afe50b8f2e64d1329d00e6f467` on
+  `bootstrap/builder/MB-009/a01-worktree-manager`; issue #9 is
+  `milburn:in-progress`; both review axes must restart on that exact SHA.
+- Active workers: none recorded as running. The previous root session's last
+  turn ended after its MB-009 reviewers returned; worktrees and branches
+  remain. Confirm no stray processes before dispatching.
+- Worktrees: 13 under `../milburn-worktrees/`, for MB-001 to MB-009, MB-017,
+  MB-018, MB-020, and MB-022. Keep MB-009's; the others are integrated.
+- Recorded `blocked` but with every dependency done: MB-010 and MB-011.
+  Reconcile their GitHub labels before dispatching.
+- New tasks MB-023 to MB-029 have no GitHub issue yet.
 
 ## Completed
 
@@ -894,22 +905,42 @@ Wave 1 feedback gate plus grandfathered active `MB-005` and `MB-006`
 
 ## Current verification
 
-- Candidate attribution: 10 builder commits verified from exact base
-  `0b6613d8199c70d6d43d8e3acfb7cdf79a39243a` through `491f59e`.
-- Integrated amendment preflight: 2 checked-in records valid and clear.
-- Required MB-022 suite: 42 passed, 3 subtests passed.
-- Integrated smoke: 22 task records, 8 feedback briefs, and 2 amendment records
-  valid; 285 product tests passed with 3 protected skips and 3 subtests.
-- Final integrated Specification and Standards review found only this stale
-  coordinator-tail handoff; the current verification and resume sections now
-  replace it. Both axes must confirm the correction before PR publication.
-- `git diff --check`: passed.
+- `scripts/smoke-test.sh` with the shared test environment: 29 tasks valid, 12
+  feedback briefs valid, 3 amendment records valid, 414 passed, 3 skipped, 3
+  subtests passed.
+- `python3 bootstrap/amendments/validate.py --preflight` is clear on `main`.
+- Test commands for tasks that are not done now use `scripts/run-tests.sh`;
+  `scripts/dev-env.sh` creates the shared environment on first use and needs
+  network access once.
+- No independent review has run on the AMEND-003 specification edits.
 
 ## Blockers
 
-None recorded. The user authorized the protected-branch PR workflow.
+Decisions needed from the user before the affected paths can proceed:
+
+1. Authorize creating GitHub issues for MB-023 to MB-029 (outward-facing).
+2. Confirm whether the process-tooling tasks gate Wave 3, or run as a parallel
+   track that does not block it. Wave rules otherwise hold Wave 3 until Wave 2
+   completes, and MB-029 also waits on decision 4.
+3. MB-009 has been through repeated fix rounds (latest finding F005). AMEND-003
+   classes it as unaffected and finishing under the manual procedure, but its
+   convergence backstop of three fix rounds would already be exceeded. Decide
+   whether to continue or escalate.
+4. Launcher sandbox and approval settings for `scripts/run-root.sh` (MB-029).
+5. Confirm that `gpt-6-sol` is a valid reviewer model ID in this environment.
+   The reviewer spawn fails closed if it is not.
 
 ## Resume here
 
-Commit the Wave 2 readiness reconciliation, prepare isolated MB-017/a01 and
-MB-007/a01 worktrees, and dispatch only those two non-overlapping workers.
+1. Run the startup procedure. `scripts/reconcile.sh` does not exist yet, so
+   reconcile by hand against `bootstrap/tasks.json` and GitHub.
+2. Resolve decisions 1 to 3 above with the user.
+3. Finish MB-009 review on `354a18a` (or escalate per decision 3). Reviewers use
+   `gpt-6-sol` with `fork_turns: none`.
+4. After the issues exist: set MB-023, MB-024, and MB-025 ready (no
+   dependencies); then MB-026 and MB-027 after MB-025; MB-028 after MB-023 and
+   MB-025, run alone because it merges and pushes; MB-029 after MB-025 to
+   MB-027 and decision 4. Use at most two workers at first.
+5. Reconcile MB-010 and MB-011 (dependencies done, recorded blocked).
+6. As each tooling script lands, update the matching "once it exists" rules in
+   `AGENTS.md` and `bootstrap/ROOT_PROMPT.md`.

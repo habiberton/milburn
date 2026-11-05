@@ -220,6 +220,11 @@ These rules take effect immediately unless a sentence says otherwise.
      before the change, and does every failure path leave state consistent?
   6. For a fake or test double: does it enforce the same preconditions and
      terminal states as the real implementation?
+- Run tests with `scripts/run-tests.sh [pytest arguments]` (it uses the shared
+  environment from `scripts/dev-env.sh` and puts the checkout's `src/` on
+  `PYTHONPATH`). Do not create your own virtualenv, install packages, or set
+  `PYTHONPATH` by hand. `scripts/smoke-test.sh` does the same. A worktree created
+  before these scripts existed can run them from the primary checkout.
 - Acceptance criteria for any validator or adapter must require negative tests,
   written before the happy path. Any fake adapter must ship with fake/live
   parity tests covering every lifecycle operation and terminal state of the live

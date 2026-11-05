@@ -748,7 +748,7 @@
         "Ordinary tests do not modify the user's real repository."
       ],
       "required_tests": [
-        "python3 -m pytest tests/unit/runtime/test_worktrees.py -q",
+        "scripts/run-tests.sh tests/unit/runtime/test_worktrees.py -q",
         "scripts/smoke-test.sh"
       ]
     },
@@ -789,7 +789,7 @@
         "Scripted integration tests cover unavailable Coordinator and ambiguous user responses."
       ],
       "required_tests": [
-        "python3 -m pytest tests/unit/orchestration/test_coordinator.py tests/unit/orchestration/test_notifications.py tests/integration/workflows/test_user_decision.py -q",
+        "scripts/run-tests.sh tests/unit/orchestration/test_coordinator.py tests/unit/orchestration/test_notifications.py tests/integration/workflows/test_user_decision.py -q",
         "scripts/smoke-test.sh"
       ]
     },
@@ -834,7 +834,7 @@
         "Malformed, unknown-version, and unauthorized role results fail deterministically."
       ],
       "required_tests": [
-        "python3 -m pytest tests/unit/orchestration/test_planning.py tests/unit/orchestration/test_routing.py tests/unit/orchestration/test_architecture.py -q",
+        "scripts/run-tests.sh tests/unit/orchestration/test_planning.py tests/unit/orchestration/test_routing.py tests/unit/orchestration/test_architecture.py -q",
         "scripts/smoke-test.sh"
       ]
     },
@@ -876,7 +876,7 @@
         "Scripted integration tests use a local fake MCP server and no network."
       ],
       "required_tests": [
-        "python3 -m pytest tests/unit/integrations/github/test_registry.py tests/unit/validation/test_issue_contracts.py tests/integration/workflows/test_issue_creation.py -q",
+        "scripts/run-tests.sh tests/unit/integrations/github/test_registry.py tests/unit/validation/test_issue_contracts.py tests/integration/workflows/test_issue_creation.py -q",
         "scripts/smoke-test.sh"
       ]
     },
@@ -918,7 +918,7 @@
         "The Coder cannot close, approve, or mark its own issue done."
       ],
       "required_tests": [
-        "python3 -m pytest tests/unit/orchestration/test_coder.py tests/unit/validation/test_coder_protocol.py tests/integration/workflows/test_coder_attempt.py tests/recovery/test_coder_resume.py -q",
+        "scripts/run-tests.sh tests/unit/orchestration/test_coder.py tests/unit/validation/test_coder_protocol.py tests/integration/workflows/test_coder_attempt.py tests/recovery/test_coder_resume.py -q",
         "scripts/smoke-test.sh"
       ]
     },
@@ -959,7 +959,7 @@
         "Only controller policy marks work done after passing independent evidence."
       ],
       "required_tests": [
-        "python3 -m pytest tests/unit/orchestration/test_testing.py tests/unit/validation/test_qa_policy.py tests/integration/workflows/test_qa_cycle.py -q",
+        "scripts/run-tests.sh tests/unit/orchestration/test_testing.py tests/unit/validation/test_qa_policy.py tests/integration/workflows/test_qa_cycle.py -q",
         "scripts/smoke-test.sh"
       ]
     },
@@ -1012,7 +1012,7 @@
         "Fixtures and tests cover discovery, correction, re-review, duplicate delivery, restart replay, unresolved blocking defects, and separately scoped follow-up issues."
       ],
       "required_tests": [
-        "python3 -m pytest tests/unit/domain/test_defects.py tests/unit/orchestration/test_feedback.py tests/unit/persistence/test_defect_projections.py tests/unit/validation/test_defect_policy.py tests/integration/workflows/test_defect_feedback.py tests/recovery/test_defect_replay.py -q",
+        "scripts/run-tests.sh tests/unit/domain/test_defects.py tests/unit/orchestration/test_feedback.py tests/unit/persistence/test_defect_projections.py tests/unit/validation/test_defect_policy.py tests/integration/workflows/test_defect_feedback.py tests/recovery/test_defect_replay.py -q",
         "scripts/smoke-test.sh"
       ]
     },
@@ -1063,7 +1063,7 @@
         "Final-response and stopping rules remain independent of session replacement; replacing a session is not task completion."
       ],
       "required_tests": [
-        "python3 -m pytest tests/unit/orchestration/test_session_policy.py tests/unit/orchestration/test_session_replacement.py tests/unit/validation/test_session_replacement.py tests/recovery/test_compaction_replacement.py tests/integration/workflows/test_session_rotation.py -q",
+        "scripts/run-tests.sh tests/unit/orchestration/test_session_policy.py tests/unit/orchestration/test_session_replacement.py tests/unit/validation/test_session_replacement.py tests/recovery/test_compaction_replacement.py tests/integration/workflows/test_session_rotation.py -q",
         "scripts/smoke-test.sh"
       ]
     },
@@ -1105,7 +1105,7 @@
         "Recovery procedures are documented for operators."
       ],
       "required_tests": [
-        "python3 -m pytest tests/unit/orchestration/test_supervisor.py tests/unit/orchestration/test_reconciliation.py tests/recovery -q",
+        "scripts/run-tests.sh tests/unit/orchestration/test_supervisor.py tests/unit/orchestration/test_reconciliation.py tests/recovery -q",
         "scripts/smoke-test.sh"
       ]
     },
@@ -1149,7 +1149,301 @@
         "Every acceptance criterion in PRD.md is linked to repeatable evidence or an explicitly protected live evaluation."
       ],
       "required_tests": [
-        "python3 -m pytest -q",
+        "scripts/run-tests.sh -q",
+        "scripts/smoke-test.sh"
+      ]
+    },
+    {
+      "id": "MB-023",
+      "wave": 2,
+      "title": "Add a quiet command runner for smoke, preflight, and validators",
+      "status": "blocked",
+      "github": {
+        "issue_number": null,
+        "issue_url": null,
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "not_created",
+        "last_observed_status_label": null,
+        "last_observed_assignees": []
+      },
+      "dependencies": [],
+      "parallel_group": "wave-2-process-tooling",
+      "owner": null,
+      "branch": null,
+      "worktree": null,
+      "base_sha": null,
+      "candidate_sha": null,
+      "progress_path": "bootstrap/progress/tasks/MB-023.md",
+      "owned_paths": [
+        "scripts/run-quiet.sh",
+        "tests/bootstrap/test_run_quiet.py"
+      ],
+      "acceptance_criteria": [
+        "scripts/run-quiet.sh <command...> runs the command, writes full stdout and stderr to a log file under ${MILBURN_LOG_DIR:-${TMPDIR:-/tmp}/milburn-logs}, and prints one line with the command, result, duration, and log path.",
+        "On a nonzero exit it prints the same line plus the last 40 log lines and exits with the command's exit code; on success it exits 0.",
+        "--verbose or MILBURN_VERBOSE=1 streams the command output unchanged.",
+        "An unwritable log directory, a missing command, and a nonexistent executable fail closed with a clear message and a nonzero exit; output is never silently discarded.",
+        "scripts/run-tests.sh and scripts/smoke-test.sh keep their current behavior and their tests keep passing.",
+        "Negative tests for every refusal and failure path are written before the happy path, and every check is exercised with an input that would pass a weaker check but must be rejected.",
+        "Behavior is tested through the public command-line interface; nothing in AGENTS.md, bootstrap/README.md, bootstrap/ROOT_PROMPT.md, bootstrap/tasks.json, or the coordinator progress file is modified."
+      ],
+      "required_tests": [
+        "scripts/run-tests.sh tests/bootstrap/test_run_quiet.py -q",
+        "scripts/smoke-test.sh"
+      ]
+    },
+    {
+      "id": "MB-024",
+      "wave": 2,
+      "title": "Add a token usage report over Codex rollout logs",
+      "status": "blocked",
+      "github": {
+        "issue_number": null,
+        "issue_url": null,
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "not_created",
+        "last_observed_status_label": null,
+        "last_observed_assignees": []
+      },
+      "dependencies": [],
+      "parallel_group": "wave-2-process-tooling",
+      "owner": null,
+      "branch": null,
+      "worktree": null,
+      "base_sha": null,
+      "candidate_sha": null,
+      "progress_path": "bootstrap/progress/tasks/MB-024.md",
+      "owned_paths": [
+        "scripts/token-report.py",
+        "tests/bootstrap/test_token_report.py",
+        "tests/fixtures/rollouts/"
+      ],
+      "acceptance_criteria": [
+        "scripts/token-report.py <file-or-directory...> reads Codex rollout JSONL files and reports input, cached input, output, and reasoning tokens per session, grouped by role, task, and model, with call counts, compaction counts, and spawn mode (fork_turns) where recorded.",
+        "Totals sum per-call usage records, not cumulative thread totals, so repeated cumulative fields are never double counted; the same session file supplied twice is counted once.",
+        "Role and task come from the subagent agent_path in session metadata; sessions without it are reported as root.",
+        "Output is a deterministic text table, and --json emits machine-readable output; the script only reads logs and never writes inside the repository.",
+        "Malformed lines, unknown record types, a truncated final line, and missing usage fields are counted and reported without crashing; they are never silently dropped.",
+        "Fixtures are small synthetic rollouts with no real transcripts, credentials, or personal data.",
+        "Negative tests for every refusal and failure path are written before the happy path, and every check is exercised with an input that would pass a weaker check but must be rejected.",
+        "Behavior is tested through the public command-line interface; nothing in AGENTS.md, bootstrap/README.md, bootstrap/ROOT_PROMPT.md, bootstrap/tasks.json, or the coordinator progress file is modified."
+      ],
+      "required_tests": [
+        "scripts/run-tests.sh tests/bootstrap/test_token_report.py -q",
+        "scripts/smoke-test.sh"
+      ]
+    },
+    {
+      "id": "MB-025",
+      "wave": 2,
+      "title": "Add the bootstrap configuration file and loader",
+      "status": "blocked",
+      "github": {
+        "issue_number": null,
+        "issue_url": null,
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "not_created",
+        "last_observed_status_label": null,
+        "last_observed_assignees": []
+      },
+      "dependencies": [],
+      "parallel_group": "wave-2-process-tooling",
+      "owner": null,
+      "branch": null,
+      "worktree": null,
+      "base_sha": null,
+      "candidate_sha": null,
+      "progress_path": "bootstrap/progress/tasks/MB-025.md",
+      "owned_paths": [
+        "bootstrap/config.json",
+        "scripts/milburn_config.py",
+        "tests/bootstrap/test_config.py"
+      ],
+      "acceptance_criteria": [
+        "bootstrap/config.json defines the model ID per role (root and builder gpt-5.6-sol, reviewer gpt-6-sol), reasoning effort (medium), rotation thresholds (context-window percentage 35, absolute token ceiling 100000, maximum rotations), and explicit launcher sandbox and approval fields whose values are null until the user sets them.",
+        "scripts/milburn_config.py validate exits nonzero for unknown keys, a missing role, an empty model ID, a non-positive threshold, or a percentage outside 1-100.",
+        "scripts/milburn_config.py get <dotted.key> prints one value, and fails with a clear message for an unknown key.",
+        "validate --for-launcher fails closed while either launcher permission field is null; the task does not choose those values.",
+        "The model IDs live only in this file, and the loader never falls back to another role's model.",
+        "Negative tests for every refusal and failure path are written before the happy path, and every check is exercised with an input that would pass a weaker check but must be rejected.",
+        "Behavior is tested through the public command-line interface; nothing in AGENTS.md, bootstrap/README.md, bootstrap/ROOT_PROMPT.md, bootstrap/tasks.json, or the coordinator progress file is modified."
+      ],
+      "required_tests": [
+        "scripts/run-tests.sh tests/bootstrap/test_config.py -q",
+        "scripts/smoke-test.sh"
+      ]
+    },
+    {
+      "id": "MB-026",
+      "wave": 2,
+      "title": "Generate worker and reviewer briefs and the root state digest",
+      "status": "blocked",
+      "github": {
+        "issue_number": null,
+        "issue_url": null,
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "not_created",
+        "last_observed_status_label": null,
+        "last_observed_assignees": []
+      },
+      "dependencies": ["MB-025"],
+      "parallel_group": "wave-2-process-tooling",
+      "owner": null,
+      "branch": null,
+      "worktree": null,
+      "base_sha": null,
+      "candidate_sha": null,
+      "progress_path": "bootstrap/progress/tasks/MB-026.md",
+      "owned_paths": [
+        "scripts/make-brief.py",
+        "bootstrap/briefs/",
+        "tests/bootstrap/test_make_brief.py",
+        "tests/fixtures/briefs/"
+      ],
+      "acceptance_criteria": [
+        "make-brief.py worker <task> <attempt> writes bootstrap/briefs/<task>-<attempt>.md with the task ID and title, attempt, worktree, branch, base SHA, owned and prohibited paths, Git identity, acceptance criteria, required tests, extracted excerpts of only the PRD and ARCH sections named in an optional spec_refs list on the task record, a short worker-rules block, the six boundary questions, and on resume a summary of the progress file.",
+        "When a task has no spec_refs the brief says so explicitly; a spec_refs entry that matches no heading fails closed instead of producing an empty excerpt.",
+        "make-brief.py reviewer <task> <attempt> <round> adds the base and candidate or integrated SHAs and the recorded review mode, and for a re-review the prior findings and the fix commit range.",
+        "make-brief.py state writes bootstrap/progress/state.md in at most 80 lines: current wave, preflight result, task status table, active workers with branch, worktree, and SHAs, dependency-ready tasks, blockers, and the resume action.",
+        "Every generated file embeds a digest of its sources, and make-brief.py check exits nonzero when any brief or state.md is stale; a brief over 16000 characters fails with a clear message.",
+        "make-brief.py migrate-history shows what would move from coordinator.md to bootstrap/progress/history/ and writes nothing without --apply; the coordinator, not the worker, runs --apply.",
+        "An unknown task or attempt fails closed.",
+        "Negative tests for every refusal and failure path are written before the happy path, and every check is exercised with an input that would pass a weaker check but must be rejected.",
+        "Behavior is tested through the public command-line interface; nothing in AGENTS.md, bootstrap/README.md, bootstrap/ROOT_PROMPT.md, bootstrap/tasks.json, or the coordinator progress file is modified."
+      ],
+      "required_tests": [
+        "scripts/run-tests.sh tests/bootstrap/test_make_brief.py -q",
+        "scripts/smoke-test.sh"
+      ]
+    },
+    {
+      "id": "MB-027",
+      "wave": 2,
+      "title": "Add the read-only reconcile command",
+      "status": "blocked",
+      "github": {
+        "issue_number": null,
+        "issue_url": null,
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "not_created",
+        "last_observed_status_label": null,
+        "last_observed_assignees": []
+      },
+      "dependencies": ["MB-025"],
+      "parallel_group": "wave-2-process-tooling",
+      "owner": null,
+      "branch": null,
+      "worktree": null,
+      "base_sha": null,
+      "candidate_sha": null,
+      "progress_path": "bootstrap/progress/tasks/MB-027.md",
+      "owned_paths": [
+        "scripts/reconcile.sh",
+        "scripts/reconcile.py",
+        "tests/bootstrap/test_reconcile.py",
+        "tests/fixtures/reconcile/"
+      ],
+      "acceptance_criteria": [
+        "scripts/reconcile.sh compares tasks.json with GitHub issue assignment and lifecycle labels, worktrees and branches, progress files, pending candidates, coordinator pull requests, local and remote Git state, and the amendment preflight, and prints pass or a list of mismatches plus the dependency-ready tasks; full detail goes to a log file.",
+        "The command is read-only: tests with a stubbed gh prove that it never edits files, labels, issues, branches, or pull requests and calls only read operations.",
+        "When GitHub is unreachable or rate limited the result is unknown and exits nonzero; it never reports a pass it could not check.",
+        "Mismatch cases covered: missing issue, label disagreeing with status, closed issue not done, branch without a worktree, worktree without a task, stale candidate SHA, dirty planning file, and local main ahead of or diverged from origin/main.",
+        "Tests use a stubbed gh and local repositories only; no network.",
+        "Negative tests for every refusal and failure path are written before the happy path, and every check is exercised with an input that would pass a weaker check but must be rejected.",
+        "Behavior is tested through the public command-line interface; nothing in AGENTS.md, bootstrap/README.md, bootstrap/ROOT_PROMPT.md, bootstrap/tasks.json, or the coordinator progress file is modified."
+      ],
+      "required_tests": [
+        "scripts/run-tests.sh tests/bootstrap/test_reconcile.py -q",
+        "scripts/smoke-test.sh"
+      ]
+    },
+    {
+      "id": "MB-028",
+      "wave": 2,
+      "title": "Add the scripted candidate integration command",
+      "status": "blocked",
+      "github": {
+        "issue_number": null,
+        "issue_url": null,
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "not_created",
+        "last_observed_status_label": null,
+        "last_observed_assignees": []
+      },
+      "dependencies": ["MB-023", "MB-025"],
+      "parallel_group": "wave-2-process-tooling",
+      "owner": null,
+      "branch": null,
+      "worktree": null,
+      "base_sha": null,
+      "candidate_sha": null,
+      "progress_path": "bootstrap/progress/tasks/MB-028.md",
+      "owned_paths": [
+        "scripts/integrate-candidate.sh",
+        "scripts/integrate_candidate.py",
+        "tests/bootstrap/test_integrate_candidate.py",
+        "tests/fixtures/integration/"
+      ],
+      "acceptance_criteria": [
+        "prepare <task> <attempt> <sha> runs the preflight, candidate and trailer verification, the owned-path check (violations are reported, never auto-approved), the task tests and smoke test, a non-squash merge into the ticket's integration branch, and one registry and progress commit under the configured coordinator identity; it refuses to run on a dirty primary checkout.",
+        "record-review stores the review mode, risk reason, verdict, and each finding (ID, boundary-question number, file and symbol, severity, round) and returns continue or escalate: escalate when a finding recurs, when a round has no fewer blocking findings than the last round that had findings, when a round adds a new blocking finding in code the last fix touched, or after three fix rounds.",
+        "land <task> <attempt> requires a recorded review verdict, passing feedback validation, an unchanged integration SHA, and passing tests; it pushes only the integration branch, builds the pull request body from the records, merges with a merge commit only, verifies origin/main contains the merge commit, fast-forwards the primary checkout, writes the final records in one commit, and applies labels.",
+        "status reports the current phase; every subcommand is idempotent and resumes correctly after an interruption, including after the push and before the merge.",
+        "The script never pushes to main, never overrides the configured Git identity, never commits when the preflight fails (it restores the files it touched), and refuses ambiguous states.",
+        "All tests run against throwaway local repositories, a local bare remote, and a stubbed gh; no network and no real GitHub.",
+        "Refusal cases covered first: squash or rebase merge attempted, push to main attempted, changed candidate SHA, missing review verdict, failing feedback validation, dirty checkout, and each escalation rule.",
+        "Negative tests for every refusal and failure path are written before the happy path, and every check is exercised with an input that would pass a weaker check but must be rejected.",
+        "Behavior is tested through the public command-line interface; nothing in AGENTS.md, bootstrap/README.md, bootstrap/ROOT_PROMPT.md, bootstrap/tasks.json, or the coordinator progress file is modified."
+      ],
+      "required_tests": [
+        "scripts/run-tests.sh tests/bootstrap/test_integrate_candidate.py -q",
+        "scripts/smoke-test.sh"
+      ]
+    },
+    {
+      "id": "MB-029",
+      "wave": 2,
+      "title": "Add the fresh-session root launcher",
+      "status": "blocked",
+      "github": {
+        "issue_number": null,
+        "issue_url": null,
+        "status_source": "github",
+        "assignment_source": "github",
+        "last_observed_state": "not_created",
+        "last_observed_status_label": null,
+        "last_observed_assignees": []
+      },
+      "dependencies": ["MB-025", "MB-026", "MB-027"],
+      "parallel_group": "wave-2-process-tooling",
+      "owner": null,
+      "branch": null,
+      "worktree": null,
+      "base_sha": null,
+      "candidate_sha": null,
+      "progress_path": "bootstrap/progress/tasks/MB-029.md",
+      "owned_paths": [
+        "scripts/run-root.sh",
+        "tests/bootstrap/test_run_root.py"
+      ],
+      "acceptance_criteria": [
+        "scripts/run-root.sh starts each root session as a fresh codex exec run with the prompt block from bootstrap/ROOT_PROMPT.md; it never uses codex exec resume for rotation and never passes --ephemeral.",
+        "After each run it reads state.md and the reconcile result: it relaunches fresh when rotation was requested, and stops on a recorded blocker, an escalation, no remaining authorized work, or the configured maximum number of rotations.",
+        "Sandbox and approval arguments come only from bootstrap/config.json; the launcher refuses to start while either is null.",
+        "After an abnormal termination it uses codex exec resume only for crash recovery and marks interrupted workers to restart as new generations from their briefs.",
+        "It checks that subagent tools are available in the first run and stops with a clear message if they are not.",
+        "Tests use a stub codex executable; the real Codex is never invoked.",
+        "Negative tests for every refusal and failure path are written before the happy path, and every check is exercised with an input that would pass a weaker check but must be rejected.",
+        "Behavior is tested through the public command-line interface; nothing in AGENTS.md, bootstrap/README.md, bootstrap/ROOT_PROMPT.md, bootstrap/tasks.json, or the coordinator progress file is modified."
+      ],
+      "required_tests": [
+        "scripts/run-tests.sh tests/bootstrap/test_run_root.py -q",
         "scripts/smoke-test.sh"
       ]
     }
