@@ -1023,6 +1023,12 @@ before changes. Dispatch has resumed under the narrow MB-023 exception.
   CLI output; F002 covers malformed UTF-8 escaping as a traceback. The same
   worker will add public CLI negative regressions and narrow corrections;
   corrected MB-025 escalates to fresh Specification and Standards passes.
+- Effective AMEND-004 preserved MB-023 candidate `915e9e9`. The coordinator
+  non-squash merged it as two-parent integration `eeda92f`, retaining the
+  worker commits and resolving only the task progress conflict. Integrated
+  verification passed 16 focused tests, smoke with 430 passed/3 protected
+  skips/3 subtests, feedback/amendment validators, and diff checks. Issue #41
+  is `milburn:qa`; the single evidence-bearing task PR remains.
 
 - `scripts/smoke-test.sh` with the shared test environment: 29 tasks valid, 12
   feedback briefs valid, 3 amendment records valid, 414 passed, 3 skipped, 3
