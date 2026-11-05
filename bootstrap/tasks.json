@@ -39,7 +39,8 @@
     "candidate",
     "integrated",
     "qa",
-    "done"
+    "done",
+    "parked"
   ],
   "waves": [
     {
@@ -716,14 +717,14 @@
       "id": "MB-009",
       "wave": 2,
       "title": "Implement the Git worktree manager and fake workspace manager",
-      "status": "candidate",
+      "status": "done",
       "github": {
         "issue_number": 9,
         "issue_url": "https://github.com/habiberton/milburn/issues/9",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_status_label": "milburn:decision-needed",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-004", "MB-020", "MB-022"],
@@ -750,7 +751,14 @@
       "required_tests": [
         "scripts/run-tests.sh tests/unit/runtime/test_worktrees.py -q",
         "scripts/smoke-test.sh"
-      ]
+      ],
+      "integration_branch": "bootstrap/coordinator/MB-009/a01-integration",
+      "integration_commit_sha": "9beff7971a3adf7d83408819df453d4b373d6077",
+      "pull_request": {
+        "number": 56,
+        "url": "https://github.com/habiberton/milburn/pull/56",
+        "merge_commit_sha": null
+      }
     },
     {
       "id": "MB-010",
@@ -915,7 +923,9 @@
         "Startup requires issue, progress, Git status, issue-specific history, current diff, and smoke-test reconciliation.",
         "Progress records and issue-marked commits are validated before accepting a candidate.",
         "A replacement Coder resumes from durable evidence without the previous transcript.",
-        "The Coder cannot close, approve, or mark its own issue done."
+        "The Coder cannot close, approve, or mark its own issue done.",
+        "The Coder skill and every Coder launch brief carry the six generic boundary questions (PRD 13.1); validators and adapters get negative tests before the happy path, and any fake adapter ships with fake/live parity tests.",
+        "Coder test commands run through the shared workspace test environment and bounded command runner (PRD 12.6): one idempotent, concurrency-safe environment per repository outside the worktrees, with the worktree's source on the path, returning a bounded summary with a durable log reference instead of raw output."
       ],
       "required_tests": [
         "scripts/run-tests.sh tests/unit/orchestration/test_coder.py tests/unit/validation/test_coder_protocol.py tests/integration/workflows/test_coder_attempt.py tests/recovery/test_coder_resume.py -q",
@@ -956,7 +966,10 @@
         "Validation runs in a clean checkout where practical and records commands and evidence.",
         "QA distinguishes product failure, infrastructure failure, and decisions needed.",
         "Failed QA returns the same issue to coding with evidence.",
-        "Only controller policy marks work done after passing independent evidence."
+        "Only controller policy marks work done after passing independent evidence.",
+        "QA rework is bounded by the convergence policy (PRD 12.5): a pure function over recorded rounds (finding identity, category, location, severity, round) that escalates to a user decision when a finding recurs, a round has no fewer blocking findings than the last round that had findings, a fix introduces a new blocking finding in code it touched, or the maximum fix rounds is reached; escalation pauses only that task.",
+        "The milburn-qa skill requires enumerating every occurrence of a defect class on the first pass and uses the same boundary questions; fixes are re-tested by blast radius before one full confirmation pass.",
+        "Tester commands return bounded summaries (command, result, duration, durable log reference) with the failing excerpt on failure, and run in the shared workspace test environment."
       ],
       "required_tests": [
         "scripts/run-tests.sh tests/unit/orchestration/test_testing.py tests/unit/validation/test_qa_policy.py tests/integration/workflows/test_qa_cycle.py -q",
@@ -1009,7 +1022,10 @@
         "Failed QA for the same task returns evidence to the Coder; separately scoped defects create linked GitHub issues through controller policy.",
         "Operator APIs/views can show concise defect briefs and links without exposing private transcripts, prompts, secrets, or raw reasoning.",
         "Feedback is evidence, not model memory: a replacement agent reads the concise projection and repository state rather than a previous transcript.",
-        "Fixtures and tests cover discovery, correction, re-review, duplicate delivery, restart replay, unresolved blocking defects, and separately scoped follow-up issues."
+        "Fixtures and tests cover discovery, correction, re-review, duplicate delivery, restart replay, unresolved blocking defects, and separately scoped follow-up issues.",
+        "A defect that matches an earlier resolved defect by category and location is recorded as recurring and counts toward rework escalation (PRD 12.5).",
+        "A user-accepted known limitation is a first-class decision: it records the user's authority, keeps the defect open as deferred (never fixed), links a follow-up issue, and can only be created from a recorded user decision, never by a Coder, Tester, Router, or Coordinator.",
+        "Recurring lessons are included, bounded and as short references, in the launch briefs of later attempts touching the same area."
       ],
       "required_tests": [
         "scripts/run-tests.sh tests/unit/domain/test_defects.py tests/unit/orchestration/test_feedback.py tests/unit/persistence/test_defect_projections.py tests/unit/validation/test_defect_policy.py tests/integration/workflows/test_defect_feedback.py tests/recovery/test_defect_replay.py -q",
@@ -1060,7 +1076,10 @@
         "Recovery never treats unknown as dead and never duplicates external effects.",
         "Usage telemetry compares continuation and replacement costs without making cache assumptions or using token cost as the sole safety decision.",
         "Operator evidence explains why a session continued, rotated, or was replaced.",
-        "Final-response and stopping rules remain independent of session replacement; replacing a session is not task completion."
+        "Final-response and stopping rules remain independent of session replacement; replacing a session is not task completion.",
+        "Replacement may also be triggered when observed context use reaches a configured percentage of the model's reported window or an absolute token ceiling, whichever comes first, only at a quiescent point and from a validated checkpoint; unsupported or missing observations never trigger it (PRD 12.4).",
+        "Every launch and replacement is generated from durable state as a bounded brief that embeds a source digest, is rejected when stale, and fails closed above a configured size budget; no launch path copies a prior transcript; the first observed input size of each launch is recorded when Codex reports it.",
+        "After restart the Coordinator resumes from a bounded state digest of open decisions, unread notifications, active attempts, ready tasks, and blockers."
       ],
       "required_tests": [
         "scripts/run-tests.sh tests/unit/orchestration/test_session_policy.py tests/unit/orchestration/test_session_replacement.py tests/unit/validation/test_session_replacement.py tests/recovery/test_compaction_replacement.py tests/integration/workflows/test_session_rotation.py -q",
@@ -1102,7 +1121,9 @@
         "Unknown is never automatically treated as dead or safe to replace.",
         "Restart reconciliation preserves decisions, notifications, attempts, and uncertain external effects.",
         "Fault injection proves interrupted effects do not duplicate launches, issues, decisions, or steering.",
-        "Recovery procedures are documented for operators."
+        "Recovery procedures are documented for operators.",
+        "Resolve issue #55 (MB-009-F006 residual): the latest-attempt authority for a preserved branch is persisted durably, survives controller restart after a later attempt disappears, and rejects recirculated older retirement evidence, with real and fake regression tests.",
+        "The operator CLI provides a read-only reconcile report comparing the event store, GitHub issues, worktrees, tmux endpoints, and progress records: it lists mismatches and dependency-ready work, reports unknown (never success) when a source is unreachable, and provably performs no writes."
       ],
       "required_tests": [
         "scripts/run-tests.sh tests/unit/orchestration/test_supervisor.py tests/unit/orchestration/test_reconciliation.py tests/recovery -q",
@@ -1146,7 +1167,9 @@
         "Restart tests preserve unread notifications, open decisions, uncertain effects, and active work.",
         "Operator views explain active role, tmux endpoint, worktree, SHAs, progress, QA, and blockers.",
         "Protected live evaluations cover Architect ambiguity, Coder recovery, Tester independence, and Coordinator decision fidelity.",
-        "Every acceptance criterion in PRD.md is linked to repeatable evidence or an explicitly protected live evaluation."
+        "Every acceptance criterion in PRD.md is linked to repeatable evidence or an explicitly protected live evaluation.",
+        "The operator CLI provides a usage report by role, task, model, and attempt, including launch context size and compaction counts, derived only from recorded telemetry (PRD 12.7).",
+        "The reference workflow demonstrates bounded rework escalating to a user decision, and a user-accepted known limitation that stays open as a deferred defect with a linked follow-up issue."
       ],
       "required_tests": [
         "scripts/run-tests.sh -q",
@@ -1185,7 +1208,10 @@
         "authority": "AMEND-004",
         "status": "effective",
         "preserved_candidate_sha": "915e9e98e666339b6075eb0d016c1ea6ab31c339",
-        "waived_passes": ["Specification", "Standards"],
+        "waived_passes": [
+          "Specification",
+          "Standards"
+        ],
         "known_limitations": [
           "Shell keywords and shell-only builtins can pass command discovery and behave inconsistently between quiet and verbose modes.",
           "Control characters in the configured log-directory path can break the one-physical-line summary invariant."
@@ -1215,7 +1241,7 @@
       "id": "MB-024",
       "wave": 2,
       "title": "Add a token usage report over Codex rollout logs",
-      "status": "blocked",
+      "status": "parked",
       "github": {
         "issue_number": 42,
         "issue_url": "https://github.com/habiberton/milburn/issues/42",
@@ -1257,14 +1283,14 @@
       "id": "MB-025",
       "wave": 2,
       "title": "Add the bootstrap configuration file and loader",
-      "status": "in_progress",
+      "status": "parked",
       "github": {
         "issue_number": 43,
         "issue_url": "https://github.com/habiberton/milburn/issues/43",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:changes-requested",
+        "last_observed_status_label": "milburn:in-progress",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": [],
@@ -1273,7 +1299,7 @@
       "branch": "bootstrap/builder/MB-025/a01-bootstrap-config",
       "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-025-a01",
       "base_sha": "1b8d86a6802867771c122bfdd0af80d9533ff313",
-      "candidate_sha": "687cd80f6a824c96189b869fe932bf1c0625ba94",
+      "candidate_sha": "b80224ad450da394e20b9bc3a41373a2a06a99e4",
       "progress_path": "bootstrap/progress/tasks/MB-025.md",
       "owned_paths": [
         "bootstrap/config.json",
@@ -1298,7 +1324,7 @@
       "id": "MB-026",
       "wave": 2,
       "title": "Generate worker and reviewer briefs and the root state digest",
-      "status": "blocked",
+      "status": "parked",
       "github": {
         "issue_number": 44,
         "issue_url": "https://github.com/habiberton/milburn/issues/44",
@@ -1342,7 +1368,7 @@
       "id": "MB-027",
       "wave": 2,
       "title": "Add the read-only reconcile command",
-      "status": "blocked",
+      "status": "parked",
       "github": {
         "issue_number": 45,
         "issue_url": "https://github.com/habiberton/milburn/issues/45",
@@ -1384,7 +1410,7 @@
       "id": "MB-028",
       "wave": 2,
       "title": "Add the scripted candidate integration command",
-      "status": "blocked",
+      "status": "parked",
       "github": {
         "issue_number": 46,
         "issue_url": "https://github.com/habiberton/milburn/issues/46",
@@ -1428,7 +1454,7 @@
       "id": "MB-029",
       "wave": 2,
       "title": "Add the fresh-session root launcher",
-      "status": "blocked",
+      "status": "parked",
       "github": {
         "issue_number": 47,
         "issue_url": "https://github.com/habiberton/milburn/issues/47",
