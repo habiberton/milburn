@@ -1033,6 +1033,13 @@ before changes. Dispatch has resumed under the narrow MB-023 exception.
   task PR #54. Its body records worker/candidate/integration SHAs, acceptance
   and tests, the Focused blocking verdict, effective AMEND-004 authority,
   unresolved risks #49/#50, feedback link, and `Closes #41`.
+- PR #54 merged through GitHub's two-parent merge method as `4f72d3b`. Remote
+  read-back proved `origin/main` contains candidate `915e9e9`, integration
+  `eeda92f`, PR tip `cfab0e1`, and the merge; the primary checkout
+  fast-forwarded. Post-merge verification passed 16 focused tests, smoke with
+  430 passed/3 protected skips/3 subtests, feedback/amendment validation, and
+  preflight. Issue #41 auto-closed in QA; final done-label reconciliation
+  remains under effective AMEND-004 while #49/#50 retain the known defects.
 
 - `scripts/smoke-test.sh` with the shared test environment: 29 tasks valid, 12
   feedback briefs valid, 3 amendment records valid, 414 passed, 3 skipped, 3
