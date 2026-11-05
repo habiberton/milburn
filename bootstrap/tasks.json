@@ -810,14 +810,14 @@
       "id": "MB-011",
       "wave": 3,
       "title": "Implement Planner, Classifier/Router, and Architect coordination",
-      "status": "in_progress",
+      "status": "blocked",
       "github": {
         "issue_number": 11,
         "issue_url": "https://github.com/habiberton/milburn/issues/11",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_status_label": "milburn:decision-needed",
         "last_observed_assignees": []
       },
       "dependencies": ["MB-006", "MB-007", "MB-017", "MB-018"],
@@ -826,7 +826,7 @@
       "branch": "product/MB-011-role-coordination",
       "worktree": null,
       "base_sha": "6b9b09682062bc290a1938aa345d418df5646a89",
-      "candidate_sha": null,
+      "candidate_sha": "ecf7a14",
       "progress_path": "bootstrap/progress/tasks/MB-011.md",
       "owned_paths": [
         "src/milburn/orchestration/planning.py",
