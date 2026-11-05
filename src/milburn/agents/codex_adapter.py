@@ -88,6 +88,30 @@ class LaunchRequest:
     expected_result_type: str
     expected_result_schema_version: int = 1
     skill_bindings: tuple[SkillBinding, ...] = ()
+    sandbox: str | None = None
+    writable_dirs: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if self.sandbox is not None and self.sandbox not in SANDBOX_MODES:
+            raise ValueError(
+                f"sandbox must be one of {sorted(SANDBOX_MODES)} or None"
+            )
+        if not isinstance(self.writable_dirs, tuple):
+            raise ValueError("writable_dirs must be a tuple")
+        if self.writable_dirs and self.sandbox != "workspace-write":
+            raise ValueError("writable_dirs require the workspace-write sandbox")
+        for directory in self.writable_dirs:
+            if (
+                not isinstance(directory, str)
+                or not directory.startswith("/")
+                or "\n" in directory
+                or "/../" in f"{directory}/"
+            ):
+                raise ValueError("writable_dirs must be absolute normalized paths")
+
+
+SANDBOX_MODES = frozenset({"read-only", "workspace-write"})
+"""Sandbox modes the controller may request. Full access is never requested."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -167,9 +191,14 @@ class CodexAdapter:
     def launch(self, request: LaunchRequest) -> AgentEndpoint:
         expectation = self._expectation(request)
         rendered = self._render(request, expectation)
+        sandbox = (
+            ("--sandbox", request.sandbox) if request.sandbox is not None else ()
+        )
+        for directory in request.writable_dirs:
+            sandbox += ("--add-dir", directory)
         runtime_endpoint = self._runtime.launch(
             ProcessLaunch(
-                command=(self._executable, "exec", "--json", "-"),
+                command=(self._executable, "exec", "--json", *sandbox, "-"),
                 cwd=request.worktree,
                 stdin=rendered.content,
             )

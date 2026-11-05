@@ -135,7 +135,7 @@ def test_parse_rejects_unknown_fields_and_non_boolean_success() -> None:
     ("events", "message"),
     [
         ("human prose", "line 1 is not valid JSON"),
-        (jsonl(None), "exactly one completed agent_message"),
+        (jsonl(None), "at least one completed agent_message"),
         (json.dumps({"type": "turn.failed"}), "turn.failed"),
         (
             jsonl(document()) + "\n" + json.dumps({"type": "turn.started"}),
@@ -159,3 +159,30 @@ def test_result_contract_pins_typed_schema_type_and_correlation() -> None:
     assert '"task_id":"task-6"' in contract
     assert '"attempt_id":"attempt-1"' in contract
     assert '"result_type":"coder_result"' in contract
+
+
+def _with_messages(*messages: str) -> str:
+    events: list[dict[str, object]] = [{"type": "turn.started"}]
+    for index, message in enumerate(messages):
+        events.append({
+            "type": "item.completed",
+            "item": {"id": f"msg-{index}", "type": "agent_message", "text": message},
+        })
+    events.append({"type": "turn.completed"})
+    return "\n".join(json.dumps(event) for event in events)
+
+
+def test_commentary_before_the_final_message_is_ignored() -> None:
+    parsed = AgentResultParser().parse_jsonl(
+        _with_messages("I'll read the skill first.", document()), EXPECTED
+    )
+
+    assert parsed.task_success is True
+
+
+def test_a_prose_final_message_is_rejected_even_after_an_earlier_valid_result() -> None:
+    with pytest.raises(ResultDecodingError, match="not valid JSON"):
+        AgentResultParser().parse_jsonl(
+            _with_messages(document(), "Done! Let me know if you need more."),
+            EXPECTED,
+        )
