@@ -19,6 +19,7 @@ from milburn.domain import (
     VersionedModel,
 )
 from milburn.domain.errors import DomainError
+from milburn.domain.schema import model_schema
 
 
 RESULT_SCHEMA_VERSION = 1
@@ -134,62 +135,7 @@ class AgentResultParser:
     ) -> ParsedAgentResult:
         """Parse Codex ``exec --json`` events without inspecting terminal prose."""
 
-        if isinstance(document, (bytes, bytearray)):
-            try:
-                text = bytes(document).decode("utf-8")
-            except UnicodeDecodeError as error:
-                raise ResultDecodingError("Codex JSONL is not UTF-8") from error
-        elif isinstance(document, str):
-            text = document
-        else:
-            raise ResultDecodingError("Codex JSONL must be text or bytes")
-
-        final_messages: list[str] = []
-        turn_completed = False
-        for line_number, line in enumerate(text.splitlines(), start=1):
-            if not line.strip():
-                continue
-            if turn_completed:
-                raise ResultDecodingError(
-                    "Codex JSONL contains an event after turn.completed"
-                )
-            try:
-                event = json.loads(line)
-            except json.JSONDecodeError as error:
-                raise ResultDecodingError(
-                    f"Codex JSONL line {line_number} is not valid JSON: {error}"
-                ) from error
-            if not isinstance(event, dict) or not isinstance(event.get("type"), str):
-                raise ResultDecodingError(
-                    f"Codex JSONL line {line_number} is not a typed event"
-                )
-            event_type = event["type"]
-            if event_type == "item.completed":
-                item = event.get("item")
-                if not isinstance(item, dict):
-                    raise ResultDecodingError("item.completed is missing its item object")
-                if item.get("type") == "agent_message":
-                    message = item.get("text")
-                    if not isinstance(message, str) or not message.strip():
-                        raise ResultDecodingError(
-                            "completed agent_message is missing semantic text"
-                        )
-                    final_messages.append(message)
-            elif event_type == "turn.completed":
-                turn_completed = True
-            elif event_type in {"turn.failed", "error"}:
-                raise ResultDecodingError(f"Codex reported semantic event {event_type}")
-
-        if not turn_completed:
-            raise ResultDecodingError("Codex JSONL has no turn.completed event")
-        if not final_messages:
-            raise ResultDecodingError(
-                "Codex JSONL must contain at least one completed agent_message"
-            )
-        # Codex emits progress commentary as earlier agent messages. Only the
-        # last completed message of the turn is the result; an earlier message
-        # is never used as a fallback, even when it is valid JSON.
-        return self.parse(final_messages[-1], expected)
+        return self.parse(codex_final_message(document), expected)
 
     def parse(
         self, document: str | bytes | bytearray, expected: ResultExpectation
@@ -280,6 +226,31 @@ class AgentResultParser:
         )
 
 
+def result_schema(expectation: ResultExpectation) -> dict[str, object]:
+    """Return the strict JSON Schema for one launch's result envelope (PRD R36).
+
+    Correlation fields are pinned to the expected values, so a harness that
+    enforces the schema cannot emit a result for another attempt.
+    """
+
+    correlation = expectation.correlation
+    properties: dict[str, object] = {
+        "schema_version": {"type": "integer", "enum": [expectation.schema_version]},
+        "role": {"type": "string", "enum": [correlation.role.value]},
+        "task_id": {"type": "string", "enum": [correlation.task_id]},
+        "attempt_id": {"type": "string", "enum": [correlation.attempt_id]},
+        "task_success": {"type": "boolean"},
+        "result_type": {"type": "string", "enum": [expectation.result_type]},
+        "payload": model_schema(RESULT_MODELS[expectation.result_type]),
+    }
+    return {
+        "type": "object",
+        "properties": properties,
+        "required": list(properties),
+        "additionalProperties": False,
+    }
+
+
 def result_contract(expectation: ResultExpectation) -> str:
     """Return the exact wrapper contract included in a launch brief."""
 
@@ -303,3 +274,64 @@ def result_contract(expectation: ResultExpectation) -> str:
         "type, or correlation: "
         + json.dumps(example, sort_keys=True, separators=(",", ":"))
     )
+
+
+def codex_final_message(document: str | bytes | bytearray) -> str:
+    """Return the last completed agent message of one Codex ``exec --json`` turn."""
+
+    if isinstance(document, (bytes, bytearray)):
+        try:
+            text = bytes(document).decode("utf-8")
+        except UnicodeDecodeError as error:
+            raise ResultDecodingError("Codex JSONL is not UTF-8") from error
+    elif isinstance(document, str):
+        text = document
+    else:
+        raise ResultDecodingError("Codex JSONL must be text or bytes")
+
+    final_messages: list[str] = []
+    turn_completed = False
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        if not line.strip():
+            continue
+        if turn_completed:
+            raise ResultDecodingError(
+                "Codex JSONL contains an event after turn.completed"
+            )
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError as error:
+            raise ResultDecodingError(
+                f"Codex JSONL line {line_number} is not valid JSON: {error}"
+            ) from error
+        if not isinstance(event, dict) or not isinstance(event.get("type"), str):
+            raise ResultDecodingError(
+                f"Codex JSONL line {line_number} is not a typed event"
+            )
+        event_type = event["type"]
+        if event_type == "item.completed":
+            item = event.get("item")
+            if not isinstance(item, dict):
+                raise ResultDecodingError("item.completed is missing its item object")
+            if item.get("type") == "agent_message":
+                message = item.get("text")
+                if not isinstance(message, str) or not message.strip():
+                    raise ResultDecodingError(
+                        "completed agent_message is missing semantic text"
+                    )
+                final_messages.append(message)
+        elif event_type == "turn.completed":
+            turn_completed = True
+        elif event_type in {"turn.failed", "error"}:
+            raise ResultDecodingError(f"Codex reported semantic event {event_type}")
+
+    if not turn_completed:
+        raise ResultDecodingError("Codex JSONL has no turn.completed event")
+    if not final_messages:
+        raise ResultDecodingError(
+            "Codex JSONL must contain at least one completed agent_message"
+        )
+    # Codex emits progress commentary as earlier agent messages. Only the
+    # last completed message of the turn is the result; an earlier message
+    # is never used as a fallback, even when it is valid JSON.
+    return final_messages[-1]

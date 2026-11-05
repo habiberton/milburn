@@ -168,6 +168,7 @@ def test_live_codex_adapter_launch_jsonl_collect_and_retire(tmp_path: Path) -> N
         ),
         repository_instructions="Do not inspect or modify the temporary repository.",
         expected_result_type="role_route_proposal",
+        sandbox="read-only",
     )
 
     endpoint = adapter.launch(request)
@@ -215,6 +216,7 @@ def test_live_codex_adapter_interrupts_running_process(tmp_path: Path) -> None:
         task_context="This turn will be interrupted by the lifecycle contract.",
         repository_instructions="Do not inspect or modify the temporary repository.",
         expected_result_type="role_route_proposal",
+        sandbox="read-only",
     )
 
     endpoint = adapter.launch(request)

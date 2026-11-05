@@ -77,3 +77,28 @@ def test_stdin_brief_is_delivered_and_output_is_kept_as_a_log(tmp_path: Path) ->
     assert runtime.log_path(endpoint).read_text(encoding="utf-8") == collected.stdout
     assert runtime.collect(endpoint) is collected
     assert runtime.status(endpoint).state is ProcessState.EXITED
+
+
+def test_env_pairs_are_added_to_the_inherited_environment(tmp_path: Path) -> None:
+    stub = _stub(
+        tmp_path,
+        "import os, sys; sys.stdin.read(); "
+        "print(os.environ['GIT_AUTHOR_NAME'] + '|' + ('PATH' in os.environ and 'path' or ''))\n",
+    )
+    runtime = _runtime(tmp_path)
+    endpoint = runtime.launch(
+        ProcessLaunch(
+            (str(stub),), str(tmp_path), "", env=(("GIT_AUTHOR_NAME", "Milburn Coder t1/a1"),)
+        )
+    )
+    collected = runtime.collect(endpoint)
+    assert collected.exit_code == 0
+    assert collected.stdout.strip() == "Milburn Coder t1/a1|path"
+
+
+def test_a_child_that_exits_before_reading_its_brief_is_still_tracked(tmp_path: Path) -> None:
+    stub = _stub(tmp_path, "import sys; sys.exit(3)\n")
+    runtime = _runtime(tmp_path)
+    endpoint = runtime.launch(ProcessLaunch((str(stub),), str(tmp_path), "x" * 1_000_000))
+    collected = runtime.collect(endpoint)
+    assert collected.exit_code == 3

@@ -37,7 +37,14 @@ def request() -> LaunchRequest:
         repository_instructions="Read AGENTS.md and preserve unrelated work.",
         expected_result_type="coder_result",
         skill_bindings=(SKILL,),
+        sandbox="workspace-write",
     )
+
+
+def schema_args(launch: object) -> tuple[str, str]:
+    command = launch.command  # type: ignore[attr-defined]
+    index = command.index("--output-schema")
+    return command[index], command[index + 1]
 
 
 def result_document(*, task_success: bool = True) -> str:
@@ -71,7 +78,13 @@ def test_launch_uses_injected_runtime_with_bounded_rendered_brief() -> None:
     endpoint = fake.launch(request())
 
     launch = fake.runtime.launches[0]
-    assert launch.command == ("fake-codex", "exec", "--json", "-")
+    flag, schema_path = schema_args(launch)
+    assert launch.command == (
+        "fake-codex", "exec", "--json", "--ignore-user-config",
+        "--sandbox", "workspace-write", flag, schema_path, "-",
+    )
+    schema = json.loads(open(schema_path, encoding="utf-8").read())
+    assert schema["properties"]["attempt_id"]["enum"] == ["attempt-1"]
     assert launch.cwd == "/tmp/milburn-task-6"
     assert "- role: coder" in launch.stdin
     assert "- task_id: task-6" in launch.stdin
@@ -237,6 +250,7 @@ def test_launch_rejects_result_type_not_allowed_for_role_before_runtime_effect()
         repository_instructions=invalid.repository_instructions,
         expected_result_type="qa_report",
         skill_bindings=invalid.skill_bindings,
+        sandbox="workspace-write",
     )
 
     with pytest.raises(ResultDecodingError, match="not allowed for role"):
@@ -253,14 +267,26 @@ def test_unknown_or_full_access_sandbox_is_rejected_before_launch() -> None:
             replace(request(), sandbox=mode)
 
 
+def test_missing_sandbox_is_refused_before_any_runtime_effect() -> None:
+    from dataclasses import replace
+
+    adapter = FakeCodexAdapter((ScriptedCodexRun(result_document()),))
+    with pytest.raises(ValueError, match="sandbox is required"):
+        adapter.launch(replace(request(), sandbox=None))
+    assert adapter.runtime.launches == []
+
+
 def test_explicit_sandbox_is_passed_to_codex_exec() -> None:
     from dataclasses import replace
 
     adapter = FakeCodexAdapter((ScriptedCodexRun(result_document()),))
-    adapter.launch(replace(request(), sandbox="workspace-write"))
+    adapter.launch(replace(request(), sandbox="read-only"))
 
-    assert adapter.runtime.launches[0].command == (
-        "fake-codex", "exec", "--json", "--sandbox", "workspace-write", "-"
+    launch = adapter.runtime.launches[0]
+    flag, schema_path = schema_args(launch)
+    assert launch.command == (
+        "fake-codex", "exec", "--json", "--ignore-user-config",
+        "--sandbox", "read-only", flag, schema_path, "-",
     )
 
 
@@ -270,8 +296,8 @@ def test_writable_dirs_need_workspace_write_and_absolute_paths() -> None:
     with pytest.raises(ValueError, match="workspace-write"):
         replace(request(), sandbox="read-only", writable_dirs=("/repo/.git",))
     with pytest.raises(ValueError, match="workspace-write"):
-        replace(request(), writable_dirs=("/repo/.git",))
-    for bad in ("relative/.git", "/repo/../etc", "/repo\n--x"):
+        replace(request(), sandbox=None, writable_dirs=("/repo/.git",))
+    for bad in ("relative/.git", "/repo/../etc", "/repo\n--x", "/repo/./.git", "/repo/.git/"):
         with pytest.raises(ValueError, match="absolute"):
             replace(request(), sandbox="workspace-write", writable_dirs=(bad,))
 
@@ -283,7 +309,10 @@ def test_writable_dirs_are_passed_as_add_dir() -> None:
     adapter.launch(replace(request(), sandbox="workspace-write",
                            writable_dirs=("/repo/.git",)))
 
-    assert adapter.runtime.launches[0].command == (
-        "fake-codex", "exec", "--json", "--sandbox", "workspace-write",
-        "--add-dir", "/repo/.git", "-",
+    launch = adapter.runtime.launches[0]
+    flag, schema_path = schema_args(launch)
+    assert launch.command == (
+        "fake-codex", "exec", "--json", "--ignore-user-config",
+        "--sandbox", "workspace-write", "--add-dir", "/repo/.git",
+        flag, schema_path, "-",
     )

@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+from typing import Callable
+from pathlib import Path
+import tempfile
 
 from milburn.agents.codex_adapter import (
     Ack,
@@ -38,7 +41,15 @@ class _ActiveRun:
 class FakeCodexRuntime:
     """A process boundary that consumes one scripted run per launch."""
 
-    def __init__(self, scripts: tuple[ScriptedCodexRun, ...]) -> None:
+    def __init__(
+        self,
+        scripts: tuple[ScriptedCodexRun, ...],
+        *,
+        render: Callable[[str | None], str] | None = None,
+        prefix: str = "fake-codex",
+    ) -> None:
+        self._render = render or _codex_jsonl
+        self._prefix = prefix
         self._remaining = list(scripts)
         self._runs: dict[str, _ActiveRun] = {}
         self.launches: list[ProcessLaunch] = []
@@ -49,7 +60,7 @@ class FakeCodexRuntime:
     def launch(self, spec: ProcessLaunch) -> str:
         if not self._remaining:
             raise AssertionError("no scripted Codex run remains")
-        endpoint = f"fake-codex-{len(self.launches) + 1}"
+        endpoint = f"{self._prefix}-{len(self.launches) + 1}"
         self.launches.append(spec)
         self._runs[endpoint] = _ActiveRun(self._remaining.pop(0))
         return endpoint
@@ -93,7 +104,7 @@ class FakeCodexRuntime:
         return ProcessCollection(
             state=ProcessState.EXITED,
             exit_code=run.script.exit_code,
-            stdout=_codex_jsonl(run.script.result_document),
+            stdout=self._render(run.script.result_document),
             stderr=run.script.stderr,
         )
 
@@ -117,9 +128,15 @@ class FakeCodexRuntime:
 class FakeCodexAdapter:
     """Public fake with the same lifecycle as ``CodexAdapter``."""
 
-    def __init__(self, scripts: tuple[ScriptedCodexRun, ...]) -> None:
+    def __init__(
+        self, scripts: tuple[ScriptedCodexRun, ...], *, schema_dir: Path | None = None
+    ) -> None:
         self.runtime = FakeCodexRuntime(scripts)
-        self._adapter = CodexAdapter(self.runtime, executable="fake-codex")
+        self._adapter = CodexAdapter(
+            self.runtime,
+            executable="fake-codex",
+            schema_dir=schema_dir or Path(tempfile.mkdtemp(prefix="milburn-schemas-")),
+        )
 
     def launch(self, request: LaunchRequest) -> AgentEndpoint:
         return self._adapter.launch(request)
