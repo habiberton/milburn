@@ -33,6 +33,7 @@ class Attempt:
     base_sha: str
     sandbox: str
     candidate_sha: str | None = None
+    handoff_from: str | None = None
     started: dict[str, Any] | None = None
     collected: dict[str, Any] | None = None
 
@@ -184,7 +185,7 @@ class Ledger:
                     Attempt(
                         data["attempt"], data["role"], data["harness"], data["endpoint"],
                         data["worktree"], data["base_sha"], data["sandbox"],
-                        data.get("candidate_sha"),
+                        data.get("candidate_sha"), data.get("handoff_from"),
                     )
                 )
             elif kind is EventType.AGENT_STARTED:

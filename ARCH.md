@@ -278,7 +278,12 @@ attempt (`a1`, `a2`, ...); a handoff starts the next attempt with `handoff_from`
 naming the one it continues, and an `AttemptHandedOff` event holding the manifest
 and its digest. Command: `milburn attempt handoff <task> --harness <h> [--reason]`;
 `milburn qa <task> --harness <h>` moves QA when the finishing harness is the one
-QA was configured for.
+QA was configured for. The progress file is read from the working tree, committed
+or not, because a Codex Coder cannot commit (§6, "Who commits"). The receiving
+attempt is judged against the chain's original base, so commits the earlier
+harness made count as the candidate's. A `--reason` handoff from an `unknown` end
+records `SessionGenerationExhausted` with source `coordinator`. One from a
+`blocked`, `failed`, or rejected end is recorded as a reassignment.
 
 1. **Classify the exit.** `collect` asks the adapter to classify a run's end as
    `completed`, `exhausted` (out of tokens, rate-limited, quota), `failed`, or

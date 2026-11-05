@@ -60,12 +60,27 @@ if role == "coder":
     mode = os.environ.get(f"FAKE_CODER_MODE_{attempt_id.upper()}") or os.environ.get(
         "FAKE_CODER_MODE", "candidate"
     )
-    if mode == "exhausted":
+    if mode == "noop":
+        head = git("rev-parse", "HEAD")
+        payload = {
+            "schema_version": 1, "attempt_id": attempt_id, "issue_number": number,
+            "outcome": "candidate", "head_sha": head, "progress_path": "progress.txt",
+            "commits": [], "files_changed": [],
+            "test_claims": [{"schema_version": 1, "name": "stub", "outcome": "passed", "evidence": "already done"}],
+            "risks": [],
+        }
+        mode = "done"
+    if mode in ("exhausted", "commitexhausted"):
         base = git("rev-parse", "HEAD")
         with open(f"feature_{task_id}.txt", "w") as handle:
             handle.write(f"half done by {attempt_id}\n")
         with open("progress.txt", "w") as handle:
             handle.write(f"Current head: {base}\n\n{task_id} {attempt_id}: feature file started, not finished\n")
+        if mode == "commitexhausted":
+            with open(f"feature_{task_id}.txt", "w") as handle:
+                handle.write(f"done by {attempt_id}\n")
+            git("add", f"feature_{task_id}.txt", "progress.txt")
+            git("commit", "-q", "-m", f"{task_id}: implement before running out")
         if harness == "codex":
             print(json.dumps({"type": "thread.started", "thread_id": f"thread-{attempt_id}"}))
             print(json.dumps({"type": "error", "message": "You've hit your usage limit."}))
@@ -74,7 +89,9 @@ if role == "coder":
             print(json.dumps({"type": "system", "subtype": "init", **session}))
             print(json.dumps({"type": "rate_limit_event", "rate_limit_info": {"status": "rejected"}, **session}))
         sys.exit(1)
-    if mode == "blocked":
+    if mode == "done":
+        pass
+    elif mode == "blocked":
         payload = {
             "schema_version": 1, "attempt_id": attempt_id, "issue_number": number,
             "outcome": "blocked", "head_sha": git("rev-parse", "HEAD"),
