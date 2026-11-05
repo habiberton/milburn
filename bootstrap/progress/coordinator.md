@@ -965,6 +965,14 @@ ready.
   430 passed/3 protected skips/3 subtests. Recorded review mode remains Focused
   because this is an isolated bootstrap runner with no product state,
   persistence, recovery, or external side effect.
+- MB-025/a01 returned corrected candidate
+  `687cd80f6a824c96189b869fe932bf1c0625ba94` (configuration/loader through
+  `5faafb7`, handoff evidence `3b42d8c`, and progress-only correction
+  `687cd80`). Root verification passed attribution for five commits, owned
+  paths, diff checks, 17 focused tests/31 subtests, and smoke with 431 passed/3
+  protected skips/34 subtests. Focused review must explicitly assess the
+  recorded implementation choice `maximum_rotations = 10`; launcher sandbox
+  and approval remain null and fail closed.
 
 - `scripts/smoke-test.sh` with the shared test environment: 29 tasks valid, 12
   feedback briefs valid, 3 amendment records valid, 414 passed, 3 skipped, 3
