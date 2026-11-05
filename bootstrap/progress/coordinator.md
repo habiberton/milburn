@@ -951,7 +951,13 @@ ready.
   launched with `fork_turns: none`, model `gpt-5.6-sol`, medium effort, exact
   owned/prohibited paths, six boundary questions, negative-test-first criteria,
   required test commands, and candidate-only authority. No third worker is
-  active.
+  active at that checkpoint.
+- The user then authorized a third concurrent implementation slot within the
+  approved maximum of three. Resumed logical worker
+  `/root/mb009_builder_a01_fix6` launched on the unchanged MB-009/a01 worktree
+  and candidate `354a18a` with `fork_turns: none`, model `gpt-5.6-sol`, medium
+  effort, the four-class exhaustive enumeration gate, red tests before fixes,
+  and authority for exactly one correction round.
 
 - `scripts/smoke-test.sh` with the shared test environment: 29 tasks valid, 12
   feedback briefs valid, 3 amendment records valid, 414 passed, 3 skipped, 3
