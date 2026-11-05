@@ -78,7 +78,7 @@ before any effect, and leaves state consistent on failure.
 | State | `status [--digest]`, `events [--follow]`, `reconcile`, `usage` | Read-only. `--digest` is the bounded Coordinator resume (R32); `reconcile` reports unknown, never success, when a source is unreachable (PRDv1 §12.7) |
 | Process | `process list`, `process start <name>`, `stage skip <id> --reason`, `gate check <stage>` | Gates are named checks (§7) |
 | Questions | `question add/answer/assume/defer/withdraw`, `decision record` | Ledger per PRDv2 §4.2; `answer`, `assume`, and decisions need `--user-quote` |
-| Tasks | `task create`, `task ready`, `dispatch <task> [--role --harness]`, `collect <attempt>`, `attempt stop`, `attempt rotate` | `dispatch` leases a worktree, renders the brief, launches the run; `collect` parses and validates the result |
+| Tasks | `task create`, `task ready`, `dispatch <task> [--role --harness]`, `collect <attempt>`, `attempt stop`, `attempt rotate`, `attempt handoff <attempt> --harness <h>` | `dispatch` leases a worktree, renders the brief, launches the run; `collect` parses and validates the result |
 | QA | `qa request <task>`, `task complete <task>` | The QA gate (§8) |
 | Delivery | `integrate <task>`, `deliver <work-item>` | Merge into the integration branch; push, PR, and merge per delivery mode (§5) |
 | Repository | `repo use <path>`, `repo create` | `create` refuses (§7.3) |
@@ -254,13 +254,50 @@ unmet condition:
 3. The report's attempt is a Tester attempt for this task, distinct from every Coder
    attempt and from the Coordinator.
 4. Unless the task type says `harness = "any"`, the Tester's harness differs from the
-   harness of the Coder attempt that produced the SHA.
+   harness of the Coder session generation that produced the SHA (after a handoff,
+   §8.1, that is the receiving harness).
 5. Every scenario ID the task cites is mapped to evidence in the report.
 6. No blocking defect is open without a user-accepted limitation (PRDv1 §12.5).
 
 `changes_requested` opens a new Coder attempt on the same task worktree; the lease
 moves to the new attempt explicitly, and only the latest attempt may act (issue #55)
 (G17). The rework convergence rules in PRDv1 §12.5 run on the recorded findings.
+
+### 8.1 Cross-harness handoff (PRD R43)
+
+A handoff continues the **same attempt** in a **new session generation** on another
+harness. The task, worktree, branch, and lease stay unchanged.
+
+1. **Classify the exit.** `collect` asks the adapter to classify a run's end as
+   `completed`, `exhausted` (out of tokens, rate-limited, quota), `failed`, or
+   `unknown`. The classification uses only structured signals: exit code, error
+   event type, or error code. Each harness's signals are captured from real runs
+   (§13 item 10). An `unknown` end can be marked `exhausted` by the Coordinator with
+   a recorded reason. The CLI records `SessionGenerationExhausted` with the source
+   of the classification.
+2. **Fence the old generation.** `attempt handoff` refuses while the old run's
+   process is alive. It checks the PID and its start time, using
+   `runtime/processes.py`. Two harnesses must never write one worktree at once.
+3. **Build the manifest.** From the committed progress file (MB-013
+   `ProgressRecord`), the branch head, commits since the last checkpoint,
+   `git status` with a diffstat of uncommitted changes, the acceptance criteria and
+   cited scenario IDs, open decisions, and digests of the brief and rules. The CLI
+   never commits, stashes, or discards the uncommitted changes; the brief tells the
+   receiving agent to inspect them first. Validation uses
+   `validation/handoff_manifest.py`. The handoff refuses when the progress file is
+   missing or malformed, or when its last checkpoint is not an ancestor of the head.
+4. **Launch.** `orchestration/handoffs.py` plans the replacement with trigger
+   `harness_exhausted`. `dispatch` then launches the receiving harness's adapter with
+   a fresh brief plus the manifest, the same worktree, the task type's sandbox, the
+   same `git_write` grant, and the per-attempt Git identity. No transcript or
+   session ID crosses harnesses. The CLI records `AttemptHandedOff` with the from and
+   to harnesses, the generations, the manifest digest, and the reason.
+5. **Roles without a progress file.** A Tester, Architect, or Designer attempt has no
+   Coder progress file. Its handoff starts the attempt again on the other harness
+   from its brief, and records that no work carried over.
+
+`domain/sessions.py` gains a `harness` field on each session generation, so usage,
+the QA gate (§8 item 4), and reports can attribute work per harness.
 
 ## 9. Harness adapters and telemetry
 
@@ -292,7 +329,8 @@ The event store keeps its v1 design (ARCHv1 §11: append-only, versioned,
 optimistic sequencing, replay). The event envelope gains `work_item`, `task`,
 `attempt`, `generation`, `role`, `harness`, `source`, and `fidelity` (ARCHv2 §4.11).
 New event families: stage and gate events, question ledger events, delivery
-events, and `AgentUsageObserved` / `AgentActivityObserved` (G10). Amendment and
+events, `AgentUsageObserved` / `AgentActivityObserved` (G10), and
+`SessionGenerationExhausted` / `AttemptHandedOff` (§8.1). Amendment and
 routing events stop being emitted (§11).
 
 ### 9.3 Usage mapping
@@ -321,6 +359,7 @@ adapter must not add a cumulative and a per-call figure together.
 | R36 | The same brief produced a valid plan in one run and omitted a required field in the next (G5) | Schemas generated from domain models; `--output-schema` on Codex |
 | R37 | A trivial `codex exec` used 37.6k input tokens; live slice run 2 used about 81k (Planner), 132k (Architect), and 285k (Coder) on a toy task, much of it reading skill files | Isolated per-attempt harness config; launch size recorded per attempt |
 | R38 | About 25M tokens per task in single-agent mode, 95% in the main session; each reviewer about 0.5M, about 20% of input at baseline | QA required per code task; extra passes chosen by risk |
+| R43 | The user's requirement: a delegated task must survive one harness running out of tokens | `attempt handoff` (§8.1) from the progress file and manifest |
 
 ## 11. Keep, adapt, retire
 
@@ -331,7 +370,7 @@ Retirement follows A6. Paths are under `src/milburn/`.
 | `persistence/sqlite_store.py`, `errors.py` | Keep | The spine (R26); location moves outside writable roots (A3) |
 | `persistence/projections.py` | Keep | Task, attempt, decision, effect replay; extend for work items and stages |
 | `persistence/usage_projections.py`, `domain/usage.py` | Keep | Token telemetry (R28, R29) |
-| `persistence/session_projections.py`, `domain/sessions.py` | Keep | Attempt vs session generation is needed for rotation (R34) |
+| `persistence/session_projections.py`, `domain/sessions.py` | Keep | Attempt vs session generation is needed for rotation and handoff (R34, R43); generations gain a `harness` field |
 | `domain/base.py`, `domain/errors.py` | Keep | Shared versioned-model base |
 | `domain/events.py` | Adapt | Add envelope fields, usage, activity, stage, ledger, delivery events (§9.2) |
 | `domain/commands.py`, `domain/policies.py` | Adapt | CLI command set; `controller` actor (G2) |
@@ -359,13 +398,13 @@ Retirement follows A6. Paths are under `src/milburn/`.
 | `orchestration/role_results.py` | Keep | Shared result recording |
 | `orchestration/architecture.py` | Adapt | Spec task type; tasks cite scenario IDs; consume typed results (G8) |
 | `orchestration/planning.py` | Retire | Planning is the Coordinator's judgment and the spec stage |
-| `orchestration/handoffs.py` | Keep | Replacement planning (R34) |
+| `orchestration/handoffs.py` | Keep | Replacement planning (R34) and cross-harness handoff (R43) |
 | `orchestration/notifications.py` | Adapt | Becomes the digest's unread section; no doorbell |
 | `orchestration/coordinator.py` | Retire | The persistent session manager and tmux transport; the Coordinator is the user's own session (R2). Its decision-record rules move to `decision record` |
 | `orchestration/routing.py` | Retire | An LLM doing a lookup table's job (review M3) |
 | `orchestration/plan_amendments.py`, `persistence/amendment_projections.py`, `validation/amendment_policy.py` | Retire | With `domain/amendments.py` |
 | `validation/coder_protocol.py` | Keep | The `candidate-protocol` gate |
-| `validation/handoff_manifest.py` | Keep | Rotation checkpoints |
+| `validation/handoff_manifest.py` | Keep | Rotation and handoff checkpoints (R34, R43) |
 | `validation/issue_contracts.py` | Adapt | Scenario-ID citation (R14) |
 | `app/cli.py`, `app/bootstrap.py`, `app/configuration.py` | Adapt | The CLI, its composition root, and the config file (§4, §6, §7) |
 
@@ -426,6 +465,9 @@ before the task that depends on them starts.
 8. **Design rendering.** The browser engine for variant screenshots (PRDv2 V2-13).
 9. **Relayed user answers. Decided:** the CLI requires a verbatim quote and cannot
    prove the user said it; accepted as a known limit.
+10. **Exhaustion signals.** Capture how Codex and Claude Code report running out of
+    tokens, rate limits, and quota (exit code, error event, error code) from real
+    runs, and fix the adapter classification (§8.1 step 1) to those captures.
 
 ## 14. Required tests
 
@@ -437,13 +479,18 @@ before the task that depends on them starts.
   undeclared cycle.
 - Delivery tests on a local bare remote for every mode, including conflict on
   integrate and refused auto-merge.
+- Handoff tests in both directions with fake adapters: an exhausted Coder handed off
+  keeps the worktree, lease, branch, and uncommitted changes, and the QA gate then
+  requires a Tester on the other harness from the receiving one. Refusals: missing or
+  malformed progress file, checkpoint not an ancestor of head, old run still alive.
 - One live end-to-end run per harness pairing (Codex Coder with Claude Code Tester,
   and the reverse), recorded with usage, before the release is called done.
 
 ## 15. Build order
 
 Walking skeleton first (review B3): one free-form request, one Coder task, one
-Tester on the other harness, `local-only` delivery, usage recorded. Then `pr`
+Tester on the other harness, `local-only` delivery, usage recorded. Then
+cross-harness handoff (§8.1), since both adapters exist at that point. Then `pr`
 delivery, parallel tasks, the stage-table engine with "Fix a bug", OpenSpec and
 "Add a feature", design, and "Start from scratch" last. Each step ends with a live
 run.
