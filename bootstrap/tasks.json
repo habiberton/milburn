@@ -1157,7 +1157,7 @@
       "id": "MB-023",
       "wave": 2,
       "title": "Add a quiet command runner for smoke, preflight, and validators",
-      "status": "assigned",
+      "status": "in_progress",
       "github": {
         "issue_number": 41,
         "issue_url": "https://github.com/habiberton/milburn/issues/41",
@@ -1239,7 +1239,7 @@
       "id": "MB-025",
       "wave": 2,
       "title": "Add the bootstrap configuration file and loader",
-      "status": "assigned",
+      "status": "in_progress",
       "github": {
         "issue_number": 43,
         "issue_url": "https://github.com/habiberton/milburn/issues/43",

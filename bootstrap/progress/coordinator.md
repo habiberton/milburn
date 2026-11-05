@@ -947,6 +947,11 @@ ready.
   `1b8d86a6802867771c122bfdd0af80d9533ff313` at their recorded absolute paths.
   Both identities were configured before dispatch as `Milburn Builder
   [MB-025/a01]` and `Milburn Builder [MB-023/a01]`; the worktrees are clean.
+- Builder sessions `/root/mb025_builder_a01` and `/root/mb023_builder_a01`
+  launched with `fork_turns: none`, model `gpt-5.6-sol`, medium effort, exact
+  owned/prohibited paths, six boundary questions, negative-test-first criteria,
+  required test commands, and candidate-only authority. No third worker is
+  active.
 
 - `scripts/smoke-test.sh` with the shared test environment: 29 tasks valid, 12
   feedback briefs valid, 3 amendment records valid, 414 passed, 3 skipped, 3
