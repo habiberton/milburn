@@ -320,8 +320,17 @@ active attempt changes branch, worktree, or ownership.
 
 ## Effectiveness
 
-- Planning commit: pending
-- Effective remote PR: pending
-- Effective merge commit: pending
-- Dispatch status: frozen
-- Resolution status: pending
+- Planning commit: `49b4611c32756c26759fa7858912869f969273a7`
+- Effective remote PR: #36 (https://github.com/habiberton/milburn/pull/36)
+- Effective merge commit: `6014c3e592ba95399d0e4819d472ae59f8e75ec5`
+- Dispatch status: resumed
+- Resolution status: effective and reconciled
+
+The amendment record was merged by the user with a merge commit (two parents:
+`dc81cb363a7fd89bfb6a348b56fabb00b83e78fc` and the planning commit). The
+primary checkout was fast-forwarded to the merge commit. No independent review
+pass was run before the merge; the user merged the PR directly. This record
+adds no code or registry changes. The scripts, briefs, config, spawn policy,
+model assignment, and spec edits it describes are not yet implemented, so
+current dispatch continues under the existing `AGENTS.md` procedure until the
+implementation tasks and the specification edits land through their own PRs.
