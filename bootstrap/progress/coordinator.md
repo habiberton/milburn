@@ -8,9 +8,9 @@ under AMEND-003 as a parallel track that does not gate Wave 3 (see
 `bootstrap/decisions.md`); they are `blocked` until the coordinator marks them
 ready.
 
-New dispatch is frozen by pending AMEND-004. MB-009/a01 is classified
-`unaffected` and continues; the resumed MB-023 correction was classified
-`must_stop` and interrupted before changes.
+AMEND-004 is effective and reconciled through PR #52. MB-009/a01 continued as
+`unaffected`; the resumed MB-023 correction was `must_stop` and interrupted
+before changes. Dispatch has resumed under the narrow MB-023 exception.
 
 ## Repository state
 
@@ -1001,6 +1001,13 @@ New dispatch is frozen by pending AMEND-004. MB-009/a01 is classified
   F002 respectively, and `bootstrap/feedback/MB-023.md` records both as
   unresolved with no fabricated fix or regression evidence. Both amendment
   review axes must re-review the corrected planning tip.
+- Corrected AMEND-004 tip `d2c0d4a` passed both delta reviews and both final
+  full-pass confirmations. PR #52 merged as two-parent commit `df26674`; remote
+  read-back proved `origin/main` contains the reviewed tip and merge, and the
+  primary checkout fast-forwarded. Issue #41 returned to
+  `milburn:in-progress`; MB-023 is again a candidate for normal integration
+  under its effective exception. Dispatch resumes after the reconciliation PR
+  containing this effectiveness record merges and is read back.
 
 - `scripts/smoke-test.sh` with the shared test environment: 29 tasks valid, 12
   feedback briefs valid, 3 amendment records valid, 414 passed, 3 skipped, 3
