@@ -338,8 +338,10 @@ class CoderResult(VersionedModel):
         require_enum(self.outcome, CoderOutcome, "outcome")
         require_identifier(self.head_sha, "head_sha")
         require_text(self.progress_path, "progress_path")
-        if not self.commits:
-            raise InvalidEnvelopeError("commits must not be empty")
+        # Commits may be empty for any outcome: an honest blocked report may
+        # have committed nothing (gap G21), and a Coder whose harness cannot
+        # write Git leaves its changes for ``milburn collect`` to commit
+        # (ARCH §6). The CLI checks the branch, not this list.
         _identifiers(self.commits, "commits")
         _texts(self.files_changed, "files_changed")
         _texts(self.risks, "risks")

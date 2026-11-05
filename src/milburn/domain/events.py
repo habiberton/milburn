@@ -53,6 +53,17 @@ class EventType(StrEnum):
     RECOVERY_COMPLETED = "RecoveryCompleted"
     AGENT_RESUMED = "AgentResumed"
     FEATURE_COMPLETED = "FeatureCompleted"
+    # Enforcement CLI (ARCH §4, §5, §8).
+    PROJECT_INITIALIZED = "ProjectInitialized"
+    WORK_ITEM_OPENED = "WorkItemOpened"
+    TASK_CREATED = "TaskCreated"
+    ATTEMPT_DISPATCHED = "AttemptDispatched"
+    ATTEMPT_COLLECTED = "AttemptCollected"
+    AGENT_USAGE_OBSERVED = "AgentUsageObserved"
+    QA_GATE_REFUSED = "QaGateRefused"
+    TASK_COMPLETED = "TaskCompleted"
+    TASK_INTEGRATED = "TaskIntegrated"
+    WORK_ITEM_DELIVERED = "WorkItemDelivered"
 
 
 @dataclass(frozen=True, slots=True)

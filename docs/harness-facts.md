@@ -51,6 +51,11 @@ when a harness version changes; `agents/harness.py` encodes them.
   It also drops the configured model, so pass `--model` when a role needs one.
 - **Usage:** `turn.completed.usage` has `input_tokens`, `cached_input_tokens`,
   `cache_write_input_tokens`, `output_tokens`, `reasoning_output_tokens`.
+- **Git under workspace-write:** the sandbox keeps Git metadata read-only,
+  including a worktree's resolved gitdir, even when it is passed with
+  `--add-dir`. `git add` failed with "Unable to create '.../.git/worktrees/t1/index.lock':
+  Operation not permitted" in a live run. A Codex Coder cannot commit; Milburn
+  commits for it at collect (ARCH §6).
 - **Errors:** `error` and `turn.failed` events carry prose, not a stable code, so
   Milburn classifies them as `unknown` and the Coordinator decides (ARCH §8.1).
 - **Resume:** `codex exec resume [options] <session_id> -`; the session ID is the
