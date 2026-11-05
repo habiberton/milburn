@@ -1,44 +1,54 @@
-# AMEND-003 — Scripted candidate integration
+# AMEND-003 — Scripted integration, context briefs, and root rotation
 
 ## Authority
 
-- Source: direct user instruction in a Claude Code analysis session on 2026-11-04 ("yes do it" to writing up the scripted integration design as an amendment proposal). Not yet authorized for application.
+- Source: direct user instructions in a Claude Code analysis session on 2026-11-04: write up the scripted integration design as an amendment proposal, then add context briefs with `fork_turns: none`, root session rotation, reviewer model assignment, defect-prevention rules, boundary questions, a reconcile command, quiet output, and a token report, and keep all changes in this one amendment. The user withdrew path/diff-based review tiering (a planner step will later assign risk scores) and chose to leave `tasks.json` as is. Not yet authorized for application.
 - Authorized task: draft only; adoption requires explicit user approval and the plan-amendment gate (independent review, remotely merged PR, remote read-back, primary-checkout reconciliation).
-- Motivation: session-log analysis showed the root coordinator consumed about 50% of all input tokens (172.8M of 346M), largely re-reading context while running the 17-step root integration procedure by hand and committing about 253 BOOTSTRAP bookkeeping commits. Subagent spawn calls
-  in the root log show 27 of 58 spawns used `fork_turns: all`; those 25 resulting
-  sessions consumed 142.4M of the 171.4M subagent input tokens (average first
+- Motivation: session-log analysis showed the root coordinator consumed about 50% of all input tokens (172.8M of 346M), largely re-reading context while running the 18-step root integration procedure by hand and committing about 253 BOOTSTRAP bookkeeping commits. Subagent spawn calls
+  in the root log show 27 of 58 spawns used `fork_turns: all`; the 25 matching
+  session files (spawn calls and session files do not map one to one) consumed 142.4M of the 171.4M subagent input tokens (average first
   call 155k tokens, versus 21k for `fork_turns: none` sessions).
 
 ## Requested change
 
 Replace the manual mechanical parts of the Root integration procedure with
 `scripts/integrate-candidate.sh` (Python implementation behind a shell wrapper)
-with subcommands `prepare`, `land`, `status`, and `record-review`.
+with subcommands `prepare`, `land`, `status`, and `record-review`. Step numbers
+below refer to the 18-step Root integration procedure in `AGENTS.md`.
 
 - `prepare <task> <attempt> <sha>` covers steps 1-4, 8, and 10: preflight,
   candidate and trailer verification, owned-path check, task tests plus
   `smoke-test.sh`, non-squash merge into the integration branch, then one
   registry/progress commit and a short report.
-- `land <task> <attempt>` covers steps 11-17 mechanics: gate checks (review
+- `land <task> <attempt>` covers the mechanics of steps 11-18: gate checks (review
   verdict recorded, feedback validation, integration SHA unchanged), re-run
   tests, push the integration branch only, generate the PR body from records,
   merge with a merge commit, verify `origin/main` contains it, fast-forward the
   primary checkout, write final registry/progress records in one commit, and
-  apply labels.
+  apply labels. Like the current process, the post-merge record commit stays
+  on the local primary checkout and reaches `origin` inside the next ticket's
+  integration branch and PR; the script never pushes it to `main`.
 - The script commits its own registry and progress updates (two commits per
   task: after `prepare`, after `land`) under the configured coordinator
   identity. It runs `validate.py --preflight` before committing and restores
   the touched files on failure.
+- `record-review <task> <attempt> <mode> <verdict>` stores the review mode, its
+  risk reason, the verdict, and the finding count in the task record so `land`
+  can check them without reading prose.
 - Judgment steps stay with the root: path exceptions (5), feedback briefs (6),
-  acceptance-evidence sufficiency (7), and the independent review itself.
+  acceptance-evidence sufficiency (7), interface compatibility and review-mode
+  selection (9), and the independent review itself.
 - Review-mode selection: unchanged from AMEND-002 and the existing risk-based
   policy in `AGENTS.md`. The root selects and records the review mode and its
   risk reason; the integration script requires a recorded mode and review
   verdict before `land`, and logs the mode. This amendment adds no path-based,
   diff-based, or tag-based tiering. A future planner step is expected to attach a
   risk score to each task, and a later amendment will make review selection
-  consume it. Rework is capped at one re-review before asking the user.
-  (Supersedes the earlier diff-based tiering proposal, which the user withdrew
+  consume it. Rework is capped as follows: round 1 is a full exhaustive review;
+  after a fix, one delta re-review of the fix and its blast radius, and, if that
+  is clean, one full-pass confirmation on the final SHA. A blocking finding in
+  the delta re-review or the final pass goes to the user instead of starting
+  further automatic rounds. (Supersedes the earlier diff-based tiering proposal, which the user withdrew
   in favor of planner-assigned risk scores. The script committing its own
   registry and progress updates remains confirmed.)
 
@@ -52,13 +62,17 @@ Context briefs (replace whole-repository startup reads):
   ranges or extracted excerpts of only the referenced PRD and ARCH sections, a
   short worker-rules block, and on resume a summary of the task progress file.
   Workers read the brief and the files it points to, not the full `AGENTS.md`.
+- Reviewer brief at `bootstrap/briefs/<task>-<attempt>-review-<n>.md`: the task
+  record fields above, the base and candidate (or integrated) SHAs, the recorded
+  review mode, the boundary questions, and for a re-review the prior findings
+  and the fix commit range so the delta review can start from them.
 - Root state digest at `bootstrap/progress/state.md` (capped at about 80
   lines): current wave, preflight result, task status table, active workers
   with branch, worktree, base and candidate SHAs, review status,
   dependency-ready tasks, blockers, and the resume action. Completed history
   moves from `coordinator.md` to `bootstrap/progress/history/`, read on demand.
-  Finished tasks in `tasks.json` keep only identifying and landing fields (ID,
-  status, PR, merge SHA, issue); active and ready tasks keep full records.
+  `tasks.json` itself keeps its current schema and content for now; the root
+  reads task records through briefs and `state.md` instead of whole-file reads.
 - Briefs embed a source digest. A smoke-test check fails when a brief or digest
   is stale relative to the registry, and briefs point to authoritative sources
   rather than restating specifications.
@@ -75,7 +89,8 @@ Root session rotation (replaces reliance on auto-compaction):
 - Trigger: rotate at the first quiescent point after context use reaches a
   configured percentage of the model's context window (initial value 35%) or an
   absolute token ceiling (initial value 100k), whichever comes first. Both
-  values live in one config file so the rule applies across models. The
+  values live in `bootstrap/config.json` (also the home of the model IDs below)
+  so the rule applies across models. The
   percentage controls compaction risk; the absolute ceiling bounds per-call
   cost on large-window models. The implementation must verify that the root can
   observe its own context usage in-session; otherwise the launcher supplies it.
@@ -98,7 +113,7 @@ Root session rotation (replaces reliance on auto-compaction):
   block; whether the Codex CLI supports non-interactive relaunch is unverified,
   and the user may relaunch manually.
 
-Model assignment (initial, hardcoded in one config file):
+Model assignment (initial, hardcoded in `bootstrap/config.json`):
 
 - Root coordinator: `gpt-5.6-sol`. Builders (coders): `gpt-5.6-sol`, unchanged
   from the observed baseline (all 56 subagent sessions inherited
@@ -107,18 +122,20 @@ Model assignment (initial, hardcoded in one config file):
   `gpt-6-sol`, a different and higher-capacity model than the builder so that
   review does not share the builder's blind spots.
 - Reasoning effort is unchanged (medium) until a later amendment sets it.
-- The config file is the single place model IDs appear. If a configured model
+- `bootstrap/config.json` is the single place model IDs appear. If a configured model
   is unavailable at spawn time, the spawn fails closed with a logged reason; it
   must not silently inherit the root's model. The implementation must verify
   the exact IDs against the spawn tool's available model list.
-- Each session's model, effort, role, tier, and outcome are logged so a later
+- Each session's model, effort, role, review mode, and outcome are logged so a later
   amendment can tune assignment from pass rates.
-- Out of scope for this amendment: cheaper first-attempt models, model
-  escalation after failed rounds, and a human-escalation threshold.
+- Out of scope for this amendment: cheaper first-attempt models and model
+  escalation after failed rounds. (The round cap above is a process limit that
+  does not depend on model choice.)
 
-Defect-prevention rules (from the 38 recorded review findings, 37 of them
-blocking and found in review; 18 were validation that accepted too much, 8 were
-identity or replay keying, 4 were fake/live parity gaps):
+Defect-prevention rules (from the 38 recorded findings in MB-001 to MB-022
+excluding MB-009: 37 blocking and 37 found in review; by the author's
+categorization 18 were validation that accepted too much, 8 identity or replay
+keying, 4 fake/live parity gaps, 4 failure or retry paths):
 
 - Negative tests: acceptance criteria for any validator or adapter must
   require negative tests, written before the happy path.
@@ -128,7 +145,8 @@ identity or replay keying, 4 were fake/live parity gaps):
 - Fake/live parity: any fake adapter must ship with fake/live parity tests that
   cover every lifecycle operation and terminal state the live adapter supports.
 - Delta re-review: after a fix, the re-review covers the fix and its blast
-  radius first. A full pass is run only once, at the end.
+  radius first. A full pass is run only once, at the end, on the final SHA, under
+  the round cap described under review-mode selection.
 
 Boundary questions (generic, shared by builders and reviewers):
 
@@ -160,7 +178,7 @@ Boundary questions (generic, shared by builders and reviewers):
 
 Reconcile command (startup and continuation gate):
 
-- `scripts/reconcile.sh` (Python implementation) compares `tasks.json` with
+- `scripts/reconcile.sh` (Python implementation behind a shell wrapper) compares `tasks.json` with
   GitHub issue assignment and lifecycle labels, worktrees and branches,
   progress files, pending candidates, coordinator pull requests, local and
   remote Git state, dependency-ready tasks, and `validate.py --preflight`. It
@@ -197,7 +215,7 @@ Token report:
   until risk-based review selection returns. The report tracks review tokens
   separately so the effect is visible.
 
-Safety constraints: never push or commit to `main` directly; never override
+Safety constraints: never push to `main` directly (commits on the primary checkout stay local and reach `origin` only through a coordinator PR); never override
 the configured Git identity; never commit on a failed check; idempotent and
 resumable; refuse ambiguous states. The script requires its own tests using a
 throwaway repository and a stubbed `gh` before first use on a real task.
@@ -207,7 +225,9 @@ throwaway repository and a stubbed `gh` before first use on a real task.
 - New implementation tasks, each with tests, to be added to
   `bootstrap/tasks.json` after approval: the integration script, the brief
   generator, the reconcile command, the quiet-output wrapper, and the token
-  report (owned paths: `scripts/`, `tests/bootstrap/`, `bootstrap/briefs/`).
+  report (owned paths: `scripts/`, `tests/bootstrap/`, `bootstrap/briefs/`, plus
+  `bootstrap/config.json` and the `.gitignore` entry for the log directory,
+  which the coordinator assigns to one task).
   The coordinator may group these into fewer tasks when owned paths do not
   overlap.
 - All future tasks follow the revised procedure once effective.
@@ -220,13 +240,16 @@ throwaway repository and a stubbed `gh` before first use on a real task.
 | MB-009 candidate integration | unaffected | Finishes under the current manual procedure. |
 | Any other active attempt | unaffected | Continue with the same ownership and generation. |
 
-Dispatch must be frozen only after the user authorizes applying this
-amendment; no active attempt changes branch, worktree, or ownership.
+This record is committed on the unmerged branch
+`bootstrap/coordinator/AMEND-003/a01-amendment`, so it does not freeze dispatch
+on `main` until it is merged or copied into the primary checkout. Once present
+there, `Dispatch status: frozen` applies until the amendment is reconciled. No
+active attempt changes branch, worktree, or ownership.
 
 ## Registry and specification changes
 
-- Registry changes: add the integration-script, brief-generator, reconcile, quiet-output, and token-report tasks; collapse finished task records to landing fields; no risk tags are added to tasks; none applied by this draft.
-- Specification changes: `AGENTS.md` Root integration procedure, risk-based review, startup procedure, worker launch brief, spawn policy, model assignment, review and acceptance-criteria rules, continuation gate, and stop-condition sections, and `bootstrap/README.md` and `bootstrap/ROOT_PROMPT.md`, to describe the script, review-mode recording, the rework cap, briefs, the reconcile command, quiet output, and `fork_turns: none`; PRD and ARCH unchanged. New or moved files: `scripts/reconcile.sh`, `scripts/token-report.py`, a shared test-output wrapper, a gitignored log directory, `scripts/make-brief.py`, `bootstrap/briefs/`, `bootstrap/progress/state.md`, `bootstrap/progress/history/`.
+- Registry changes: add the integration-script, brief-generator, reconcile, quiet-output, and token-report tasks; `tasks.json` schema and finished-task records unchanged; no risk tags are added to tasks; none applied by this draft.
+- Specification changes: `AGENTS.md` Root integration procedure, risk-based review, startup procedure, worker launch brief, spawn policy, model assignment, review and acceptance-criteria rules, continuation gate, and stop-condition sections, and `bootstrap/README.md` and `bootstrap/ROOT_PROMPT.md`, to describe the script, review-mode recording, the rework cap, briefs, the reconcile command, quiet output, and `fork_turns: none`; PRD and ARCH unchanged. New or moved files: `scripts/reconcile.sh`, `scripts/token-report.py`, a shared test-output wrapper, a gitignored log directory, `bootstrap/config.json`, `scripts/make-brief.py`, `bootstrap/briefs/`, `bootstrap/progress/state.md`, `bootstrap/progress/history/`.
 - GitHub changes: none by this draft.
 
 ## Effectiveness
