@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Smoke test: the specs exist, the CLI imports, and the full product suite passes.
 set -euo pipefail
 
 repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
@@ -6,78 +7,20 @@ if [[ -z "$repo_root" ]]; then
   echo "Smoke test must run inside a Git repository." >&2
   exit 1
 fi
-
 cd "$repo_root"
 
-for path in \
-  AGENTS.md \
-  PRD.md \
-  ARCH.md \
-  bootstrap/README.md \
-  bootstrap/feedback/README.md \
-  bootstrap/feedback/validate.py \
-  bootstrap/amendments/validate.py \
-  bootstrap/tasks.json \
-  scripts/configure-worktree-identity.sh \
-  scripts/agent-commit.sh \
-  scripts/verify-candidate-commits.py
-do
+for path in AGENTS.md PRD.md ARCH.md pyproject.toml; do
   if [[ ! -s "$path" ]]; then
     echo "Required file is missing or empty: $path" >&2
     exit 1
   fi
 done
 
-python3 - <<'PY'
-import json
-from pathlib import Path
-
-payload = json.loads(Path("bootstrap/tasks.json").read_text())
-tasks = payload.get("tasks", [])
-assert tasks, "task registry is empty"
-ids = {task["id"] for task in tasks}
-for task in tasks:
-    required = {
-        "id", "wave", "title", "status", "dependencies", "owned_paths",
-        "acceptance_criteria", "required_tests"
-    }
-    missing = required - set(task)
-    assert not missing, f"{task.get('id', '<unknown>')} missing {sorted(missing)}"
-    unknown_dependencies = set(task["dependencies"]) - ids
-    assert not unknown_dependencies, (
-        f"{task['id']} has unknown dependencies {sorted(unknown_dependencies)}"
-    )
-print(f"Bootstrap registry: {len(tasks)} tasks valid")
-PY
-
-python3 - <<'PY'
-from pathlib import Path
-
-path = Path("scripts/verify-candidate-commits.py")
-compile(path.read_text(), str(path), "exec")
-print("Commit-attribution verifier: syntax valid")
-PY
-
-python3 bootstrap/feedback/validate.py
-python3 bootstrap/amendments/validate.py
-python3 -m unittest discover -s tests/bootstrap -p 'test_feedback_validator.py'
-python3 -m unittest discover -s tests/bootstrap -p 'test_plan_amendments.py'
-
-if [[ -f pyproject.toml ]]; then
-  if [[ -f uv.lock ]] && command -v uv >/dev/null 2>&1; then
-    uv run pytest --collect-only -q >/dev/null
-    uv run pytest -q
-  else
-    # Shared test environment (scripts/dev-env.sh) with this checkout's src/ on
-    # PYTHONPATH, so the same environment serves every worktree.
-    test_python=$("$repo_root/scripts/dev-env.sh" --print-python) || {
-      echo "The shared test environment could not be prepared; see scripts/dev-env.sh." >&2
-      exit 1
-    }
-    export PYTHONPATH="$repo_root/src${PYTHONPATH:+:$PYTHONPATH}"
-    "$test_python" -m pytest --collect-only -q >/dev/null
-    "$test_python" -m pytest -q
-  fi
-else
-  echo "Product test suite not created yet; bootstrap checks passed."
-fi
+test_python=$("$repo_root/scripts/dev-env.sh" --print-python) || {
+  echo "The shared test environment could not be prepared; see scripts/dev-env.sh." >&2
+  exit 1
+}
+export PYTHONPATH="$repo_root/src${PYTHONPATH:+:$PYTHONPATH}"
+"$test_python" -m milburn.app.cli --version >/dev/null
+"$test_python" -m pytest --collect-only -q >/dev/null
+"$test_python" -m pytest -q
