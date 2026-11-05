@@ -51,10 +51,20 @@ def test_render_is_deterministic_correlated_and_digest_recorded() -> None:
     assert rendered.skill_bindings == (SKILL,)
     assert "private transcript" in rendered.content
     assert rendered.digest == sha256(rendered.content.encode()).hexdigest()
-    assert rendered.rules_digest == sha256(
-        b"Work only in the assigned worktree."
-    ).hexdigest()
+    rules = rendered.content.split("## Mandatory role rules\n", 1)[1].split("\n\n## Task context", 1)[0]
+    assert rendered.rules_digest == sha256(rules.encode()).hexdigest()
     assert BriefRenderer().render(brief()) == rendered
+
+
+def test_direct_coder_brief_cannot_omit_six_boundary_questions() -> None:
+    rendered = BriefRenderer().render(brief(role_rules="Work on issue #6."))
+    for phrase in ("what could pass", "every field", "bypass", "unique",
+                   "preconditions", "test double"):
+        assert phrase in rendered.content.lower()
+    assert rendered.rules_digest == sha256(
+        rendered.content.split("## Mandatory role rules\n", 1)[1]
+        .split("\n\n## Task context", 1)[0].encode()
+    ).hexdigest()
 
 
 def test_renderer_rejects_oversized_sections_instead_of_truncating_rules() -> None:
@@ -68,7 +78,7 @@ def test_renderer_enforces_total_bound() -> None:
     renderer = BriefRenderer(BriefBounds(max_total_chars=350, max_section_chars=100))
 
     with pytest.raises(BriefTooLargeError, match="total limit"):
-        renderer.render(brief())
+        renderer.render(brief(role=Role.PLANNER))
 
 
 def test_launch_brief_rejects_unknown_roles_and_unvalidated_skill_bindings() -> None:

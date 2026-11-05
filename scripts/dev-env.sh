@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Ensure the shared Milburn test environment exists and report where it is.
 #
-# One virtualenv, outside every worktree, holds only the test dependencies from
+# One virtualenv per repository dependency declaration, outside every worktree,
+# holds only the test dependencies from
 # pyproject.toml ([project.optional-dependencies].test). Milburn itself is not
 # installed into it: callers put the current worktree's src/ on PYTHONPATH, so
 # the same environment works for the primary checkout and every worktree.
@@ -12,7 +13,7 @@
 #   scripts/dev-env.sh --check         verify only; never create (exit 1 if absent)
 #
 # Environment:
-#   MILBURN_VENV         venv location (default: ~/.cache/milburn/venv)
+#   MILBURN_VENV         venv location override (default: keyed shared cache)
 #   MILBURN_BASE_PYTHON  interpreter used to create it (default: python3)
 set -euo pipefail
 
@@ -32,7 +33,18 @@ if [[ -z "$repo_root" || ! -f "$repo_root/pyproject.toml" ]]; then
   exit 1
 fi
 
-venv=${MILBURN_VENV:-$HOME/.cache/milburn/venv}
+common_dir=$(git rev-parse --git-common-dir)
+common_dir=$(cd "$common_dir" && pwd -P)
+dependency_key=$(python3 - "$common_dir" "$repo_root/pyproject.toml" <<'PY'
+from hashlib import sha256
+from pathlib import Path
+import sys
+common, declaration = sys.argv[1:]
+digest = sha256(common.encode() + b"\0" + Path(declaration).read_bytes()).hexdigest()
+print(digest[:24])
+PY
+)
+venv=${MILBURN_VENV:-$HOME/.cache/milburn/envs/$dependency_key}
 base_python=${MILBURN_BASE_PYTHON:-python3}
 venv_python="$venv/bin/python"
 
