@@ -4,8 +4,9 @@
 
 Wave 2 (independent boundaries). MB-009 is the only original Wave 2 task not
 done. Seven process-tooling tasks (MB-023 to MB-029) were registered in Wave 2
-under AMEND-003 and are `blocked` until the coordinator marks them ready. Whether they
-gate Wave 3 is an open user decision (see Blockers).
+under AMEND-003 as a parallel track that does not gate Wave 3 (see
+`bootstrap/decisions.md`); they are `blocked` until the coordinator marks them
+ready.
 
 ## Repository state
 
@@ -921,24 +922,24 @@ Decisions needed from the user before the affected paths can proceed:
 1. (Resolved) GitHub issues #41 to #47 were created for MB-023 to MB-029 with
    `milburn:task` and `milburn:blocked`; set labels to match status as tasks
    become ready.
-2. Confirm whether the process-tooling tasks gate Wave 3, or run as a parallel
-   track that does not block it. Wave rules otherwise hold Wave 3 until Wave 2
-   completes, and MB-029 also waits on decision 4.
-3. MB-009 has been through repeated fix rounds (latest finding F005). AMEND-003
-   classes it as unaffected and finishing under the manual procedure, but its
-   convergence backstop of three fix rounds would already be exceeded. Decide
-   whether to continue or escalate.
-4. Launcher sandbox and approval settings for `scripts/run-root.sh` (MB-029).
-5. Confirm that `gpt-6-sol` is a valid reviewer model ID in this environment.
-   The reviewer spawn fails closed if it is not.
+2. (Resolved 2026-11-04) The process-tooling tasks run as a parallel track and
+   do not gate Wave 3; see `bootstrap/decisions.md`.
+3. (Resolved 2026-11-04) MB-009 continues. If its next full review round has a
+   blocking finding, ask the user again before another fix round.
+4. Still open: launcher sandbox and approval settings for
+   `scripts/run-root.sh`. Only MB-029 waits on this; it stays blocked until the
+   user sets both values in `bootstrap/config.json`.
+5. (Resolved 2026-11-04) `gpt-6-sol` confirmed as the reviewer model ID.
 
 ## Resume here
 
 1. Run the startup procedure. `scripts/reconcile.sh` does not exist yet, so
    reconcile by hand against `bootstrap/tasks.json` and GitHub.
-2. Resolve decisions 1 to 3 above with the user.
-3. Finish MB-009 review on `354a18a` (or escalate per decision 3). Reviewers use
-   `gpt-6-sol` with `fork_turns: none`.
+2. The only open user decision is the launcher permissions (blocker 4); it
+   affects only MB-029.
+3. Finish MB-009 review on `354a18a`. Reviewers use `gpt-6-sol` with
+   `fork_turns: none`. If the next full round has a blocking finding, ask the
+   user before another fix round.
 4. After the issues exist: set MB-023, MB-024, and MB-025 ready (no
    dependencies); then MB-026 and MB-027 after MB-025; MB-028 after MB-023 and
    MB-025, run alone because it merges and pushes; MB-029 after MB-025 to
