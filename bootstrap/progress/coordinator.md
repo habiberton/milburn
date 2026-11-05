@@ -8,6 +8,10 @@ under AMEND-003 as a parallel track that does not gate Wave 3 (see
 `bootstrap/decisions.md`); they are `blocked` until the coordinator marks them
 ready.
 
+New dispatch is frozen by pending AMEND-004. MB-009/a01 is classified
+`unaffected` and continues; the resumed MB-023 correction was classified
+`must_stop` and interrupted before changes.
+
 ## Repository state
 
 - Integration branch: `main`; AMEND-003 is effective and reconciled (PRs #36 to
@@ -906,6 +910,98 @@ ready.
 
 ## Current verification
 
+- Startup reconciliation on 2026-11-04 confirmed clean `main` at
+  `62ef4b404e5affeb97bfb09e33c5f17795606db2`, matching `origin/main`; live
+  GitHub issues and merged PRs matched the task registry, and no prior worker
+  process was active.
+- MB-009 candidate `354a18a40694e6afe50b8f2e64d1329d00e6f467`
+  again passed attribution for nine commits, 35 focused tests, the complete
+  candidate suite (409 passed, 3 protected skips, 3 subtests), owned-path and
+  diff checks. Its old worktree predates the shared runner; verification used
+  the primary checkout's `scripts/run-tests.sh` as AGENTS.md permits.
+- The mandated fresh MB-009 Specification and Standards reviews both blocked.
+  Specification found stale retired evidence can supersede later-attempt
+  history and missing preserved branches can be recreated without
+  reconciliation. Standards found a retired lease can be prepared again and
+  then falsely reported retired, plus fake branch-conflict checks leak across
+  repositories. The specific F001-F005 cases remain fixed; these are new
+  lifecycle/fake-parity classes. Under the approved 2026-11-04 decision, no
+  further MB-009 fix round may start without user authorization.
+- MB-009 is therefore blocked on a user decision and issue #9 carries
+  `milburn:decision-needed`. The independent process-tooling track remains
+  executable. Per the user's 2026-11-04 scheduling priority, MB-025 takes the
+  first slot and MB-023 the second; MB-024 remains blocked until it is about to
+  dispatch.
+- Tooling order is MB-025 first paired with MB-023; then MB-026 and MB-027
+  after MB-025; then MB-024 when a slot is free; MB-028 only after MB-023 and
+  MB-025 are merged and runs alone. MB-029 stays blocked until the user sets
+  both launcher permission values. Tooling takes the two worker slots before
+  Wave 3 tasks, although it does not change Wave 3 dependencies.
+- MB-010 and MB-011 are dependency-ready but remain registry/GitHub blocked
+  until each is actually about to dispatch, as do undispatched MB-024 and
+  MB-025 successors.
+- After MB-025, MB-026, and MB-027 are each remotely merged and reconciled,
+  stop at a quiescent point for a user-managed restart. Before stopping, run
+  MB-026's `migrate-history` dry run and report what it would move; do not use
+  `--apply` without explicit user authorization.
+- After each tooling script merges, create a small coordinator PR that
+  activates only its matching `once it exists` rule in `AGENTS.md` and
+  `bootstrap/ROOT_PROMPT.md`; never edit those files directly on `main`.
+- MB-025/a01 and MB-023/a01 worktrees were created from exact base
+  `1b8d86a6802867771c122bfdd0af80d9533ff313` at their recorded absolute paths.
+  Both identities were configured before dispatch as `Milburn Builder
+  [MB-025/a01]` and `Milburn Builder [MB-023/a01]`; the worktrees are clean.
+- Builder sessions `/root/mb025_builder_a01` and `/root/mb023_builder_a01`
+  launched with `fork_turns: none`, model `gpt-5.6-sol`, medium effort, exact
+  owned/prohibited paths, six boundary questions, negative-test-first criteria,
+  required test commands, and candidate-only authority. No third worker is
+  active at that checkpoint.
+- The user then authorized a third concurrent implementation slot within the
+  approved maximum of three. Resumed logical worker
+  `/root/mb009_builder_a01_fix6` launched on the unchanged MB-009/a01 worktree
+  and candidate `354a18a` with `fork_turns: none`, model `gpt-5.6-sol`, medium
+  effort, the four-class exhaustive enumeration gate, red tests before fixes,
+  and authority for exactly one correction round.
+- MB-023/a01 returned corrected candidate
+  `915e9e98e666339b6075eb0d016c1ea6ab31c339` (implementation `cb5fae8` plus a
+  progress-only handoff correction). Root verification passed attribution for
+  both commits, owned paths, diff checks, 16 focused CLI tests, and smoke with
+  430 passed/3 protected skips/3 subtests. Recorded review mode remains Focused
+  because this is an isolated bootstrap runner with no product state,
+  persistence, recovery, or external side effect.
+- MB-025/a01 returned corrected candidate
+  `687cd80f6a824c96189b869fe932bf1c0625ba94` (configuration/loader through
+  `5faafb7`, handoff evidence `3b42d8c`, and progress-only correction
+  `687cd80`). Root verification passed attribution for five commits, owned
+  paths, diff checks, 17 focused tests/31 subtests, and smoke with 431 passed/3
+  protected skips/34 subtests. Focused review must explicitly assess the
+  recorded implementation choice `maximum_rotations = 10`; launcher sandbox
+  and approval remain null and fail closed.
+- MB-023 Focused review blocked candidate `915e9e9` on two exhaustive CLI
+  classes: `command -v` admits shell keywords and builtins that cannot execute
+  consistently across quiet/verbose modes, and unescaped control characters in
+  the displayed log path can break the required one-line summary. The same
+  worker will add negative regressions and a narrow correction. Per policy, a
+  blocking Focused result escalates the corrected candidate to fresh
+  Specification and Standards passes; MB-023-F001/F002 require durable feedback
+  proposals and regression evidence.
+- The user then authorized accepting those MB-023 limitations and skipping the
+  escalated Specification/Standards passes as long as the script remains
+  functional. This is pending AMEND-004 because it changes recorded acceptance
+  and the task's review gate. MB-023 correction work stopped cleanly at
+  candidate `915e9e9`; new dispatch is frozen until the amendment is reviewed,
+  remotely merged, read back, reconciled, and preflight is clear.
+- MB-025 Focused review blocked candidate `687cd80` on accepted string values
+  that can emit multiple lines or unpaired-surrogate tracebacks and malformed
+  UTF-8 that escapes as a traceback. No MB-025 correction worker was active
+  when AMEND-004 froze dispatch; preserve its candidate and findings.
+- AMEND-004 Specification review blocked planning candidate `474fd29` because
+  accepted unresolved MB-023 findings would lose durable tracking when #41
+  closes. Standards passed. Follow-up issues #49 and #50 now track F001 and
+  F002 respectively, and `bootstrap/feedback/MB-023.md` records both as
+  unresolved with no fabricated fix or regression evidence. Both amendment
+  review axes must re-review the corrected planning tip.
+
 - `scripts/smoke-test.sh` with the shared test environment: 29 tasks valid, 12
   feedback briefs valid, 3 amendment records valid, 414 passed, 3 skipped, 3
   subtests passed.
@@ -930,20 +1026,34 @@ Decisions needed from the user before the affected paths can proceed:
    `scripts/run-root.sh`. Only MB-029 waits on this; it stays blocked until the
    user sets both values in `bootstrap/config.json`.
 5. (Resolved 2026-11-04) `gpt-6-sol` confirmed as the reviewer model ID.
+6. MB-009 requires user authorization for another fix round after the fresh
+   full reviews found new blocking retirement/replay and fake-parity defects.
+   (Resolved 2026-11-04) The user authorized exactly one further fix round on
+   MB-009/a01. Before changing implementation, the worker must enumerate every
+   occurrence of four classes: retired-evidence ordering across attempts,
+   preserved-branch recreation, re-preparing a retired lease, and fake
+   branch-conflict state shared across tasks. It must add one negative test per
+   class first and apply all six boundary questions to retired-lease,
+   preserved-branch, and fake-state code. The corrected candidate receives
+   delta Specification and Standards review of the fix/blast radius, followed
+   by one full-pass confirmation. Any blocking finding stops MB-009 for another
+   user decision; no further automatic round is authorized.
 
 ## Resume here
 
 1. Run the startup procedure. `scripts/reconcile.sh` does not exist yet, so
    reconcile by hand against `bootstrap/tasks.json` and GitHub.
-2. The only open user decision is the launcher permissions (blocker 4); it
-   affects only MB-029.
-3. Finish MB-009 review on `354a18a`. Reviewers use `gpt-6-sol` with
-   `fork_turns: none`. If the next full round has a blocking finding, ask the
-   user before another fix round.
-4. After the issues exist: set MB-023, MB-024, and MB-025 ready (no
-   dependencies); then MB-026 and MB-027 after MB-025; MB-028 after MB-023 and
-   MB-025, run alone because it merges and pushes; MB-029 after MB-025 to
-   MB-027 and decision 4. Use at most two workers at first.
-5. Reconcile MB-010 and MB-011 (dependencies done, recorded blocked).
-6. As each tooling script lands, update the matching "once it exists" rules in
-   `AGENTS.md` and `bootstrap/ROOT_PROMPT.md`.
+2. Resume MB-009/a01 from candidate `354a18a` for the one user-authorized fix
+   round with the four exhaustive defect classes and negative-test-first gate;
+   then run delta reviews and one full-pass confirmation. Stop that path on any
+   blocking review result and ask the user again.
+3. MB-025 and MB-023 are the active first tooling pair. Dispatch and integrate
+   them independently; keep MB-024, MB-010, and MB-011 blocked until each is
+   about to dispatch.
+4. After MB-025 merges, dispatch MB-026 and MB-027 before other work. After all
+   three merge, run the `migrate-history` dry run, record exact state, and stop
+   quiescently for the user's manual restart.
+5. MB-028 waits for merged MB-023 and MB-025 and must run alone. MB-029 waits
+   for the unset launcher permissions.
+6. Land each matching `once it exists` activation in a small coordinator PR;
+   do not edit `AGENTS.md` or `bootstrap/ROOT_PROMPT.md` directly on `main`.

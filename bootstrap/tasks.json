@@ -716,14 +716,14 @@
       "id": "MB-009",
       "wave": 2,
       "title": "Implement the Git worktree manager and fake workspace manager",
-      "status": "candidate",
+      "status": "in_progress",
       "github": {
         "issue_number": 9,
         "issue_url": "https://github.com/habiberton/milburn/issues/9",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_status_label": "milburn:changes-requested",
         "last_observed_assignees": ["habiberton"]
       },
       "dependencies": ["MB-004", "MB-020", "MB-022"],
@@ -1164,16 +1164,26 @@
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:blocked",
-        "last_observed_assignees": []
+        "last_observed_status_label": "milburn:decision-needed",
+        "last_observed_assignees": ["habiberton"]
       },
       "dependencies": [],
       "parallel_group": "wave-2-process-tooling",
-      "owner": null,
-      "branch": null,
-      "worktree": null,
-      "base_sha": null,
-      "candidate_sha": null,
+      "owner": "builder-MB-023-a01",
+      "branch": "bootstrap/builder/MB-023/a01-quiet-runner",
+      "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-023-a01",
+      "base_sha": "1b8d86a6802867771c122bfdd0af80d9533ff313",
+      "candidate_sha": "915e9e98e666339b6075eb0d016c1ea6ab31c339",
+      "review_exception": {
+        "authority": "AMEND-004",
+        "status": "pending",
+        "preserved_candidate_sha": "915e9e98e666339b6075eb0d016c1ea6ab31c339",
+        "waived_passes": ["Specification", "Standards"],
+        "known_limitations": [
+          "Shell keywords and shell-only builtins can pass command discovery and behave inconsistently between quiet and verbose modes.",
+          "Control characters in the configured log-directory path can break the one-physical-line summary invariant."
+        ]
+      },
       "progress_path": "bootstrap/progress/tasks/MB-023.md",
       "owned_paths": [
         "scripts/run-quiet.sh",
@@ -1186,7 +1196,8 @@
         "An unwritable log directory, a missing command, and a nonexistent executable fail closed with a clear message and a nonzero exit; output is never silently discarded.",
         "scripts/run-tests.sh and scripts/smoke-test.sh keep their current behavior and their tests keep passing.",
         "Negative tests for every refusal and failure path are written before the happy path, and every check is exercised with an input that would pass a weaker check but must be rejected.",
-        "Behavior is tested through the public command-line interface; nothing in AGENTS.md, bootstrap/README.md, bootstrap/ROOT_PROMPT.md, bootstrap/tasks.json, or the coordinator progress file is modified."
+        "Behavior is tested through the public command-line interface; nothing in AGENTS.md, bootstrap/README.md, bootstrap/ROOT_PROMPT.md, bootstrap/tasks.json, or the coordinator progress file is modified.",
+        "AMEND-004, once effective, accepts the recorded shell keyword/builtin and control-character display limitations for preserved candidate 915e9e98e666339b6075eb0d016c1ea6ab31c339 and waives only the fresh Specification and Standards escalation."
       ],
       "required_tests": [
         "scripts/run-tests.sh tests/bootstrap/test_run_quiet.py -q",
@@ -1239,23 +1250,23 @@
       "id": "MB-025",
       "wave": 2,
       "title": "Add the bootstrap configuration file and loader",
-      "status": "blocked",
+      "status": "candidate",
       "github": {
         "issue_number": 43,
         "issue_url": "https://github.com/habiberton/milburn/issues/43",
         "status_source": "github",
         "assignment_source": "github",
         "last_observed_state": "open",
-        "last_observed_status_label": "milburn:blocked",
-        "last_observed_assignees": []
+        "last_observed_status_label": "milburn:in-progress",
+        "last_observed_assignees": ["habiberton"]
       },
       "dependencies": [],
       "parallel_group": "wave-2-process-tooling",
-      "owner": null,
-      "branch": null,
-      "worktree": null,
-      "base_sha": null,
-      "candidate_sha": null,
+      "owner": "builder-MB-025-a01",
+      "branch": "bootstrap/builder/MB-025/a01-bootstrap-config",
+      "worktree": "/Users/habiberton/projects/milburn-worktrees/MB-025-a01",
+      "base_sha": "1b8d86a6802867771c122bfdd0af80d9533ff313",
+      "candidate_sha": "687cd80f6a824c96189b869fe932bf1c0625ba94",
       "progress_path": "bootstrap/progress/tasks/MB-025.md",
       "owned_paths": [
         "bootstrap/config.json",
