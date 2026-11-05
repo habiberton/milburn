@@ -19,31 +19,41 @@ from milburn.agents.codex_adapter import (
 from tests.fakes.codex import FakeCodexRuntime, ScriptedCodexRun
 
 
-def claude_stream(result_document: str | None) -> str:
+def claude_stream(script: ScriptedCodexRun) -> str:
     """Render the event shape of ``claude -p --output-format stream-json``.
 
-    Mirrors the recorded run in ``tests/fixtures/harness``: an init event, then a
-    result event whose ``structured_output`` holds the schema-checked object.
-    A document that is not a JSON object is reported as plain ``result`` text.
+    Mirrors the recorded runs in ``tests/fixtures/harness``: an init event, then
+    a result event whose ``structured_output`` holds the schema-checked object.
+    A document that is not a JSON object yields no ``structured_output``.
     """
 
-    events: list[dict[str, object]] = [
-        {"type": "system", "subtype": "init", "session_id": "fake-session"},
-    ]
-    if result_document is not None:
-        try:
-            structured = json.loads(result_document)
-        except json.JSONDecodeError:
-            structured = None
+    session = {"session_id": "fake-session"}
+    events: list[dict[str, object]] = [{"type": "system", "subtype": "init", **session}]
+    if script.terminal == "exhausted":
+        events.append(
+            {"type": "rate_limit_event", "rate_limit_info": {"status": "rejected"}, **session}
+        )
+    elif script.terminal == "error":
+        events.append(
+            {"type": "result", "subtype": "error_during_execution", "is_error": True,
+             "result": "", **session}
+        )
+    elif script.terminal == "completed":
+        structured = None
+        if script.result_document is not None:
+            try:
+                structured = json.loads(script.result_document)
+            except json.JSONDecodeError:
+                structured = None
         events.append(
             {
                 "type": "result",
                 "subtype": "success",
                 "is_error": False,
-                "session_id": "fake-session",
                 "structured_output": structured if isinstance(structured, dict) else None,
-                "result": result_document,
+                "result": script.result_document or "",
                 "usage": {"input_tokens": 1, "output_tokens": 1},
+                **session,
             }
         )
     return "\n".join(json.dumps(event) for event in events) + "\n"

@@ -15,7 +15,6 @@ import json
 import os
 from pathlib import Path
 import re
-import tempfile
 from typing import Protocol
 
 from milburn.domain import Role, SkillBinding
@@ -132,6 +131,8 @@ class LaunchRequest:
             name, value = pair
             if not isinstance(name, str) or not _ENV_NAME.fullmatch(name):
                 raise ValueError(f"invalid environment variable name {name!r}")
+            if name in IDENTITY_ENV:
+                raise ValueError(f"{name} is set by the adapter and cannot be overridden")
             if name in names:
                 raise ValueError(f"duplicate environment variable {name}")
             names.add(name)
@@ -155,9 +156,25 @@ class LaunchRequest:
                 or os.path.normpath(directory) != directory
             ):
                 raise ValueError("writable_dirs must be absolute normalized paths")
+            home = Path.home()
+            if directory == "/" or home == Path(directory) or home.is_relative_to(directory):
+                raise ValueError(
+                    "writable_dirs must not contain the home directory (that is full access)"
+                )
 
 
 _ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+IDENTITY_ENV = frozenset(
+    {
+        "MILBURN_ATTEMPT_ID",
+        "GIT_AUTHOR_NAME",
+        "GIT_AUTHOR_EMAIL",
+        "GIT_COMMITTER_NAME",
+        "GIT_COMMITTER_EMAIL",
+    }
+)
+"""Variables the adapter always sets from the request (G22, PRD R40)."""
 
 SANDBOX_MODES = frozenset(mode.value for mode in Sandbox)
 """Sandbox modes the controller may request. Full access is never requested."""
@@ -237,12 +254,20 @@ class AgentAdapter:
         renderer: BriefRenderer | None = None,
         parser: AgentResultParser | None = None,
         schema_dir: Path | None = None,
+        identity_email: str | None = None,
     ) -> None:
+        if identity_email is not None and (
+            not identity_email or any(c.isspace() for c in identity_email) or "@" not in identity_email
+        ):
+            raise ValueError("identity_email must be one email address")
         self._runtime = runtime
         self._commands = commands
         self._renderer = renderer or BriefRenderer()
         self._parser = parser or AgentResultParser()
-        self._schema_dir = schema_dir or Path(tempfile.gettempdir()) / "milburn-schemas"
+        # Private, per-user directory: a shared /tmp location would let another
+        # user plant a weaker schema under the predictable digest name.
+        self._schema_dir = schema_dir or Path.home() / ".milburn" / "schemas"
+        self._identity_email = identity_email
 
     @property
     def harness(self) -> Harness:
@@ -270,7 +295,7 @@ class AgentAdapter:
                 command=command,
                 cwd=request.worktree,
                 stdin=rendered.content,
-                env=request.env,
+                env=self._identity_env(request) + request.env,
             )
         )
         if not isinstance(runtime_endpoint, str) or not runtime_endpoint.strip():
@@ -341,7 +366,7 @@ class AgentAdapter:
                 protocol_error=f"{name} exited without a semantic task result",
                 run_end=RunEnd.FAILED,
             )
-        report = self._commands.interpret(collected.stdout)
+        report = self._commands.interpret(collected.stdout, collected.exit_code)
         common = {
             "endpoint": endpoint,
             "process_exit": process_exit,
@@ -369,15 +394,35 @@ class AgentAdapter:
                 f"endpoint belongs to {endpoint.harness.value}, not {self.harness.value}"
             )
 
+    def _identity_env(self, request: LaunchRequest) -> tuple[tuple[str, str], ...]:
+        """Per-attempt Git identity and attempt marker, never the user's (G22)."""
+
+        name = f"Milburn {request.role.value} [{request.task_id}/{request.attempt_id}]"
+        email = self._identity_email or (
+            f"{request.role.value}.{request.task_id}.{request.attempt_id}@milburn.invalid"
+        )
+        return (
+            ("MILBURN_ATTEMPT_ID", request.attempt_id),
+            ("GIT_AUTHOR_NAME", name),
+            ("GIT_AUTHOR_EMAIL", email),
+            ("GIT_COMMITTER_NAME", name),
+            ("GIT_COMMITTER_EMAIL", email),
+        )
+
     def _schema_file(self, schema: dict[str, object]) -> str:
-        """Write the schema once, content-addressed, outside every worktree."""
+        """Write the schema content-addressed in a private directory; verify reuse."""
 
         content = json.dumps(schema, separators=(",", ":"), sort_keys=True)
         digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
-        self._schema_dir.mkdir(parents=True, exist_ok=True)
+        self._schema_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        os.chmod(self._schema_dir, 0o700)
         path = self._schema_dir / f"{digest}.json"
-        if not path.exists():
-            temporary = path.with_suffix(f".{os.getpid()}.tmp")
+        try:
+            current = path.read_text(encoding="utf-8")
+        except OSError:
+            current = None
+        if current != content:
+            temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
             temporary.write_text(content, encoding="utf-8")
             temporary.replace(path)
         return str(path)

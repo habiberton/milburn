@@ -90,13 +90,48 @@ class HarnessInvocation:
     model: str | None = None
     resume_session: str | None = None
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.sandbox, Sandbox):
+            raise ValueError("sandbox must be a Sandbox value")
+        if not isinstance(self.writable_dirs, tuple):
+            raise ValueError("writable_dirs must be a tuple")
+        if self.writable_dirs and self.sandbox is not Sandbox.WORKSPACE_WRITE:
+            raise ValueError("writable_dirs require the workspace-write sandbox")
+        for name in ("model", "resume_session", "result_schema_path"):
+            value = getattr(self, name)
+            if value is not None and (
+                not isinstance(value, str)
+                or not value
+                or value.startswith("-")
+                or any(character.isspace() for character in value)
+            ):
+                raise ValueError(f"{name} must be one token that does not start with '-'")
+
 
 class HarnessCommands(Protocol):
     harness: Harness
 
     def command(self, invocation: HarnessInvocation) -> tuple[str, ...]: ...
 
-    def interpret(self, stdout: str) -> RunReport: ...
+    def interpret(self, stdout: str, exit_code: int | None = None) -> RunReport: ...
+
+
+def _with_exit(report: RunReport, exit_code: int | None) -> RunReport:
+    """A non-zero exit with no final message is a failure, not a completion."""
+
+    if (
+        exit_code not in (None, 0)
+        and report.run_end is RunEnd.COMPLETED
+        and report.final_message is None
+    ):
+        return RunReport(
+            RunEnd.FAILED,
+            None,
+            report.usage,
+            report.session_id,
+            f"{report.detail}; exit code {exit_code}",
+        )
+    return report
 
 
 def _validate_executable(executable: str) -> None:
@@ -161,7 +196,10 @@ class CodexCommands:
             )
         return (self._executable, "exec", *options, "-")
 
-    def interpret(self, stdout: str) -> RunReport:
+    def interpret(self, stdout: str, exit_code: int | None = None) -> RunReport:
+        return _with_exit(self._interpret(stdout), exit_code)
+
+    def _interpret(self, stdout: str) -> RunReport:
         events, malformed = _json_lines(stdout)
         session_id = next(
             (
@@ -226,6 +264,8 @@ _CLAUDE_GIT_ALLOWANCES = ("Bash(git add:*)", "Bash(git commit:*)")
 # Only "allowed" has been observed so far; ARCH §13 item 10 tracks capture of
 # a real refusal.
 _CLAUDE_REFUSED_STATUSES = frozenset({"rejected"})
+# Error subtypes that are failures of the run itself, never quota exhaustion.
+_CLAUDE_FAILURE_SUBTYPES = frozenset({"error_max_turns"})
 
 
 class ClaudeCodeCommands:
@@ -273,13 +313,21 @@ class ClaudeCodeCommands:
             command += ["--resume", invocation.resume_session]
         return tuple(command)
 
-    def interpret(self, stdout: str) -> RunReport:
+    def interpret(self, stdout: str, exit_code: int | None = None) -> RunReport:
+        return _with_exit(self._interpret(stdout), exit_code)
+
+    def _interpret(self, stdout: str) -> RunReport:
         events, malformed = _json_lines(stdout)
         session_id: str | None = None
         refused = False
         result: dict[str, Any] | None = None
         for event in events:
             if isinstance(event.get("session_id"), str):
+                if session_id is not None and event["session_id"] != session_id:
+                    return RunReport(
+                        RunEnd.FAILED, None, None, session_id,
+                        "Claude Code stream mixes session IDs",
+                    )
                 session_id = event["session_id"]
             if event["type"] == "rate_limit_event":
                 info = event.get("rate_limit_info")
@@ -306,20 +354,26 @@ class ClaudeCodeCommands:
                 f"rate limited (api_error_status={result.get('api_error_status')!r})",
             )
         if result.get("is_error") is not False or result.get("subtype") != "success":
+            # Only subtypes known not to mean exhaustion are failures. Anything
+            # else stays unknown so the Coordinator can judge it, and hand off
+            # if it was a usage limit (ARCH §8.1 step 1, §13 item 10).
+            known_failure = result.get("subtype") in _CLAUDE_FAILURE_SUBTYPES
             return RunReport(
-                RunEnd.FAILED,
+                RunEnd.FAILED if known_failure else RunEnd.UNKNOWN,
                 None,
                 usage,
                 session_id,
                 f"result subtype {result.get('subtype')!r}, is_error={result.get('is_error')!r}",
             )
         structured = result.get("structured_output")
-        if isinstance(structured, dict):
-            message = json.dumps(structured, separators=(",", ":"), sort_keys=True)
-        elif isinstance(result.get("result"), str) and result["result"].strip():
-            message = result["result"]
-        else:
-            return RunReport(RunEnd.COMPLETED, None, usage, session_id, "result has no message")
+        if not isinstance(structured, dict):
+            # Every launch requests --json-schema, so prose in ``result`` is
+            # never accepted as the result: enforcement must not be skipped.
+            return RunReport(
+                RunEnd.COMPLETED, None, usage, session_id,
+                "result has no structured_output; schema enforcement was not applied",
+            )
+        message = json.dumps(structured, separators=(",", ":"), sort_keys=True)
         return RunReport(RunEnd.COMPLETED, message, usage, session_id, "result success")
 
 

@@ -162,7 +162,7 @@ def test_interruption_cannot_be_collected_as_scripted_task_success() -> None:
     assert not collected.process_exit.succeeded
     assert collected.process_exit.stderr == "scripted process interrupted"
     assert collected.task_result is None
-    assert collected.protocol_error == "Codex exited without a semantic task result"
+    assert collected.protocol_error == "Codex JSONL has no turn.completed event"
 
 
 def test_running_fake_rejects_retirement_without_invalidating_endpoint() -> None:

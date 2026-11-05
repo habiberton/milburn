@@ -72,18 +72,60 @@ def test_claude_allowed_rate_limit_status_is_not_exhaustion() -> None:
     assert report.run_end is RunEnd.COMPLETED
 
 
+def test_claude_known_failure_subtype_fails() -> None:
+    report = ClaudeCodeCommands().interpret(
+        jsonl(claude_result(is_error=True, subtype="error_max_turns"))
+    )
+    assert report.run_end is RunEnd.FAILED
+    assert report.final_message is None
+
+
 @pytest.mark.parametrize(
     "overrides",
     [
         {"is_error": True},
-        {"subtype": "error_max_turns"},
+        {"is_error": True, "subtype": "error_during_execution"},
         {"is_error": None},
+        {"subtype": "error_max_budget_usd"},
     ],
 )
-def test_claude_error_results_fail_without_a_message(overrides: dict) -> None:
+def test_claude_unrecognised_errors_stay_unknown_for_the_coordinator(overrides: dict) -> None:
     report = ClaudeCodeCommands().interpret(jsonl(claude_result(**overrides)))
-    assert report.run_end is RunEnd.FAILED
+    assert report.run_end is RunEnd.UNKNOWN
     assert report.final_message is None
+
+
+def test_claude_prose_result_is_never_accepted_without_structured_output() -> None:
+    report = ClaudeCodeCommands().interpret(
+        jsonl(claude_result(structured_output=None, result='{"ok":true}'))
+    )
+    assert report.final_message is None
+    assert "schema enforcement" in report.detail
+
+
+def test_claude_mixed_session_ids_are_malformed() -> None:
+    report = ClaudeCodeCommands().interpret(
+        jsonl({"type": "system", "subtype": "init", "session_id": "a"}, claude_result(session_id="b"))
+    )
+    assert report.run_end is RunEnd.FAILED
+    assert "session" in report.detail
+
+
+@pytest.mark.parametrize("commands", [CodexCommands(), ClaudeCodeCommands()])
+def test_nonzero_exit_without_a_message_fails(commands: object) -> None:
+    stream = (
+        jsonl({"type": "turn.completed", "usage": {}})
+        if isinstance(commands, CodexCommands)
+        else jsonl(claude_result(structured_output=None))
+    )
+    report = commands.interpret(stream, 3)  # type: ignore[attr-defined]
+    assert report.run_end is RunEnd.FAILED
+
+
+def test_nonzero_exit_does_not_discard_a_completed_result() -> None:
+    report = ClaudeCodeCommands().interpret(jsonl(claude_result()), 17)
+    assert report.run_end is RunEnd.COMPLETED
+    assert report.final_message is not None
 
 
 def test_claude_stream_without_result_is_unknown() -> None:
@@ -99,7 +141,7 @@ def test_claude_malformed_stream_fails() -> None:
 
 def test_claude_success_without_any_message_has_no_final_message() -> None:
     report = ClaudeCodeCommands().interpret(
-        jsonl(claude_result(structured_output=None, result="  "))
+        jsonl(claude_result(structured_output=None, result="  ")), 0
     )
     assert report.run_end is RunEnd.COMPLETED
     assert report.final_message is None
@@ -272,3 +314,20 @@ def test_usage_rejects_negative_and_boolean_counts() -> None:
 def test_harness_names() -> None:
     assert CodexCommands.harness is Harness.CODEX
     assert ClaudeCodeCommands.harness is Harness.CLAUDE_CODE
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"sandbox": "workspace-write"},
+        {"sandbox": Sandbox.READ_ONLY, "writable_dirs": ("/repo/.git",)},
+        {"sandbox": Sandbox.READ_ONLY, "writable_dirs": ["/repo/.git"]},
+        {"sandbox": Sandbox.READ_ONLY, "model": "--dangerously-skip-permissions"},
+        {"sandbox": Sandbox.READ_ONLY, "resume_session": "-x"},
+        {"sandbox": Sandbox.READ_ONLY, "model": "a b"},
+        {"sandbox": Sandbox.READ_ONLY, "result_schema_path": ""},
+    ],
+)
+def test_invocation_rejects_unsafe_values(kwargs: dict) -> None:
+    with pytest.raises(ValueError):
+        HarnessInvocation(**kwargs)

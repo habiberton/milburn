@@ -22,7 +22,13 @@ when a harness version changes; `agents/harness.py` encodes them.
   `~/.milburn` is out of reach (ARCH A3).
 - **Commits from a worktree:** work once `Bash(git add:*)` and
   `Bash(git commit:*)` are allowed; `--add-dir` for the shared Git directory is
-  not needed. A compound command (`git add x && git commit`) asks for approval
+  not needed. Observed, not explained: the sandbox let `git commit` write the
+  repository's shared Git directory under the home directory, while an allowed
+  `touch` of another home path was blocked. So the exemption covers the
+  repository's Git directory, not home paths in general; `~/.milburn` stayed
+  unwritable. Re-check this with each Claude Code version. The allowance also
+  permits `git commit --amend` and `-n`; the `candidate-protocol` gate checks
+  the resulting commits. A compound command (`git add x && git commit`) asks for approval
   and is refused in `-p` mode, so the brief tells the Coder to run them
   separately.
 - **Usage:** `result.usage` has `input_tokens` (uncached only),

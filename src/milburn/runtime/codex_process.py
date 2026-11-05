@@ -83,6 +83,14 @@ class SubprocessCodexRuntime:
             process.stdin.write(spec.stdin)
         except BrokenPipeError:
             pass
+        except BaseException:
+            # The caller never receives this endpoint, so stop and forget the
+            # run rather than leave an unreachable live process.
+            self.interrupt(endpoint)
+            run = self._runs.pop(endpoint)
+            run.stdout_file.close()
+            run.stderr_file.close()
+            raise
         finally:
             try:
                 process.stdin.close()
