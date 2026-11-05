@@ -136,9 +136,23 @@ Root session rotation (replaces reliance on auto-compaction):
   stops with rotation as the stated reason.
 - Stop condition: `AGENTS.md` and `ROOT_PROMPT.md` add "rotation requested at a
   quiescent point with a valid checkpoint" as a permitted stop, alongside the
-  existing stop reasons. A launcher restarts the root from the `ROOT_PROMPT.md`
-  block; whether the Codex CLI supports non-interactive relaunch is unverified,
-  and the user may relaunch manually.
+  existing stop reasons.
+- Launcher: `scripts/run-root.sh` starts each root session as a fresh
+  `codex exec` run with the `ROOT_PROMPT.md` block (user-supplied information
+  that `codex exec` runs non-interactively; not independently verified against
+  the Codex documentation). After each run it checks `state.md` and the
+  reconcile result: it relaunches fresh when rotation was requested, and stops
+  on a recorded blocker, an escalation, no remaining authorized work, or a
+  configured maximum number of rotations. `codex exec resume` is reserved for
+  crash recovery and is not used for rotation, because resuming restores the old
+  context. `--ephemeral` is not used, because the token report reads the
+  rollout files.
+- Launcher permissions: non-interactive runs need credentials and predetermined
+  sandbox and approval settings. The values are a user decision recorded in
+  `bootstrap/config.json`; this amendment does not choose them. The original
+  root session ran with approval policy `never` and a full-access sandbox.
+- Still unverified: whether subagent tools are available in `codex exec` runs
+  and whether workers survive a root session ending (see above).
 
 Model assignment (initial, hardcoded in `bootstrap/config.json`):
 
@@ -251,8 +265,8 @@ throwaway repository and a stubbed `gh` before first use on a real task.
 
 - New implementation tasks, each with tests, to be added to
   `bootstrap/tasks.json` after approval: the integration script, the brief
-  generator, the reconcile command, the quiet-output wrapper, and the token
-  report (owned paths: `scripts/`, `tests/bootstrap/`, `bootstrap/briefs/`, plus
+  generator, the reconcile command, the quiet-output wrapper, the root launcher, and the
+  token report (owned paths: `scripts/`, `tests/bootstrap/`, `bootstrap/briefs/`, plus
   `bootstrap/config.json` and the `.gitignore` entry for the log directory,
   which the coordinator assigns to one task).
   The coordinator may group these into fewer tasks when owned paths do not
@@ -275,8 +289,8 @@ active attempt changes branch, worktree, or ownership.
 
 ## Registry and specification changes
 
-- Registry changes: add the integration-script, brief-generator, reconcile, quiet-output, and token-report tasks; `tasks.json` schema and finished-task records unchanged; no risk tags are added to tasks; none applied by this draft.
-- Specification changes: `AGENTS.md` Root integration procedure, risk-based review, startup procedure, worker launch brief, spawn policy, model assignment, review and acceptance-criteria rules, continuation gate, and stop-condition sections, and `bootstrap/README.md` and `bootstrap/ROOT_PROMPT.md`, to describe the script, review-mode recording, the rework cap, briefs, the reconcile command, quiet output, and `fork_turns: none`; PRD and ARCH unchanged. New or moved files: `scripts/reconcile.sh`, `scripts/token-report.py`, a shared test-output wrapper, a gitignored log directory, `bootstrap/config.json`, `scripts/make-brief.py`, `bootstrap/briefs/`, `bootstrap/progress/state.md`, `bootstrap/progress/history/`.
+- Registry changes: add the integration-script, brief-generator, reconcile, quiet-output, root-launcher, and token-report tasks; `tasks.json` schema and finished-task records unchanged; no risk tags are added to tasks; none applied by this draft.
+- Specification changes: `AGENTS.md` Root integration procedure, risk-based review, startup procedure, worker launch brief, spawn policy, model assignment, review and acceptance-criteria rules, continuation gate, and stop-condition sections, and `bootstrap/README.md` and `bootstrap/ROOT_PROMPT.md`, to describe the script, review-mode recording, the rework cap, briefs, the reconcile command, quiet output, and `fork_turns: none`; PRD and ARCH unchanged. New or moved files: `scripts/run-root.sh`, `scripts/reconcile.sh`, `scripts/token-report.py`, a shared test-output wrapper, a gitignored log directory, `bootstrap/config.json`, `scripts/make-brief.py`, `bootstrap/briefs/`, `bootstrap/progress/state.md`, `bootstrap/progress/history/`.
 - GitHub changes: none by this draft.
 
 ## Effectiveness
