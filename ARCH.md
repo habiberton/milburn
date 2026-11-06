@@ -489,7 +489,11 @@ before the task that depends on them starts.
    not needed.
 4. **Coordinator guardrails.** Claude Code permission deny rules and Codex rules
    that block direct `git push`, `gh pr merge`, and GitHub mutation from the
-   Coordinator's session; verify each harness honours them.
+   Coordinator's session; verify each harness honours them. For a Coordinator
+   hosted in Agent Canvas (PRD R44), also keep it off Canvas's
+   child-conversation tool (`launch_child_conversation`): leave it out of the
+   conversation's client tools, or forbid it in the Coordinator skill and check
+   the conversation events for it.
 5. **OpenSpec.** PRDv2 §12 item 4 checks; on failure, Milburn's own requirement and
    scenario format with explicit IDs, keeping OpenSpec's file layout (review V-b).
 6. **Names. Decided:** as in §6, renameable as data.
