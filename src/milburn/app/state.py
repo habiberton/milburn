@@ -33,6 +33,8 @@ class Attempt:
     base_sha: str
     sandbox: str
     candidate_sha: str | None = None
+    handoff_from: str | None = None
+    dispatch_head: str | None = None
     started: dict[str, Any] | None = None
     collected: dict[str, Any] | None = None
 
@@ -184,7 +186,8 @@ class Ledger:
                     Attempt(
                         data["attempt"], data["role"], data["harness"], data["endpoint"],
                         data["worktree"], data["base_sha"], data["sandbox"],
-                        data.get("candidate_sha"),
+                        data.get("candidate_sha"), data.get("handoff_from"),
+                        data.get("dispatch_head"),
                     )
                 )
             elif kind is EventType.AGENT_STARTED:
@@ -198,6 +201,8 @@ class Ledger:
                         attempt.collected = data
             elif kind is EventType.AGENT_USAGE_OBSERVED:
                 state.usage.append(data)
+            elif kind in (EventType.ATTEMPT_HANDED_OFF, EventType.SESSION_GENERATION_EXHAUSTED):
+                pass  # recorded for audit and reports; dispatch carries the state
             elif kind is EventType.QA_GATE_REFUSED:
                 state.tasks[data["task"]].refusals += 1
             elif kind is EventType.TASK_COMPLETED:
