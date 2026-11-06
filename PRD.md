@@ -378,7 +378,9 @@ Not in this release. Each needs its own approved change before work starts.
   visibility in Canvas. It needs validation first: that ACP through the Agent
   Server gives Milburn the controls it relies on today (sandbox choice,
   schema-enforced results, config isolation, usage fields, and exhaustion
-  signals; see `docs/harness-facts.md`).
+  signals; see `docs/harness-facts.md`). The user decided on 2026-11-05 that
+  role agents should go this way. Spike results, the sandbox gap found, and the
+  Docker plan are in `docs/acp-agent-server.md`.
 - A Milburn panel in Agent Canvas (a Canvas "Apps" extension) showing work items,
   tasks, gate results, and usage from `milburn status --json`, once the Agent
   Server serves the extension endpoints.
