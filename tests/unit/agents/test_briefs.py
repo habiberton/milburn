@@ -78,7 +78,7 @@ def test_renderer_enforces_total_bound() -> None:
     renderer = BriefRenderer(BriefBounds(max_total_chars=350, max_section_chars=100))
 
     with pytest.raises(BriefTooLargeError, match="total limit"):
-        renderer.render(brief(role=Role.PLANNER))
+        renderer.render(brief(role=Role.TESTER))
 
 
 def test_launch_brief_rejects_unknown_roles_and_unvalidated_skill_bindings() -> None:

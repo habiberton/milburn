@@ -6,7 +6,7 @@ import pytest
 from milburn.domain import CommandEnvelope, CommandType, IssueDraft, IssueState, Role
 from milburn.integrations.github.contracts import RepositoryId
 from milburn.integrations.github.registry import IssueRegistry, LabelConfig
-from milburn.integrations.mcp import EffectFence
+from milburn.integrations.mcp import EffectFence, InMemoryGenerationFence, StaleGenerationError
 from tests.fakes.github_gateway import FakeGitHubGateway
 
 REPOSITORY = RepositoryId("acme", "milburn")
@@ -29,7 +29,10 @@ def command(role=Role.ARCHITECT):
 
 
 def registry(server=None):
-    server = server or FakeGitHubGateway(REPOSITORY)
+    if server is None:
+        fence = InMemoryGenerationFence()
+        fence.activate(FENCE.task_id, FENCE.attempt_id, FENCE.generation)
+        server = FakeGitHubGateway(REPOSITORY, fence)
     config = LabelConfig.load(Path("config/github-labels.yaml"))
     return IssueRegistry(server, REPOSITORY, config), server
 
@@ -122,3 +125,20 @@ def test_close_during_labeling_is_reconciled_to_done_not_returned_ready():
         service.create(command(), draft(), FENCE, {})
     assert server.issues[1]["state"] == "closed"
     assert server.issues[1]["labels"] == ["milburn:task", "milburn:done"]
+
+
+def test_a_marker_that_prefixes_another_never_matches_its_issue():
+    service, server = registry()
+    first = service.create(command(), draft(), FENCE, {})
+    longer = replace(draft(), task_key="task-10")
+    second = service.create(command(), longer, FENCE, {})
+    assert (first.number, second.number) == (1, 2)
+    assert server.mutation_counts[CREATE_ISSUE] == 2
+
+
+def test_a_stale_generation_cannot_create_or_label():
+    service, server = registry()
+    server.fence.activate(FENCE.task_id, FENCE.attempt_id, FENCE.generation + 1)
+    with pytest.raises(StaleGenerationError):
+        service.create(command(), draft(), FENCE, {})
+    assert server.issues == {}

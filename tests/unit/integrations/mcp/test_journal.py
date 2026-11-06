@@ -97,3 +97,57 @@ def test_generation_fence_scopes_reused_attempt_ids_by_task() -> None:
 
     with pytest.raises(StaleGenerationError):
         fence.assert_current(EffectFence("MB-008", "a01", 1))
+
+
+ALLOWED = {
+    EffectStatus.REQUESTED: {EffectStatus.RECONCILED},
+    EffectStatus.RECONCILED: {EffectStatus.CALL_STARTED, EffectStatus.OBSERVED},
+    EffectStatus.CALL_STARTED: {EffectStatus.RECONCILED, EffectStatus.OBSERVED, EffectStatus.UNCERTAIN},
+    EffectStatus.UNCERTAIN: {EffectStatus.RECONCILED, EffectStatus.OBSERVED},
+    EffectStatus.OBSERVED: {EffectStatus.OBSERVED},
+}
+PATHS = {
+    EffectStatus.REQUESTED: [],
+    EffectStatus.RECONCILED: [EffectStatus.RECONCILED],
+    EffectStatus.CALL_STARTED: [EffectStatus.RECONCILED, EffectStatus.CALL_STARTED],
+    EffectStatus.UNCERTAIN: [EffectStatus.RECONCILED, EffectStatus.CALL_STARTED, EffectStatus.UNCERTAIN],
+    EffectStatus.OBSERVED: [EffectStatus.RECONCILED, EffectStatus.OBSERVED],
+}
+
+
+def _at(status: EffectStatus) -> InMemoryEffectJournal:
+    journal = InMemoryEffectJournal()
+    journal.request(request())
+    for step in PATHS[status]:
+        identity = "issue-1" if step is EffectStatus.OBSERVED else None
+        journal.transition("effect-1", step, remote_identity=identity)
+    assert journal.get("effect-1").status is status
+    return journal
+
+
+@pytest.mark.parametrize("source", list(EffectStatus))
+@pytest.mark.parametrize("target", list(EffectStatus))
+def test_every_transition_is_allowed_or_refused_exactly_as_specified(source, target) -> None:
+    journal = _at(source)
+    identity = "issue-1" if target is EffectStatus.OBSERVED else None
+    if target in ALLOWED[source]:
+        record = journal.transition("effect-1", target, remote_identity=identity)
+        assert record.status is target and record.remote_identity == identity
+    else:
+        with pytest.raises(EffectConflictError, match="invalid effect transition"):
+            journal.transition("effect-1", target, remote_identity=identity)
+        assert journal.get("effect-1").status is source
+
+
+def test_observed_requires_a_remote_identity_and_others_refuse_one() -> None:
+    journal = _at(EffectStatus.RECONCILED)
+    with pytest.raises(EffectConflictError, match="require a remote identity"):
+        journal.transition("effect-1", EffectStatus.OBSERVED)
+    with pytest.raises(EffectConflictError, match="only observed"):
+        journal.transition("effect-1", EffectStatus.CALL_STARTED, remote_identity="issue-1")
+    assert journal.get("effect-1").status is EffectStatus.RECONCILED
+
+
+def test_unknown_effect_id_is_refused() -> None:
+    with pytest.raises(EffectConflictError, match="unknown effect ID"):
+        InMemoryEffectJournal().transition("missing", EffectStatus.RECONCILED)

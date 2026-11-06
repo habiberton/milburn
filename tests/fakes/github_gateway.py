@@ -1,8 +1,14 @@
 """In-memory ``GitHubGateway`` for registry tests; no transport, no network.
 
-It keeps the gateway contract the registry relies on: every mutation is
-idempotent by its ``idempotency_marker`` (a repeated create returns the issue
-whose body carries the marker), and it records calls and mutation counts.
+It enforces the gateway contract the registry relies on, as the retired MCP
+gateway did:
+
+- every mutation checks the repository and the caller's generation fence;
+- issues are found by the exact ``<!-- milburn-issue:<marker> -->`` token in
+  the body, so a marker that prefixes another never matches it;
+- every mutation is idempotent by its ``idempotency_marker``: a repeat returns
+  the first result and counts once;
+- an unknown issue raises ``ValueError``.
 """
 
 from __future__ import annotations
@@ -16,18 +22,28 @@ from milburn.integrations.github.contracts import (
     Issue,
     IssueComment,
     IssueQuery,
+    MutationCommand,
     Repository,
     RepositoryId,
     SetLabelsCommand,
 )
+from milburn.integrations.mcp import InMemoryGenerationFence
+
+
+def _token(marker: str) -> str:
+    return f"<!-- milburn-issue:{marker} -->"
 
 
 class FakeGitHubGateway:
-    def __init__(self, repository: RepositoryId) -> None:
+    def __init__(
+        self, repository: RepositoryId, fence: InMemoryGenerationFence | None = None
+    ) -> None:
         self.repository = repository
+        self.fence = fence or InMemoryGenerationFence()
         self.issues: dict[int, dict[str, Any]] = {}
         self.calls: list[tuple[str, Any]] = []
         self.mutation_counts: dict[str, int] = {}
+        self._applied: dict[str, Any] = {}
         self._before: Callable[[str, Any], None] | None = None
 
     def set_before_call(self, hook: Callable[[str, Any], None]) -> None:
@@ -47,6 +63,23 @@ class FakeGitHubGateway:
         if repository != self.repository:
             raise ValueError("unknown repository")
 
+    def _require_issue(self, number: int) -> None:
+        if number not in self.issues:
+            raise ValueError(f"unknown issue #{number}")
+
+    def _mutation(self, name: str, command: MutationCommand) -> Any | None:
+        """Common checks; returns the earlier result for a repeated marker."""
+
+        self._call(name, command)
+        self._require_repository(command.repository_id)  # type: ignore[attr-defined]
+        self.fence.assert_current(command.fence)
+        return self._applied.get(f"{name}:{command.idempotency_marker}")
+
+    def _record(self, name: str, command: MutationCommand, result: Any) -> Any:
+        self._applied[f"{name}:{command.idempotency_marker}"] = result
+        self.mutation_counts[name] = self.mutation_counts.get(name, 0) + 1
+        return result
+
     def get_repository(self, repository: RepositoryId) -> Repository:
         self._call("get_repository", repository)
         self._require_repository(repository)
@@ -58,37 +91,45 @@ class FakeGitHubGateway:
         return tuple(
             self._issue(number) for number, data in sorted(self.issues.items())
             if (query.state == "all" or data["state"] == query.state)
-            and (query.idempotency_marker is None or query.idempotency_marker in data["body"])
+            and (query.idempotency_marker is None
+                 or _token(query.idempotency_marker) in data["body"].splitlines())
         )
 
     def create_issue(self, command: CreateIssueCommand) -> Issue:
-        self._call("create_issue", command)
-        self._require_repository(command.repository_id)
+        if self._mutation("create_issue", command) is not None:
+            number = self._applied[f"create_issue:{command.idempotency_marker}"]
+            return self._issue(number)
         for number, data in self.issues.items():
-            if command.idempotency_marker in data["body"]:
+            if _token(command.idempotency_marker) in data["body"].splitlines():
+                self._applied[f"create_issue:{command.idempotency_marker}"] = number
                 return self._issue(number)
         number = max(self.issues, default=0) + 1
         self.issues[number] = {"title": command.title, "body": command.body,
                                "state": "open", "labels": []}
-        self.mutation_counts["create_issue"] = self.mutation_counts.get("create_issue", 0) + 1
+        self._record("create_issue", command, number)
         return self._issue(number)
 
     def add_comment(self, command: AddCommentCommand) -> IssueComment:
-        self._call("add_comment", command)
-        self.mutation_counts["add_comment"] = self.mutation_counts.get("add_comment", 0) + 1
-        return IssueComment(self.repository, f"comment-{len(self.calls)}", command.issue_number,
-                            command.body)
+        earlier = self._mutation("add_comment", command)
+        if earlier is not None:
+            return earlier
+        self._require_issue(command.issue_number)
+        comment = IssueComment(self.repository, f"comment-{len(self._applied) + 1}",
+                               command.issue_number, command.body)
+        return self._record("add_comment", command, comment)
 
     def set_labels(self, command: SetLabelsCommand) -> Issue:
-        self._call("set_labels", command)
-        if command.issue_number not in self.issues:
-            raise ValueError("unknown issue")
+        if self._mutation("set_labels", command) is not None:
+            return self._issue(command.issue_number)
+        self._require_issue(command.issue_number)
         self.issues[command.issue_number]["labels"] = list(command.labels)
-        self.mutation_counts["set_labels"] = self.mutation_counts.get("set_labels", 0) + 1
+        self._record("set_labels", command, True)
         return self._issue(command.issue_number)
 
     def close_issue(self, command: CloseIssueCommand) -> Issue:
-        self._call("close_issue", command)
+        if self._mutation("close_issue", command) is not None:
+            return self._issue(command.issue_number)
+        self._require_issue(command.issue_number)
         self.issues[command.issue_number]["state"] = "closed"
-        self.mutation_counts["close_issue"] = self.mutation_counts.get("close_issue", 0) + 1
+        self._record("close_issue", command, True)
         return self._issue(command.issue_number)
