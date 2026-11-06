@@ -36,8 +36,10 @@ DEFAULT_CONFIG = """\
 # Milburn project configuration (ARCH §6). Managed by `milburn init`.
 
 [project]
-# local-only | pr | auto-merge (only local-only is available yet)
+# local-only | pr | auto-merge
 delivery = "local-only"
+# Git remote that pr and auto-merge push to; its GitHub repository gets the PR.
+remote = "origin"
 default_branch = "{default_branch}"
 
 [roles.coder]
@@ -64,10 +66,12 @@ class RoleConfig:
 class ProjectConfig:
     delivery: str
     default_branch: str
+    remote: str
     coder: RoleConfig
     tester: RoleConfig
     tester_independence: str
     executables: Mapping[Harness, str]
+    gh: str = "gh"
 
 
 @dataclass(frozen=True, slots=True)
@@ -198,7 +202,10 @@ def parse_config(text: str, executables_env: Mapping[str, str]) -> ProjectConfig
     roles = data.get("roles")
     if not isinstance(project, dict) or not isinstance(roles, dict):
         raise ProjectError("config needs [project] and [roles] tables")
-    _only(project, {"delivery", "default_branch"}, "[project]")
+    _only(project, {"delivery", "default_branch", "remote"}, "[project]")
+    remote = project.get("remote", "origin")
+    if not isinstance(remote, str) or not _NAME.fullmatch(remote):
+        raise ProjectError("[project] remote must be a Git remote name")
     delivery = project.get("delivery", "pr")
     if delivery not in DELIVERY_MODES:
         raise ProjectError(f"delivery must be one of {DELIVERY_MODES}")
@@ -237,13 +244,16 @@ def parse_config(text: str, executables_env: Mapping[str, str]) -> ProjectConfig
         Harness.CODEX: executables_env.get("MILBURN_CODEX_EXECUTABLE", "codex"),
         Harness.CLAUDE_CODE: executables_env.get("MILBURN_CLAUDE_EXECUTABLE", "claude"),
     }
+    gh = executables_env.get("MILBURN_GH_EXECUTABLE", "gh")
     return ProjectConfig(
         delivery=delivery,
         default_branch=branch,
+        remote=remote,
         coder=parsed["coder"],
         tester=parsed["tester"],
         tester_independence=independence,
         executables=executables,
+        gh=gh,
     )
 
 

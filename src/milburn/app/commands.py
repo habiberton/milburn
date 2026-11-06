@@ -785,6 +785,16 @@ class Commands:
                        {"merge_sha": merge_sha})
 
     def deliver(self, work_item: str) -> Outcome:
+        """Deliver a work item per the project's delivery mode (ARCH §5, PRD R7).
+
+        ``pr`` and ``auto-merge`` journal each external effect (push, PR,
+        merge) with a requested and an observed event, and reconcile with the
+        remote before any retry, so a repeated ``deliver`` never pushes, opens,
+        or merges twice (PRD R41). ``auto-merge`` merges only when every task
+        passed independent QA and every required check passes on the pushed
+        head; otherwise it reports what it waits for and can be run again.
+        """
+
         with self.project.mutation_lock():
             state = self._state()
             work = state.work_items.get(work_item)
@@ -796,11 +806,12 @@ class Commands:
             if not work.tasks:
                 reasons.append(f"{work_item} has no tasks")
             for task_id in work.tasks:
-                if not state.tasks[task_id].integrated:
+                task = state.tasks[task_id]
+                if not task.integrated:
                     reasons.append(f"{task_id} is not integrated")
+                elif not task.completed:
+                    reasons.append(f"{task_id} has no passed QA record")
             mode = self.project.config.delivery
-            if mode != "local-only":
-                reasons.append(f"delivery mode {mode} is not available yet (#68); use local-only")
             head = self._head(work.branch) if self._branch_exists(work.branch) else None
             if work.last_merge and head != work.last_merge:
                 reasons.append(
@@ -809,14 +820,133 @@ class Commands:
                 )
             if reasons:
                 raise CommandRefused(reasons)
-            self.ledger.append(
-                f"work-{work_item}", self._seq(state, f"work-{work_item}"), EventType.WORK_ITEM_DELIVERED,
-                {"work_item": work_item, "mode": mode, "head_sha": head, "branch": work.branch},
-                actor="controller", correlation_id=work_item,
-            )
+            if mode == "local-only":
+                self._record_delivered(state, work, {"mode": mode, "head_sha": head})
+                return Outcome(
+                    f"delivered {work_item} ({mode}): branch {work.branch} at {str(head)[:12]}, not pushed",
+                    {"head_sha": head},
+                )
+            return self._deliver_remote(state, work, mode, head)  # type: ignore[arg-type]
+
+    def _record_delivered(self, state: ProjectState, work: WorkItem, data: dict[str, Any]) -> None:
+        stream = f"work-{work.work_item}"
+        self.ledger.append(
+            stream, self.ledger.sequence(stream), EventType.WORK_ITEM_DELIVERED,
+            {"work_item": work.work_item, "branch": work.branch, **data},
+            actor="controller", correlation_id=work.work_item,
+        )
+
+    def _effect(self, work: WorkItem, kind: EventType, data: dict[str, Any]) -> None:
+        stream = f"work-{work.work_item}"
+        self.ledger.append(stream, self.ledger.sequence(stream), kind,
+                           {"work_item": work.work_item, **data},
+                           actor="controller", correlation_id=work.work_item)
+
+    def _deliver_remote(self, state: ProjectState, work: WorkItem, mode: str, head: str) -> Outcome:
+        from milburn.integrations.github.gh import GhClient, GhError
+
+        config = self.project.config
+        remote = config.remote
+        gh = GhClient(self.project.repository, executable=config.gh)
+        marker = f"<!-- milburn-work-item:{self.project.state_dir.name}:{work.work_item} -->"
+        try:
+            # 1. Push, unless the remote branch is already at this head.
+            listed = git(self.project.repository, "ls-remote", remote, f"refs/heads/{work.branch}",
+                         check=False)
+            if listed.returncode != 0:
+                raise EffectFailed(f"cannot reach remote {remote}: {listed.stderr.strip()[:200]}")
+            remote_head = listed.stdout.split()[0] if listed.stdout.strip() else None
+            if remote_head != head:
+                if remote_head is not None:
+                    git(self.project.repository, "fetch", "--quiet", remote, work.branch)
+                    if git(self.project.repository, "merge-base", "--is-ancestor", remote_head, head,
+                           check=False).returncode:
+                        raise CommandRefused(
+                            f"{remote}/{work.branch} has commits Milburn did not make; "
+                            "refusing to overwrite it"
+                        )
+                self._effect(work, EventType.DELIVERY_EFFECT_REQUESTED,
+                             {"effect": "push", "remote": remote, "head_sha": head})
+                git(self.project.repository, "push", "--quiet", remote, f"{head}:refs/heads/{work.branch}")
+                self._effect(work, EventType.DELIVERY_EFFECT_OBSERVED,
+                             {"effect": "push", "remote": remote, "head_sha": head})
+
+            # 2. Find or open the one pull request for this work item.
+            pr = gh.find_pr(work.branch, marker)
+            if pr is None:
+                self._effect(work, EventType.DELIVERY_EFFECT_REQUESTED,
+                             {"effect": "open_pr", "head": work.branch, "base": config.default_branch})
+                gh.create_pr(head=work.branch, base=config.default_branch,
+                             title=f"{work.work_item}: {work.title}",
+                             body=_pr_body(state, work, marker))
+                pr = gh.find_pr(work.branch, marker)
+                if pr is None:
+                    raise EffectFailed("the pull request was created but cannot be found")
+                self._effect(work, EventType.DELIVERY_EFFECT_OBSERVED,
+                             {"effect": "open_pr", "pr": pr.number, "url": pr.url})
+            if pr.state == "CLOSED":
+                raise CommandRefused(f"pull request #{pr.number} was closed without merging; "
+                                     "reopen it or deliver anew")
+            if pr.state == "MERGED":
+                return self._finish_merged(state, work, mode, gh, pr)
+            if mode == "pr":
+                self._record_delivered(state, work, {"mode": mode, "head_sha": head,
+                                                     "pr": pr.number, "url": pr.url})
+                return Outcome(
+                    f"delivered {work.work_item} (pr): pushed {work.branch} at {head[:12]}, "
+                    f"pull request #{pr.number} {pr.url}; the user merges",
+                    {"head_sha": head, "pr": pr.number, "url": pr.url},
+                )
+
+            # 3. auto-merge: only on the pushed head, with every required check passing.
+            waiting: list[str] = []
+            if pr.head_sha != head:
+                waiting.append(f"GitHub shows head {pr.head_sha[:12]}, not {head[:12]} yet")
+            checks = gh.required_checks(pr.number)
+            if checks.failing:
+                waiting.append("required checks failing: " + ", ".join(checks.failing))
+            if checks.pending:
+                waiting.append("required checks pending: " + ", ".join(checks.pending))
+            if waiting:
+                return Outcome(
+                    f"{work.work_item}: pull request #{pr.number} open, not merged ("
+                    + "; ".join(waiting) + "); run deliver again",
+                    {"pr": pr.number, "url": pr.url, "waiting": waiting, "merged": False},
+                )
+            self._effect(work, EventType.DELIVERY_EFFECT_REQUESTED,
+                         {"effect": "merge", "pr": pr.number, "head_sha": head,
+                          "required_checks": checks.required})
+            try:
+                gh.merge_pr(pr.number, head_sha=head,
+                            subject=f"Merge {work.work_item}: {work.title} (#{pr.number})")
+            except GhError:
+                pass  # reconcile below: the merge may have happened anyway
+            pr = gh.view_pr(pr.number)
+            if pr.state != "MERGED":
+                raise EffectFailed(f"pull request #{pr.number} did not merge (state {pr.state})")
+            return self._finish_merged(state, work, mode, gh, pr)
+        except GhError as error:
+            raise EffectFailed(str(error)) from error
+
+    def _finish_merged(self, state: ProjectState, work: WorkItem, mode: str, gh: Any, pr: Any) -> Outcome:
+        """Confirm the merge reached the default branch, then record delivery."""
+
+        config = self.project.config
+        if not pr.merge_commit:
+            raise EffectFailed(f"pull request #{pr.number} is merged but has no merge commit")
+        git(self.project.repository, "fetch", "--quiet", config.remote, config.default_branch)
+        remote_default = f"{config.remote}/{config.default_branch}"
+        if git(self.project.repository, "merge-base", "--is-ancestor", pr.merge_commit,
+               f"refs/remotes/{remote_default}", check=False).returncode:
+            raise EffectFailed(f"{remote_default} does not contain merge {pr.merge_commit[:12]}")
+        self._effect(work, EventType.DELIVERY_EFFECT_OBSERVED,
+                     {"effect": "merge", "pr": pr.number, "merge_commit": pr.merge_commit})
+        self._record_delivered(state, work, {"mode": mode, "head_sha": pr.head_sha, "pr": pr.number,
+                                             "url": pr.url, "merge_commit": pr.merge_commit})
         return Outcome(
-            f"delivered {work_item} ({mode}): branch {work.branch} at {str(head)[:12]}, not pushed",
-            {"head_sha": head},
+            f"delivered {work.work_item} ({mode}): pull request #{pr.number} merged as "
+            f"{pr.merge_commit[:12]} into {remote_default}",
+            {"pr": pr.number, "url": pr.url, "merge_commit": pr.merge_commit, "merged": True},
         )
 
     # ------------------------------------------------------------------ reports
@@ -849,6 +979,19 @@ class Commands:
             for (task, role, harness), values in sorted(totals.items())
         ] or ["no usage recorded"]
         return Outcome("\n".join(lines), {"rows": state.usage})
+
+
+def _pr_body(state: ProjectState, work: WorkItem, marker: str) -> str:
+    lines = [marker, f"Delivered by Milburn: work item {work.work_item}.", "", "| Task | Coder | QA |", "|---|---|---|"]
+    for task_id in work.tasks:
+        task = state.tasks[task_id]
+        done = task.completed or {}
+        lines.append(
+            f"| {task_id}: {task.title} | {done.get('coder_harness', '?')} | "
+            f"passed on {done.get('qa_harness', '?')} |"
+        )
+    lines += ["", "Every task passed independent QA on a harness other than the one that wrote it."]
+    return "\n".join(lines)
 
 
 def qa_gate(task: Task, independence: str, branch_head: str | None) -> list[str]:
