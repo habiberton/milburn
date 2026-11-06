@@ -129,10 +129,11 @@ def test_close_during_labeling_is_reconciled_to_done_not_returned_ready():
 
 def test_a_marker_that_prefixes_another_never_matches_its_issue():
     service, server = registry()
-    first = service.create(command(), draft(), FENCE, {})
-    longer = replace(draft(), task_key="task-10")
-    second = service.create(command(), longer, FENCE, {})
-    assert (first.number, second.number) == (1, 2)
+    # The longer marker exists first; a substring match would then return its
+    # issue for the shorter one.
+    longer = service.create(command(), replace(draft(), task_key="task-10"), FENCE, {})
+    shorter = service.create(command(), draft(), FENCE, {})
+    assert (longer.number, shorter.number) == (1, 2)
     assert server.mutation_counts[CREATE_ISSUE] == 2
 
 

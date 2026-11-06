@@ -34,6 +34,15 @@ def _token(marker: str) -> str:
     return f"<!-- milburn-issue:{marker} -->"
 
 
+def _arguments(command: MutationCommand) -> tuple:
+    """Everything but the effect ID and fence, which may differ on a retry."""
+
+    return tuple(
+        (name, getattr(command, name)) for name in sorted(command.__dataclass_fields__)
+        if name not in ("effect_id", "fence")
+    )
+
+
 class FakeGitHubGateway:
     def __init__(
         self, repository: RepositoryId, fence: InMemoryGenerationFence | None = None
@@ -73,10 +82,15 @@ class FakeGitHubGateway:
         self._call(name, command)
         self._require_repository(command.repository_id)  # type: ignore[attr-defined]
         self.fence.assert_current(command.fence)
-        return self._applied.get(f"{name}:{command.idempotency_marker}")
+        earlier = self._applied.get(f"{name}:{command.idempotency_marker}")
+        if earlier is not None and earlier[0] != _arguments(command):
+            raise ValueError(
+                f"idempotency marker {command.idempotency_marker!r} reused with different arguments"
+            )
+        return None if earlier is None else earlier[1]
 
     def _record(self, name: str, command: MutationCommand, result: Any) -> Any:
-        self._applied[f"{name}:{command.idempotency_marker}"] = result
+        self._applied[f"{name}:{command.idempotency_marker}"] = (_arguments(command), result)
         self.mutation_counts[name] = self.mutation_counts.get(name, 0) + 1
         return result
 
@@ -96,12 +110,14 @@ class FakeGitHubGateway:
         )
 
     def create_issue(self, command: CreateIssueCommand) -> Issue:
-        if self._mutation("create_issue", command) is not None:
-            number = self._applied[f"create_issue:{command.idempotency_marker}"]
-            return self._issue(number)
+        earlier = self._mutation("create_issue", command)
+        if earlier is not None:
+            return self._issue(earlier)
         for number, data in self.issues.items():
             if _token(command.idempotency_marker) in data["body"].splitlines():
-                self._applied[f"create_issue:{command.idempotency_marker}"] = number
+                self._applied[f"create_issue:{command.idempotency_marker}"] = (
+                    _arguments(command), number,
+                )
                 return self._issue(number)
         number = max(self.issues, default=0) + 1
         self.issues[number] = {"title": command.title, "body": command.body,
