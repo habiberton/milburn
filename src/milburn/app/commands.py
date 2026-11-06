@@ -842,53 +842,92 @@ class Commands:
                            {"work_item": work.work_item, **data},
                            actor="controller", correlation_id=work.work_item)
 
+    def _github_repo(self) -> Any:
+        from milburn.integrations.github.gh import GitHubRepo, repo_from_url
+
+        config = self.project.config
+        url = git(self.project.repository, "remote", "get-url", config.remote, check=False)
+        if url.returncode != 0:
+            raise ProjectError(f"no Git remote named {config.remote}")
+        parsed = repo_from_url(url.stdout)
+        if config.github_repo:
+            return GitHubRepo(parsed.host if parsed else "github.com", config.github_repo)
+        if parsed is None:
+            raise ProjectError(
+                f"cannot tell the GitHub repository of remote {config.remote}; "
+                "set [project] github_repo = \"owner/name\""
+            )
+        return parsed
+
     def _deliver_remote(self, state: ProjectState, work: WorkItem, mode: str, head: str) -> Outcome:
         from milburn.integrations.github.gh import GhClient, GhError
 
         config = self.project.config
         remote = config.remote
-        gh = GhClient(self.project.repository, executable=config.gh)
+        gh = GhClient(self.project.repository, self._github_repo(), executable=config.gh)
         marker = f"<!-- milburn-work-item:{self.project.state_dir.name}:{work.work_item} -->"
+        base = config.default_branch
+        effects_started = False
+
+        def failed(error: Exception) -> EffectFailed:
+            return EffectFailed(str(error))
+
         try:
-            # 1. Push, unless the remote branch is already at this head.
-            listed = git(self.project.repository, "ls-remote", remote, f"refs/heads/{work.branch}",
-                         check=False)
+            # Reachability is checked before any effect (exit 3 on failure).
+            listed = git(self.project.repository, "ls-remote", "--heads", remote, work.branch, check=False)
             if listed.returncode != 0:
-                raise EffectFailed(f"cannot reach remote {remote}: {listed.stderr.strip()[:200]}")
-            remote_head = listed.stdout.split()[0] if listed.stdout.strip() else None
+                raise ProjectError(f"cannot reach remote {remote}: {listed.stderr.strip()[:200]}")
+            remote_head = None
+            for line in listed.stdout.splitlines():
+                sha, _, ref = line.partition("\t")
+                if ref == f"refs/heads/{work.branch}":
+                    remote_head = sha
+            # 1. Look the PR up first: a merged PR is reconciled, never pushed again.
+            pr = gh.find_pr(work.branch, base, marker)
+            if pr is not None and pr.state == "CLOSED":
+                raise CommandRefused(f"pull request #{pr.number} was closed without merging; "
+                                     "reopen it or deliver anew")
+            if pr is not None and pr.state == "MERGED":
+                return self._finish_merged(state, work, mode, gh, pr, head)
+
+            # 2. Push, unless the remote branch is already at this head.
             if remote_head != head:
                 if remote_head is not None:
-                    git(self.project.repository, "fetch", "--quiet", remote, work.branch)
+                    git(self.project.repository, "fetch", "--quiet", remote,
+                        f"+refs/heads/{work.branch}:refs/milburn/remote-check")
                     if git(self.project.repository, "merge-base", "--is-ancestor", remote_head, head,
                            check=False).returncode:
                         raise CommandRefused(
                             f"{remote}/{work.branch} has commits Milburn did not make; "
                             "refusing to overwrite it"
                         )
+                key = f"push:{work.branch}:{head}"
                 self._effect(work, EventType.DELIVERY_EFFECT_REQUESTED,
-                             {"effect": "push", "remote": remote, "head_sha": head})
+                             {"effect": "push", "remote": remote, "head_sha": head, "idempotency_key": key})
+                effects_started = True
                 git(self.project.repository, "push", "--quiet", remote, f"{head}:refs/heads/{work.branch}")
                 self._effect(work, EventType.DELIVERY_EFFECT_OBSERVED,
-                             {"effect": "push", "remote": remote, "head_sha": head})
+                             {"effect": "push", "remote": remote, "head_sha": head, "idempotency_key": key})
+            else:
+                self._observe_if_pending(work, "push", f"push:{work.branch}:{head}",
+                                         {"remote": remote, "head_sha": head})
 
-            # 2. Find or open the one pull request for this work item.
-            pr = gh.find_pr(work.branch, marker)
+            # 3. Open the one PR for this work item if it does not exist yet.
             if pr is None:
+                key = f"open_pr:{marker}"
                 self._effect(work, EventType.DELIVERY_EFFECT_REQUESTED,
-                             {"effect": "open_pr", "head": work.branch, "base": config.default_branch})
-                gh.create_pr(head=work.branch, base=config.default_branch,
-                             title=f"{work.work_item}: {work.title}",
+                             {"effect": "open_pr", "head": work.branch, "base": base, "idempotency_key": key})
+                effects_started = True
+                gh.create_pr(head=work.branch, base=base, title=f"{work.work_item}: {work.title}",
                              body=_pr_body(state, work, marker))
-                pr = gh.find_pr(work.branch, marker)
+                pr = gh.find_pr(work.branch, base, marker)
                 if pr is None:
                     raise EffectFailed("the pull request was created but cannot be found")
                 self._effect(work, EventType.DELIVERY_EFFECT_OBSERVED,
-                             {"effect": "open_pr", "pr": pr.number, "url": pr.url})
-            if pr.state == "CLOSED":
-                raise CommandRefused(f"pull request #{pr.number} was closed without merging; "
-                                     "reopen it or deliver anew")
-            if pr.state == "MERGED":
-                return self._finish_merged(state, work, mode, gh, pr)
+                             {"effect": "open_pr", "pr": pr.number, "url": pr.url, "idempotency_key": key})
+            else:
+                self._observe_if_pending(work, "open_pr", f"open_pr:{marker}",
+                                         {"pr": pr.number, "url": pr.url})
             if mode == "pr":
                 self._record_delivered(state, work, {"mode": mode, "head_sha": head,
                                                      "pr": pr.number, "url": pr.url})
@@ -898,24 +937,28 @@ class Commands:
                     {"head_sha": head, "pr": pr.number, "url": pr.url},
                 )
 
-            # 3. auto-merge: only on the pushed head, with every required check passing.
+            # 4. auto-merge: only the pushed head, with every required check passed on it.
             waiting: list[str] = []
             if pr.head_sha != head:
-                waiting.append(f"GitHub shows head {pr.head_sha[:12]}, not {head[:12]} yet")
-            checks = gh.required_checks(pr.number)
-            if checks.failing:
-                waiting.append("required checks failing: " + ", ".join(checks.failing))
-            if checks.pending:
-                waiting.append("required checks pending: " + ", ".join(checks.pending))
+                waiting.append(f"GitHub shows head {pr.head_sha[:12]}, not {head[:12]}")
+            report = gh.checks(pr.number, gh.required_contexts(base))
+            if report.missing:
+                waiting.append("required checks not reported yet: " + ", ".join(report.missing))
+            if report.failing:
+                waiting.append("required checks failing: " + ", ".join(report.failing))
+            if report.pending:
+                waiting.append("required checks pending: " + ", ".join(report.pending))
             if waiting:
                 return Outcome(
                     f"{work.work_item}: pull request #{pr.number} open, not merged ("
                     + "; ".join(waiting) + "); run deliver again",
                     {"pr": pr.number, "url": pr.url, "waiting": waiting, "merged": False},
                 )
+            key = f"merge:{pr.number}:{head}"
             self._effect(work, EventType.DELIVERY_EFFECT_REQUESTED,
                          {"effect": "merge", "pr": pr.number, "head_sha": head,
-                          "required_checks": checks.required})
+                          "required_checks": list(report.required), "idempotency_key": key})
+            effects_started = True
             try:
                 gh.merge_pr(pr.number, head_sha=head,
                             subject=f"Merge {work.work_item}: {work.title} (#{pr.number})")
@@ -924,24 +967,66 @@ class Commands:
             pr = gh.view_pr(pr.number)
             if pr.state != "MERGED":
                 raise EffectFailed(f"pull request #{pr.number} did not merge (state {pr.state})")
-            return self._finish_merged(state, work, mode, gh, pr)
+            return self._finish_merged(state, work, mode, gh, pr, head)
         except GhError as error:
-            raise EffectFailed(str(error)) from error
+            raise failed(error) from error
+        except ProjectError as error:
+            # A Git failure after an effect started is not "before any effect".
+            if effects_started:
+                raise failed(error) from error
+            raise
 
-    def _finish_merged(self, state: ProjectState, work: WorkItem, mode: str, gh: Any, pr: Any) -> Outcome:
-        """Confirm the merge reached the default branch, then record delivery."""
+    def _observe_if_pending(self, work: WorkItem, effect: str, key: str, data: dict[str, Any]) -> None:
+        """Close a requested effect that a crash left without an observed record."""
+
+        requested, observed = set(), set()
+        for event in self.ledger._store.read_stream(f"work-{work.work_item}"):
+            payload = payload_of(event)
+            if payload.get("idempotency_key") != key:
+                continue
+            if event.event_type is EventType.DELIVERY_EFFECT_REQUESTED:
+                requested.add(key)
+            elif event.event_type is EventType.DELIVERY_EFFECT_OBSERVED:
+                observed.add(key)
+        if key in requested and key not in observed:
+            self._effect(work, EventType.DELIVERY_EFFECT_OBSERVED,
+                         {"effect": effect, "idempotency_key": key, "reconciled": True, **data})
+
+    def _finish_merged(
+        self, state: ProjectState, work: WorkItem, mode: str, gh: Any, pr: Any, head: str
+    ) -> Outcome:
+        """Record delivery only for a merge of exactly the QA'd head into the default branch."""
 
         config = self.project.config
+        if pr.head_sha != head:
+            raise EffectFailed(
+                f"pull request #{pr.number} merged head {pr.head_sha[:12]}, not the QA'd head "
+                f"{head[:12]}; unreviewed commits were merged, so nothing is recorded as delivered"
+            )
+        if pr.base_ref != config.default_branch or pr.cross_repository:
+            raise EffectFailed(f"pull request #{pr.number} merged into {pr.base_ref}, not "
+                               f"{config.default_branch} of this repository")
         if not pr.merge_commit:
             raise EffectFailed(f"pull request #{pr.number} is merged but has no merge commit")
-        git(self.project.repository, "fetch", "--quiet", config.remote, config.default_branch)
+        tracking = f"refs/milburn/remote-{config.default_branch}"
+        try:
+            git(self.project.repository, "fetch", "--quiet", config.remote,
+                f"+refs/heads/{config.default_branch}:{tracking}")
+        except ProjectError as error:
+            raise EffectFailed(f"merged, but cannot fetch {config.default_branch}: {error}") from error
         remote_default = f"{config.remote}/{config.default_branch}"
-        if git(self.project.repository, "merge-base", "--is-ancestor", pr.merge_commit,
-               f"refs/remotes/{remote_default}", check=False).returncode:
+        if git(self.project.repository, "merge-base", "--is-ancestor", pr.merge_commit, tracking,
+               check=False).returncode:
             raise EffectFailed(f"{remote_default} does not contain merge {pr.merge_commit[:12]}")
+        parents = git(self.project.repository, "rev-list", "--parents", "-n", "1",
+                      pr.merge_commit).stdout.split()[1:]
+        if len(parents) != 2 or parents[1] != head:
+            raise EffectFailed(f"merge {pr.merge_commit[:12]} does not merge the QA'd head {head[:12]}")
+        key = f"merge:{pr.number}:{head}"
         self._effect(work, EventType.DELIVERY_EFFECT_OBSERVED,
-                     {"effect": "merge", "pr": pr.number, "merge_commit": pr.merge_commit})
-        self._record_delivered(state, work, {"mode": mode, "head_sha": pr.head_sha, "pr": pr.number,
+                     {"effect": "merge", "pr": pr.number, "merge_commit": pr.merge_commit,
+                      "idempotency_key": key})
+        self._record_delivered(state, work, {"mode": mode, "head_sha": head, "pr": pr.number,
                                              "url": pr.url, "merge_commit": pr.merge_commit})
         return Outcome(
             f"delivered {work.work_item} ({mode}): pull request #{pr.number} merged as "

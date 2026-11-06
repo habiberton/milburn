@@ -3,9 +3,16 @@
 State lives in the JSON file named by FAKE_GH_STATE; the bare repository named
 by FAKE_GH_REMOTE stands in for GitHub. ``pr merge`` performs a real merge
 commit into the remote's base branch, so the CLI's post-merge checks run
-against real Git. Knobs:
+against real Git. Mirrors real gh and GitHub where Milburn depends on them:
+``pr list --head`` matches the branch name only (forks included), a second
+open PR for the same head and base is refused, only an OPEN PR merges, and
+``pr checks`` exits 1 when a check fails and 8 while one is pending.
 
-- FAKE_GH_CHECKS: none (default) | pass | pending | fail
+Knobs:
+- FAKE_GH_REQUIRED: comma-separated required contexts from branch protection
+  ("" = branch not protected; "forbidden" = 403 on the protection read)
+- FAKE_GH_RULES: comma-separated required contexts from rulesets
+- FAKE_GH_CHECKS: none (no checks reported) | pass | pending | fail, for "ci"
 - FAKE_GH_FAIL: create | merge-after (merge happens, then the call fails)
 """
 
@@ -33,6 +40,12 @@ def save(state: dict) -> None:
         json.dump(state, handle)
 
 
+def fail_with(message: str, code: int = 1) -> None:
+    save(state)
+    print(message, file=sys.stderr)
+    sys.exit(code)
+
+
 def remote_head(branch: str) -> str | None:
     done = subprocess.run(("git", "--git-dir", remote, "rev-parse", "--verify", "--quiet",
                            f"refs/heads/{branch}"), capture_output=True, text=True)
@@ -44,33 +57,55 @@ def option(name: str) -> str | None:
 
 
 def view(pr: dict) -> dict:
-    if pr["state"] == "OPEN":
+    if pr["state"] == "OPEN" and not pr["isCrossRepository"]:
         pr["headRefOid"] = remote_head(pr["headRefName"]) or pr["headRefOid"]
     return pr
+
+
+def contexts(variable: str) -> list[str]:
+    return [c for c in os.environ.get(variable, "").split(",") if c]
 
 
 state = load()
 state["calls"].append(args)
 fail = os.environ.get("FAKE_GH_FAIL", "")
-if args[:2] == ["pr", "list"]:
-    head = option("--head")
-    print(json.dumps([view(p) for p in state["prs"] if p["headRefName"] == head]))
+if args[:1] == ["api"]:
+    path = args[-1]
+    if path.endswith("/protection/required_status_checks"):
+        required = os.environ.get("FAKE_GH_REQUIRED", "")
+        if required == "forbidden":
+            fail_with("gh: Resource not accessible by integration (HTTP 403)")
+        if not required:
+            fail_with("gh: Branch not protected (HTTP 404)")
+        print(json.dumps({"strict": True, "contexts": required.split(","),
+                          "checks": [{"context": c, "app_id": None} for c in required.split(",")]}))
+    elif "/rules/branches/" in path:
+        rules = contexts("FAKE_GH_RULES")
+        print(json.dumps([{"type": "required_status_checks", "parameters": {
+            "required_status_checks": [{"context": c} for c in rules]}}] if rules else []))
+    else:
+        fail_with(f"fake gh: unsupported api {path}", 2)
+elif args[:2] == ["pr", "list"]:
+    head, wanted = option("--head"), option("--state") or "open"
+    prs = [view(p) for p in state["prs"] if p["headRefName"] == head]
+    if wanted != "all":
+        prs = [p for p in prs if p["state"] == wanted.upper()]
+    print(json.dumps(prs))
 elif args[:2] == ["pr", "create"]:
     if fail == "create":
-        save(state)
-        print("GraphQL: something went wrong", file=sys.stderr)
-        sys.exit(1)
+        fail_with("GraphQL: something went wrong")
     head, base = option("--head"), option("--base")
     if remote_head(head) is None:
-        save(state)
-        print(f"pull request create failed: head branch {head} not found", file=sys.stderr)
-        sys.exit(1)
+        fail_with(f"pull request create failed: head branch {head} not found")
+    for pr in state["prs"]:
+        if (pr["headRefName"], pr["baseRefName"], pr["state"], pr["isCrossRepository"]) == (head, base, "OPEN", False):
+            fail_with(f"a pull request for branch \"{head}\" into branch \"{base}\" already exists")
     number = len(state["prs"]) + 1
     state["prs"].append({
         "number": number, "url": f"https://github.example/acme/toy/pull/{number}",
         "state": "OPEN", "headRefName": head, "headRefOid": remote_head(head),
         "baseRefName": base, "body": option("--body"), "title": option("--title"),
-        "mergeCommit": None,
+        "mergeCommit": None, "isCrossRepository": False,
     })
     print(state["prs"][-1]["url"])
 elif args[:2] == ["pr", "view"]:
@@ -78,33 +113,26 @@ elif args[:2] == ["pr", "view"]:
 elif args[:2] == ["pr", "checks"]:
     mode = os.environ.get("FAKE_GH_CHECKS", "none")
     if mode == "none":
-        save(state)
-        print("no required checks reported on the 'x' branch", file=sys.stderr)
-        sys.exit(1)
-    bucket = {"pass": "pass", "pending": "pending", "fail": "fail"}[mode]
-    print(json.dumps([{"name": "ci", "bucket": bucket}, {"name": "lint", "bucket": "pass"}]))
+        fail_with("no checks reported on the 'x' branch")
+    print(json.dumps([{"name": "ci", "bucket": mode}, {"name": "lint", "bucket": "pass"}]))
     save(state)
-    sys.exit(0 if mode == "pass" else 8)
+    sys.exit({"pass": 0, "pending": 8, "fail": 1}[mode])
 elif args[:2] == ["pr", "merge"]:
     pr = view(state["prs"][int(args[2]) - 1])
+    if pr["state"] != "OPEN":
+        fail_with(f"Pull request #{pr['number']} is not mergeable: the pull request is {pr['state'].lower()}")
     if pr["headRefOid"] != option("--match-head-commit"):
-        save(state)
-        print("Head branch was modified. Review and try the merge again.", file=sys.stderr)
-        sys.exit(1)
+        fail_with("Head branch was modified. Review and try the merge again.")
     with tempfile.TemporaryDirectory() as work:
         run = lambda *a: subprocess.run(a, cwd=work, check=True, capture_output=True, text=True)
         run("git", "clone", "-q", "-b", pr["baseRefName"], remote, ".")
         run("git", "-c", "user.name=GitHub", "-c", "user.email=noreply@github.example", "merge",
-            "--no-ff", "-q", "-m", option("--subject"), f"origin/{pr['headRefName']}")
+            "--no-ff", "-q", "-m", option("--subject"), pr["headRefOid"])
         run("git", "push", "-q", "origin", pr["baseRefName"])
         merge = run("git", "rev-parse", "HEAD").stdout.strip()
     pr.update(state="MERGED", mergeCommit={"oid": merge})
     if fail == "merge-after":
-        save(state)
-        print("merge request timed out", file=sys.stderr)
-        sys.exit(1)
+        fail_with("merge request timed out")
 else:
-    save(state)
-    print(f"fake gh: unsupported {args}", file=sys.stderr)
-    sys.exit(2)
+    fail_with(f"fake gh: unsupported {args}", 2)
 save(state)
