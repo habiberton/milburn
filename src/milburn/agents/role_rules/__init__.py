@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 
 from milburn.domain import Role
+from milburn.domain.states import ACTIVE_ROLES, RETIRED_ROLES
 
 
 class RoleRuleError(ValueError):
@@ -32,6 +33,8 @@ class RoleRuleCatalog:
     def load(self, role: Role) -> RoleRules:
         if not isinstance(role, Role):
             raise RoleRuleError("role must be a known Milburn role")
+        if role in RETIRED_ROLES:
+            raise RoleRuleError(f"role {role.value} is retired and has no rules")
         policy = self._policies[role]
         sections: list[str] = []
         for relative in policy["rule_files"]:
@@ -66,10 +69,10 @@ def _load_policies(path: Path) -> dict[Role, dict[str, object]]:
     if not isinstance(payload, dict) or set(payload) != {"roles"}:
         raise RoleRuleError("role policies must contain only roles")
     raw_roles = payload["roles"]
-    if not isinstance(raw_roles, dict) or set(raw_roles) != {role.value for role in Role}:
-        raise RoleRuleError("role policies must define every known role")
+    if not isinstance(raw_roles, dict) or set(raw_roles) != {role.value for role in ACTIVE_ROLES}:
+        raise RoleRuleError("role policies must define exactly the active roles")
     policies: dict[Role, dict[str, object]] = {}
-    for role in Role:
+    for role in sorted(ACTIVE_ROLES, key=lambda item: item.value):
         entry = raw_roles[role.value]
         if not isinstance(entry, dict) or set(entry) != {"rule_files", "authority_limits"}:
             raise RoleRuleError(f"invalid policy for {role.value}")

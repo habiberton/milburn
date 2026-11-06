@@ -293,17 +293,17 @@ def test_result_contracts_carry_nested_versioned_evidence() -> None:
 
 def test_agent_attempt_preserves_skill_bindings_as_values() -> None:
     binding = SkillBinding(
-        skill_name="milburn-planning",
+        skill_name="milburn-qa",
         version="1",
         root_digest="abcdef",
         resource_digests=("123456",),
-        workspace_path=".agents/skills/milburn-planning",
+        workspace_path=".agents/skills/milburn-qa",
         validated_at=NOW,
     )
     attempt = AgentAttempt(
         attempt_id="attempt-1",
         generation=1,
-        role=Role.PLANNER,
+        role=Role.TESTER,
         feature_id="feature-1",
         issue_number=None,
         endpoint="session:@1.%1",

@@ -1,14 +1,5 @@
-"""Controller-owned MCP integration boundary."""
+"""The journal for uncertain external effects (ARCH §11: kept; the MCP transport is retired)."""
 
-from .contracts import (
-    JsonObject,
-    McpClient,
-    McpError,
-    McpProtocolError,
-    McpTimeoutError,
-    McpTool,
-    McpUnavailableError,
-)
 from .journal import (
     EffectConflictError,
     EffectFence,
@@ -32,12 +23,5 @@ __all__ = [
     "GenerationFence",
     "InMemoryEffectJournal",
     "InMemoryGenerationFence",
-    "JsonObject",
-    "McpClient",
-    "McpError",
-    "McpProtocolError",
-    "McpTimeoutError",
-    "McpTool",
-    "McpUnavailableError",
     "StaleGenerationError",
 ]

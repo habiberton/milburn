@@ -1,4 +1,4 @@
-"""Controller-owned GitHub issue registry above the journaled MCP gateway."""
+"""Controller-owned GitHub issue registry over any ``GitHubGateway`` (transport: #68)."""
 
 from __future__ import annotations
 

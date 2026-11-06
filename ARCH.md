@@ -384,7 +384,17 @@ adapter must not add a cumulative and a per-call figure together.
 
 ## 11. Keep, adapt, retire
 
-Retirement follows A6. Paths are under `src/milburn/`.
+Retirement follows A6. Paths are under `src/milburn/`. Every module marked
+retire below was deleted in #71, along with its tests, fakes, role rules, and
+skills. Until the state machine is reworked (#69, #70), these remain:
+- the `Role.PLANNER` and `Role.CLASSIFIER_ROUTER` enum values;
+- the `RoleRouteProposal` and `PlanEnvelope` models;
+- the tables that still name those roles: `_COMMAND_ACTORS` in
+  `domain/policies.py`, the role transitions in `domain/states.py`, and the
+  handoff policy in `orchestration/handoffs.py`.
+
+No launch path uses them: the CLI dispatches only Coders and Testers. Rules and skills are configured only for active roles, and
+loading a retired role is refused.
 
 | Module | Verdict | Reason |
 |---|---|---|

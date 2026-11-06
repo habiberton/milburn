@@ -1,4 +1,4 @@
-"""Process inspection used to fence tmux endpoints against PID reuse."""
+"""Process inspection used to fence detached run hosts against PID reuse."""
 
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ class ProcessIdentity:
     def matches(self, other: ProcessIdentity) -> bool:
         """Compare OS identity; executable is mutable diagnostic metadata.
 
-        A process may ``exec`` during tmux startup without changing either its
+        A process may ``exec`` during startup without changing either its
         PID or kernel start time. PID plus start time still fences PID reuse.
         """
 

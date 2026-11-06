@@ -9,11 +9,17 @@ from .errors import InvalidTransitionError
 
 class Role(StrEnum):
     COORDINATOR = "coordinator"
-    PLANNER = "planner"
+    PLANNER = "planner"  # retired (ARCH §11); kept until the state machine is reworked
     CLASSIFIER_ROUTER = "classifier_router"
     ARCHITECT = "architect"
     CODER = "coder"
     TESTER = "tester"
+
+
+RETIRED_ROLES = frozenset({Role.PLANNER, Role.CLASSIFIER_ROUTER})
+"""Roles with no rules, skills, or launches any more (ARCH §11)."""
+
+ACTIVE_ROLES = frozenset(role for role in Role if role not in RETIRED_ROLES)
 
 
 class FeatureState(StrEnum):
