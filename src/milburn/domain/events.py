@@ -66,6 +66,8 @@ class EventType(StrEnum):
     WORK_ITEM_DELIVERED = "WorkItemDelivered"
     SESSION_GENERATION_EXHAUSTED = "SessionGenerationExhausted"
     ATTEMPT_HANDED_OFF = "AttemptHandedOff"
+    DELIVERY_EFFECT_REQUESTED = "DeliveryEffectRequested"
+    DELIVERY_EFFECT_OBSERVED = "DeliveryEffectObserved"
 
 
 @dataclass(frozen=True, slots=True)

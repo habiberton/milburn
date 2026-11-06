@@ -201,7 +201,10 @@ class Ledger:
                         attempt.collected = data
             elif kind is EventType.AGENT_USAGE_OBSERVED:
                 state.usage.append(data)
-            elif kind in (EventType.ATTEMPT_HANDED_OFF, EventType.SESSION_GENERATION_EXHAUSTED):
+            elif kind in (
+                EventType.ATTEMPT_HANDED_OFF, EventType.SESSION_GENERATION_EXHAUSTED,
+                EventType.DELIVERY_EFFECT_REQUESTED, EventType.DELIVERY_EFFECT_OBSERVED,
+            ):
                 pass  # recorded for audit and reports; dispatch carries the state
             elif kind is EventType.QA_GATE_REFUSED:
                 state.tasks[data["task"]].refusals += 1
@@ -213,6 +216,9 @@ class Ledger:
             elif kind is EventType.WORK_ITEM_DELIVERED:
                 state.work_items[data["work_item"]].delivered = data
         return state
+
+    def read_stream(self, stream: str) -> tuple[DomainEvent, ...]:
+        return self._store.read_stream(stream)
 
     def sequence(self, stream: str) -> int:
         return self._store.stream_sequence(stream)

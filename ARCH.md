@@ -115,6 +115,34 @@ default branch ── milburn/w<id>/integration ──┬── milburn/w<id>/t<
   | `pr` | Pushes the integration branch, opens or updates one pull request, records it. Never merges. |
   | `auto-merge` | As `pr`; then merges with a merge commit only if every task has a passed QA report for its integrated SHA, no stage QA was skipped, and every required check passes on the pushed head (review M5). Otherwise it reports what is missing and stays in `pr`. |
 
+  How it is done (`integrations/github/gh.py`, `milburn deliver`):
+  - **Push:** the branch is pushed from the recorded head, without force. If the
+    remote branch holds commits Milburn did not make, delivery is refused.
+  - **One PR per work item:** found by the hidden marker
+    `<!-- milburn-work-item:<project>:<w> -->` in its body, so a retry reuses it.
+    A PR closed without merging is refused.
+  - **Merge:** `gh pr merge --merge --match-head-commit <head>`, then the CLI
+    fetches and requires the default branch to contain the merge commit. A merge
+    call that fails is reconciled by reading the PR's state.
+  - **Journal:** push, open PR, and merge each record `DeliveryEffectRequested`
+    before the effect and `DeliveryEffectObserved` after it.
+  - **Repository:** every `gh` call names the repository explicitly (`--repo`).
+    It comes from the configured remote's URL, or from `[project] github_repo`;
+    `gh`'s own repository choice and `GH_REPO` are ignored.
+  - **Which PR counts:** only a same-repository PR into the default branch that
+    carries the marker. Fork PRs and retargeted PRs are never adopted. The PR is
+    looked up before pushing, so a PR that already merged is reconciled without
+    a second push.
+  - **Required checks:** read from the default branch's protection and rulesets.
+    An unreadable answer is an error, never "nothing required". Each required
+    check must have reported on the pushed head and passed.
+  - **Waiting:** while any required check is missing, pending, or failing,
+    `auto-merge` reports what it waits for and changes nothing more; run
+    `deliver` again later.
+  - **What counts as delivered:** a merged PR whose head, and whose merge
+    commit's second parent, equal the QA'd head. A merge of anything else is an
+    error and is not recorded as delivered.
+
 - **Task IDs.** Work item and task IDs come from store sequences, not issue numbers,
   so local mode cannot collide (G19). A GitHub issue, when one exists, is linked.
 

@@ -36,8 +36,10 @@ DEFAULT_CONFIG = """\
 # Milburn project configuration (ARCH §6). Managed by `milburn init`.
 
 [project]
-# local-only | pr | auto-merge (only local-only is available yet)
+# local-only | pr | auto-merge
 delivery = "local-only"
+# Git remote that pr and auto-merge push to; its GitHub repository gets the PR.
+remote = "origin"
 default_branch = "{default_branch}"
 
 [roles.coder]
@@ -64,10 +66,13 @@ class RoleConfig:
 class ProjectConfig:
     delivery: str
     default_branch: str
+    remote: str
+    github_repo: str | None
     coder: RoleConfig
     tester: RoleConfig
     tester_independence: str
     executables: Mapping[Harness, str]
+    gh: str = "gh"
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,13 +112,22 @@ class Project:
                 fcntl.flock(handle, fcntl.LOCK_UN)
 
 
+# Credential and transport settings network Git needs; every other inherited
+# GIT_* variable (identity, index, directories) is dropped.
+_GIT_AUTH_ENV = frozenset({"GIT_SSH_COMMAND", "GIT_SSH", "GIT_ASKPASS"})
+
+
 def git(repository: Path, *arguments: str, check: bool = True) -> subprocess.CompletedProcess[str]:
     """Run Git for the CLI with hooks and fsmonitor disabled (ARCH §4)."""
 
     empty_hooks = Path(os.devnull)
     # Inherited GIT_* variables (identity, index file, directories) would
     # override the explicit arguments below; the CLI never inherits them.
-    env = {name: value for name, value in os.environ.items() if not name.startswith("GIT_")}
+    env = {
+        name: value for name, value in os.environ.items()
+        if not name.startswith("GIT_") or name in _GIT_AUTH_ENV
+    }
+    env["GIT_TERMINAL_PROMPT"] = "0"
     completed = subprocess.run(
         (
             "git", "-c", f"core.hooksPath={empty_hooks}", "-c", "core.fsmonitor=false",
@@ -124,6 +138,7 @@ def git(repository: Path, *arguments: str, check: bool = True) -> subprocess.Com
         text=True,
         timeout=60,
         env=env,
+        stdin=subprocess.DEVNULL,
     )
     if check and completed.returncode != 0:
         raise ProjectError(
@@ -198,7 +213,15 @@ def parse_config(text: str, executables_env: Mapping[str, str]) -> ProjectConfig
     roles = data.get("roles")
     if not isinstance(project, dict) or not isinstance(roles, dict):
         raise ProjectError("config needs [project] and [roles] tables")
-    _only(project, {"delivery", "default_branch"}, "[project]")
+    _only(project, {"delivery", "default_branch", "remote", "github_repo"}, "[project]")
+    github_repo = project.get("github_repo")
+    if github_repo is not None and (
+        not isinstance(github_repo, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", github_repo)
+    ):
+        raise ProjectError("[project] github_repo must be owner/name")
+    remote = project.get("remote", "origin")
+    if not isinstance(remote, str) or not _NAME.fullmatch(remote):
+        raise ProjectError("[project] remote must be a Git remote name")
     delivery = project.get("delivery", "pr")
     if delivery not in DELIVERY_MODES:
         raise ProjectError(f"delivery must be one of {DELIVERY_MODES}")
@@ -237,13 +260,17 @@ def parse_config(text: str, executables_env: Mapping[str, str]) -> ProjectConfig
         Harness.CODEX: executables_env.get("MILBURN_CODEX_EXECUTABLE", "codex"),
         Harness.CLAUDE_CODE: executables_env.get("MILBURN_CLAUDE_EXECUTABLE", "claude"),
     }
+    gh = executables_env.get("MILBURN_GH_EXECUTABLE", "gh")
     return ProjectConfig(
         delivery=delivery,
         default_branch=branch,
+        remote=remote,
+        github_repo=github_repo,
         coder=parsed["coder"],
         tester=parsed["tester"],
         tester_independence=independence,
         executables=executables,
+        gh=gh,
     )
 
 
