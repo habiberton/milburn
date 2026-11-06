@@ -64,9 +64,12 @@ In scope:
 - Free-form requests, and three built-in processes: Start from scratch, Add a
   feature, Fix a bug.
 
-Out of scope until §15 ("Later") items are approved: remote or phone access,
-research tools, harnesses other than Claude Code and Codex, pricing and budgets,
-Agent2Agent, task trackers other than GitHub, and creating repositories.
+Out of scope until §15 ("Later") items are approved: research tools, harnesses
+other than Claude Code and Codex, pricing and budgets, Agent2Agent, task trackers
+other than GitHub, and creating repositories.
+
+Remote and phone access are not built by Milburn. They come from hosting the
+Coordinator in OpenHands Agent Canvas (R44).
 
 ## 4. The Coordinator
 
@@ -83,6 +86,18 @@ Agent2Agent, task trackers other than GitHub, and creating repositories.
   the user chooses. The choice is recorded.
 - **R5. Resumes from a digest.** A new or rotated Coordinator session starts from
   `milburn status --digest`, not from history (R32).
+- **R44. Hosted in Agent Canvas.** The Coordinator may also run as a Claude Code or
+  Codex conversation in OpenHands Agent Canvas (the user's fork is Neo), which runs
+  it through the OpenHands Agent Server over ACP, on a local or remote backend.
+  This is a supported setup and gives the user Canvas's web, desktop, and phone
+  access. In it:
+  - The Coordinator runs `milburn` on the machine that holds the repository and the
+    Milburn state; role agents are still launched by the CLI (R6), not by Canvas.
+  - The Coordinator dispatches work only through `milburn`. Canvas's own
+    child-conversation tool bypasses the QA gate and delivery rules, so the
+    Coordinator skill forbids it for Milburn work.
+  - Milburn does not depend on Canvas: everything works from a plain Claude Code or
+    Codex session.
 
 ## 5. Role agents and harnesses
 
@@ -355,10 +370,21 @@ the details.
 
 Not in this release. Each needs its own approved change before work starts.
 
-- Remote and phone access (PRDv2 V2-43 to V2-45; review finding V-d proposes
-  read-only monitoring first).
 - The research gateway (PRDv2 V2-5 to V2-7).
-- Harnesses beyond Claude Code and Codex.
+- Harnesses beyond Claude Code and Codex. Agent Canvas already runs Gemini CLI,
+  Pi, and OpenCode over ACP; the adapter below is the likely route.
+- An Agent Server role-agent adapter: launch Milburn's role agents as Agent Server
+  conversations, gaining Docker sandboxes, remote backends, and per-agent
+  visibility in Canvas. It needs validation first: that ACP through the Agent
+  Server gives Milburn the controls it relies on today (sandbox choice,
+  schema-enforced results, config isolation, usage fields, and exhaustion
+  signals; see `docs/harness-facts.md`).
+- A Milburn panel in Agent Canvas (a Canvas "Apps" extension) showing work items,
+  tasks, gate results, and usage from `milburn status --json`, once the Agent
+  Server serves the extension endpoints.
+
+Dropped: remote and phone access (PRDv2 V2-43 to V2-45). Agent Canvas provides
+them (R44).
 - Pricing, budgets, and cost-based routing.
 - Agent2Agent protocol (decided: skip for now).
 - Trackers other than GitHub (Linear, Notion).
