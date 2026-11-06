@@ -384,7 +384,12 @@ adapter must not add a cumulative and a per-call figure together.
 
 ## 11. Keep, adapt, retire
 
-Retirement follows A6. Paths are under `src/milburn/`.
+Retirement follows A6. Paths are under `src/milburn/`. Every module marked
+retire below was deleted in #71, along with its tests, fakes, role rules, and
+skills. The `Role.PLANNER` and `Role.CLASSIFIER_ROUTER` enum values, and the
+`RoleRouteProposal` and `PlanEnvelope` models, remain until the state machine is
+reworked (#69, #70). Rules and skills are configured only for active roles, and
+loading a retired role is refused.
 
 | Module | Verdict | Reason |
 |---|---|---|

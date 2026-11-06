@@ -6,6 +6,7 @@ import subprocess
 import sys
 
 from milburn.domain import Role
+from milburn.domain.states import ACTIVE_ROLES
 from milburn.validation.skill_validation import validate_skill_package
 
 
@@ -13,8 +14,6 @@ ROOT = Path(__file__).parents[2]
 SKILLS = ROOT / ".agents/skills"
 EXPECTED = {
     "milburn-coordination",
-    "milburn-planning",
-    "milburn-routing",
     "milburn-architecture",
     "milburn-long-running-coder",
     "milburn-qa",
@@ -34,7 +33,7 @@ def test_role_and_policy_configs_are_json_compatible_yaml() -> None:
     roles = json.loads((ROOT / "config/roles.yaml").read_text(encoding="utf-8"))["roles"]
     policies = json.loads((ROOT / "config/policies.yaml").read_text(encoding="utf-8"))["roles"]
 
-    assert set(roles) == {role.value for role in Role}
+    assert set(roles) == {role.value for role in ACTIVE_ROLES}
     assert set(policies) == set(roles)
     assert {skill for entry in roles.values() for skill in entry["required_skills"]} == EXPECTED
 

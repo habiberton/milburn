@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Callable
 
 from milburn.domain import Role, SkillBinding
+from milburn.domain.states import ACTIVE_ROLES, RETIRED_ROLES
 from milburn.validation.skill_validation import (
     SkillFailureCode,
     SkillValidationError,
@@ -54,6 +55,8 @@ class SkillCatalog:
     def required_skills(self, role: Role) -> tuple[str, ...]:
         if not isinstance(role, Role):
             raise SkillCatalogConfigurationError("role must be a known Milburn role")
+        if role in RETIRED_ROLES:
+            raise SkillCatalogConfigurationError(f"role {role.value} is retired and has no skills")
         return self._roles[role]
 
     def resolve_launch(
@@ -127,10 +130,10 @@ def _load_roles(path: Path) -> dict[Role, tuple[str, ...]]:
     if not isinstance(payload, dict) or set(payload) != {"roles"}:
         raise SkillCatalogConfigurationError("role configuration must contain only roles")
     roles = payload["roles"]
-    if not isinstance(roles, dict) or set(roles) != {role.value for role in Role}:
-        raise SkillCatalogConfigurationError("role configuration must define every known role")
+    if not isinstance(roles, dict) or set(roles) != {role.value for role in ACTIVE_ROLES}:
+        raise SkillCatalogConfigurationError("role configuration must define exactly the active roles")
     result: dict[Role, tuple[str, ...]] = {}
-    for role in Role:
+    for role in sorted(ACTIVE_ROLES, key=lambda item: item.value):
         entry = roles[role.value]
         if not isinstance(entry, dict) or set(entry) != {"required_skills"}:
             raise SkillCatalogConfigurationError(

@@ -7,6 +7,8 @@ import shutil
 
 import pytest
 
+from milburn.domain.states import ACTIVE_ROLES, RETIRED_ROLES
+
 from milburn.agents.role_rules import RoleRuleCatalog, RoleRuleError
 from milburn.agents.skill_catalog import SkillCatalog, SkillCatalogConfigurationError
 from milburn.domain import Role
@@ -17,8 +19,6 @@ ROOT = Path(__file__).parents[3]
 NOW = datetime(2026, 11, 3, 12, 0, tzinfo=timezone.utc)
 ROLE_SKILLS = {
     Role.COORDINATOR: "milburn-coordination",
-    Role.PLANNER: "milburn-planning",
-    Role.CLASSIFIER_ROUTER: "milburn-routing",
     Role.ARCHITECT: "milburn-architecture",
     Role.CODER: "milburn-long-running-coder",
     Role.TESTER: "milburn-qa",
@@ -61,13 +61,13 @@ def test_missing_required_skill_blocks_launch_with_explicit_result(tmp_path: Pat
 def test_changed_required_skill_blocks_resumed_launch(tmp_path: Path) -> None:
     shutil.copytree(ROOT / ".agents/skills", tmp_path / "skills")
     subject = catalog(tmp_path / "skills")
-    original = subject.resolve_launch(Role.PLANNER)
+    original = subject.resolve_launch(Role.TESTER)
     assert original.allowed
-    guide = tmp_path / "skills/milburn-planning/references/planning-checklist.md"
+    guide = tmp_path / "skills/milburn-qa/references/acceptance-testing.md"
     guide.write_text(guide.read_text(encoding="utf-8") + "\n- New content.\n", encoding="utf-8")
 
     changed = subject.resolve_launch(
-        Role.PLANNER, expected_bindings=original.bindings
+        Role.TESTER, expected_bindings=original.bindings
     )
 
     assert not changed.allowed
@@ -91,13 +91,13 @@ def test_role_configuration_is_strict_and_complete(tmp_path: Path) -> None:
     path = tmp_path / "roles.yaml"
     path.write_text(json.dumps({"roles": {"coordinator": {"required_skills": []}}}))
 
-    with pytest.raises(SkillCatalogConfigurationError, match="every known role"):
+    with pytest.raises(SkillCatalogConfigurationError, match="exactly the active roles"):
         SkillCatalog(ROOT / ".agents/skills", path, clock=lambda: NOW)
 
 
 def test_expected_bindings_must_be_immutable_validated_values() -> None:
     with pytest.raises(SkillCatalogConfigurationError, match="immutable tuple"):
-        catalog().resolve_launch(Role.PLANNER, expected_bindings=[])  # type: ignore[arg-type]
+        catalog().resolve_launch(Role.TESTER, expected_bindings=[])  # type: ignore[arg-type]
 
 
 def test_role_rules_are_separate_and_contain_mandatory_authority_limits() -> None:
@@ -105,7 +105,7 @@ def test_role_rules_are_separate_and_contain_mandatory_authority_limits() -> Non
         ROOT / "src/milburn/agents/role_rules", ROOT / "config/policies.yaml"
     )
 
-    for role in Role:
+    for role in ACTIVE_ROLES:
         loaded = rules.load(role)
         assert loaded.role is role
         assert loaded.authority_limits
@@ -134,3 +134,12 @@ def test_role_rule_parent_directory_cannot_be_a_symlink(tmp_path: Path) -> None:
 
     with pytest.raises(RoleRuleError, match="symlinked component"):
         rules.load(Role.CODER)
+
+
+@pytest.mark.parametrize("role", sorted(RETIRED_ROLES, key=lambda item: item.value))
+def test_retired_roles_have_no_rules_or_skills(role: Role) -> None:
+    rules = RoleRuleCatalog(ROOT / "src/milburn/agents/role_rules", ROOT / "config/policies.yaml")
+    with pytest.raises(RoleRuleError, match="retired"):
+        rules.load(role)
+    with pytest.raises(SkillCatalogConfigurationError, match="retired"):
+        catalog().required_skills(role)
