@@ -342,3 +342,38 @@ def test_after_a_crash_post_merge_a_retry_reconciles_without_pushing(
     assert run("deliver", "w1") == 0
     assert effects(repo, "DeliveryEffectRequested", "push") == 1
     assert len(calls(tmp_path, "merge")) == 1 and delivered(repo)
+
+
+def test_github_repo_and_remote_url_must_agree(repo: Path, remote: Path, capsys) -> None:
+    set_mode(repo, "pr", github_repo="acme/toy")
+    integrated_work_item()
+    sh(repo, "git", "remote", "set-url", "origin", "https://github.com/other/place.git")
+    capsys.readouterr()
+    assert run("deliver", "w1") == 3
+    assert "must name the same repository" in capsys.readouterr().err
+
+
+def test_pr_mode_accepts_a_user_squash_merge_of_the_qad_head(
+    repo: Path, remote: Path, tmp_path: Path, monkeypatch, capsys
+) -> None:
+    from milburn.app import commands as commands_module
+
+    set_mode(repo, "pr")
+    integrated_work_item()
+    original = commands_module.Commands._record_delivered
+    monkeypatch.setattr(commands_module.Commands, "_record_delivered",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("crash before recording")))
+    assert run("deliver", "w1") == 4
+    monkeypatch.setattr(commands_module.Commands, "_record_delivered", original)
+    # The user squash-merges on GitHub: a single-parent commit on main.
+    other = tmp_path / "squash"
+    sh(tmp_path, "git", "clone", "-q", str(remote), str(other))
+    sh(other, "git", "merge", "-q", "--squash", "origin/milburn/w1/integration")
+    sh(other, "git", "-c", "user.name=u", "-c", "user.email=u@x", "commit", "-q", "-m", "squash")
+    sh(other, "git", "push", "-q", "origin", "main")
+    state = gh_state(tmp_path)
+    state["prs"][0].update(state="MERGED", mergeCommit={"oid": sh(other, "git", "rev-parse", "HEAD")})
+    save_gh_state(tmp_path, state)
+    capsys.readouterr()
+    assert run("deliver", "w1") == 0
+    assert delivered(repo)

@@ -190,12 +190,16 @@ class GhClient:
             for check in data.get("checks") or []:
                 if isinstance(check, dict) and check.get("context"):
                     required.add(str(check["context"]))
-        elif not re.search(r"\b404\b|not protected|Not Found", protection.stderr or ""):
+        elif "branch not protected" not in (protection.stderr or "").lower():
+            # Only GitHub's explicit "not protected" means no requirement; a
+            # permission 404 or any other error fails closed.
             raise GhError(f"cannot read branch protection: {(protection.stderr or '').strip()[:200]}")
-        rules = self._run(("api", *host, f"repos/{self.repo.name}/rules/branches/{branch}"))
-        data = self._json(rules, "branch rules")
-        if not isinstance(data, list):
-            raise GhError("branch rules did not return a list")
+        rules = self._run(("api", *host, "--paginate", "--slurp",
+                           f"repos/{self.repo.name}/rules/branches/{branch}"))
+        pages = self._json(rules, "branch rules")
+        if not isinstance(pages, list) or not all(isinstance(page, list) for page in pages):
+            raise GhError("branch rules did not return a list of pages")
+        data = [rule for page in pages for rule in page]
         for rule in data:
             if isinstance(rule, dict) and rule.get("type") == "required_status_checks":
                 for check in (rule.get("parameters") or {}).get("required_status_checks") or []:

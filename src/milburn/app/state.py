@@ -217,5 +217,8 @@ class Ledger:
                 state.work_items[data["work_item"]].delivered = data
         return state
 
+    def read_stream(self, stream: str) -> tuple[DomainEvent, ...]:
+        return self._store.read_stream(stream)
+
     def sequence(self, stream: str) -> int:
         return self._store.stream_sequence(stream)

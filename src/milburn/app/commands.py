@@ -851,6 +851,11 @@ class Commands:
             raise ProjectError(f"no Git remote named {config.remote}")
         parsed = repo_from_url(url.stdout)
         if config.github_repo:
+            if parsed is not None and parsed.name.lower() != config.github_repo.lower():
+                raise ProjectError(
+                    f"[project] github_repo is {config.github_repo} but remote {config.remote} "
+                    f"points at {parsed.name}; they must name the same repository"
+                )
             return GitHubRepo(parsed.host if parsed else "github.com", config.github_repo)
         if parsed is None:
             raise ProjectError(
@@ -980,7 +985,7 @@ class Commands:
         """Close a requested effect that a crash left without an observed record."""
 
         requested, observed = set(), set()
-        for event in self.ledger._store.read_stream(f"work-{work.work_item}"):
+        for event in self.ledger.read_stream(f"work-{work.work_item}"):
             payload = payload_of(event)
             if payload.get("idempotency_key") != key:
                 continue
@@ -1018,10 +1023,14 @@ class Commands:
         if git(self.project.repository, "merge-base", "--is-ancestor", pr.merge_commit, tracking,
                check=False).returncode:
             raise EffectFailed(f"{remote_default} does not contain merge {pr.merge_commit[:12]}")
-        parents = git(self.project.repository, "rev-list", "--parents", "-n", "1",
-                      pr.merge_commit).stdout.split()[1:]
-        if len(parents) != 2 or parents[1] != head:
-            raise EffectFailed(f"merge {pr.merge_commit[:12]} does not merge the QA'd head {head[:12]}")
+        # When Milburn merged, it asked for a merge commit of exactly this head.
+        # In pr mode the user merges and may squash or rebase; the PR head
+        # check above already ties that merge to the QA'd head.
+        if mode == "auto-merge":
+            parents = git(self.project.repository, "rev-list", "--parents", "-n", "1",
+                          pr.merge_commit).stdout.split()[1:]
+            if len(parents) != 2 or parents[1] != head:
+                raise EffectFailed(f"merge {pr.merge_commit[:12]} does not merge the QA'd head {head[:12]}")
         key = f"merge:{pr.number}:{head}"
         self._effect(work, EventType.DELIVERY_EFFECT_OBSERVED,
                      {"effect": "merge", "pr": pr.number, "merge_commit": pr.merge_commit,

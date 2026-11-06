@@ -81,8 +81,9 @@ if args[:1] == ["api"]:
                           "checks": [{"context": c, "app_id": None} for c in required.split(",")]}))
     elif "/rules/branches/" in path:
         rules = contexts("FAKE_GH_RULES")
-        print(json.dumps([{"type": "required_status_checks", "parameters": {
-            "required_status_checks": [{"context": c} for c in rules]}}] if rules else []))
+        page = [{"type": "required_status_checks", "parameters": {
+            "required_status_checks": [{"context": c} for c in rules]}}] if rules else []
+        print(json.dumps([page] if "--slurp" in args else page))
     else:
         fail_with(f"fake gh: unsupported api {path}", 2)
 elif args[:2] == ["pr", "list"]:
