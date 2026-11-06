@@ -76,6 +76,9 @@ if role == "coder":
             handle.write(f"half done by {attempt_id}\n")
         with open("progress.txt", "w") as handle:
             handle.write(f"Current head: {base}\n\n{task_id} {attempt_id}: feature file started, not finished\n")
+        # Parity note: a real Codex Coder cannot commit (docs/harness-facts.md);
+        # this mode models Claude Code, and tests with Codex use it only to
+        # exercise attribution.
         if mode == "commitexhausted":
             with open(f"feature_{task_id}.txt", "w") as handle:
                 handle.write(f"done by {attempt_id}\n")
@@ -96,7 +99,9 @@ if role == "coder":
         git("add", "-A")
         if mode == "forgeauthor":
             # Pretend the earlier attempt wrote this commit.
-            git("-c", f"user.email=coder.{task_id}.a1@milburn.invalid", "commit", "-q", "-m", "forged")
+            # --author beats the adapter's GIT_AUTHOR_* environment.
+            git("commit", "-q", f"--author=Milburn coder [{task_id}/a1] <coder.{task_id}.a1@milburn.invalid>",
+                "-m", "forged")
         else:
             git("commit", "-q", "--amend", "--no-edit")  # keeps the earlier author
         head = git("rev-parse", "HEAD")

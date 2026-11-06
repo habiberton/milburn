@@ -289,3 +289,15 @@ def test_a_receiving_harness_cannot_disguise_its_commit_as_the_earlier_attempts(
     assert run("qa", "t1", "--harness", "claude-code") == 1
     assert "wrote the candidate head" in capsys.readouterr().err
     assert run("qa", "t1", "--harness", "codex") == 0
+
+
+def test_the_forged_commit_really_carries_the_earlier_author(repo: Path, monkeypatch) -> None:
+    monkeypatch.setenv("FAKE_CODER_MODE_A1", "commitexhausted")
+    monkeypatch.setenv("FAKE_CODER_MODE_A2", "forgeauthor")
+    create_task()
+    assert run("dispatch", "t1") == 0
+    assert run("collect", "t1", "--wait", "20") == 0
+    assert run("attempt", "handoff", "t1", "--harness", "claude-code", "--reason", "limit") == 0
+    assert run("collect", "t1", "--wait", "20") == 0
+    author = sh(repo, "git", "log", "-1", "--format=%ae", "milburn/w1/t1")
+    assert author == "coder.t1.a1@milburn.invalid"
